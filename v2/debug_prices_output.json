@@ -1,0 +1,33 @@
+{
+  "block": 93260908,
+  "gas_gwei": 277.916447227,
+  "results": [
+    {
+      "symbol": "WETH",
+      "qs_price": 2452.505459282137,
+      "u3_price": 2456.7527957199127,
+      "spread_pct": 0.1731835671027966,
+      "qs_usdc_reserves": 1127280.476143,
+      "sqrtPriceX96": 1598449257684662854768403011907115,
+      "token0_is_usdc": true
+    },
+    {
+      "symbol": "WMATIC",
+      "qs_price": 0.09516668083460478,
+      "u3_price": 0.09524077410058024,
+      "spread_pct": 0.07785630992451213,
+      "qs_usdc_reserves": 297608.059757,
+      "sqrtPriceX96": 24450685642458437497484,
+      "token0_is_usdc": false
+    },
+    {
+      "symbol": "WBTC",
+      "qs_price": 79593.40502326835,
+      "u3_price": 79630.7846461909,
+      "spread_pct": 0.04696321625092916,
+      "qs_usdc_reserves": 83388.295205,
+      "sqrtPriceX96": 2235733741957677740654629602075,
+      "token0_is_usdc": false
+    }
+  ]
+}

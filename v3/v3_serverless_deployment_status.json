@@ -1,0 +1,15 @@
+{
+    "engine": "V3_UNIVERSAL",
+    "deployment_timestamp": "2026-09-08 02:49:42",
+    "serverless_status": "DEPLOYED_247_CLOUD_ACTIVE",
+    "github_workflow": "phantomx_v2_v3_247_cloud_runner.yml",
+    "cloudflare_worker": "phantomx-edge-worker",
+    "supported_chains": [
+        "Polygon",
+        "Arbitrum",
+        "Ethereum",
+        "Optimism",
+        "BSC"
+    ],
+    "zero_cost_guarantee": true
+}

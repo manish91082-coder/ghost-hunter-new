@@ -1,0 +1,23 @@
+{
+  "gate_5_1_batch_suite": {
+    "status": "PASSED",
+    "v2_bat_valid": true,
+    "v3_bat_valid": true,
+    "dual_bat_valid": true
+  },
+  "gate_5_2_wallet_auth": {
+    "status": "PASSED",
+    "wallet_loaded": true,
+    "wallet_address": "0x6c32820FC0fEd00E9CF28b67425ba1Ca753bd69e"
+  },
+  "gate_5_3_contract_deployed": {
+    "status": "PASSED",
+    "contract_address": "0x24056bCA6538693aE94Cc97E82f21Ee4EC7f1286",
+    "onchain_bytecode_bytes": 6528
+  },
+  "gate_5_4_solidity_guard": {
+    "status": "PASSED",
+    "zero_loss_revert_active": true,
+    "flash_repayment_revert_active": true
+  }
+}

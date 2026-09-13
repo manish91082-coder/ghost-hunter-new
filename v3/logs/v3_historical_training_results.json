@@ -1,0 +1,32 @@
+{
+  "dataset_records": 8761,
+  "total_scans_evaluated": 26283,
+  "total_executed_trades": 14967,
+  "execution_win_rate_pct": 56.95,
+  "cumulative_1year_net_pnl_usd": 211254.38,
+  "max_single_trade_net_pnl_usd": 102.58,
+  "final_cnn_mse_loss": 0.001761,
+  "regime_breakdown": {
+    "US_SESSION": {
+      "hours_evaluated": 1816,
+      "trades_executed": 3100,
+      "net_pnl_usd": 43712.61
+    },
+    "UK_SESSION": {
+      "hours_evaluated": 2182,
+      "trades_executed": 3742,
+      "net_pnl_usd": 52453.49
+    },
+    "ASIA_SESSION": {
+      "hours_evaluated": 3632,
+      "trades_executed": 6229,
+      "net_pnl_usd": 88706.29
+    },
+    "US_UK_OVERLAP": {
+      "hours_evaluated": 1131,
+      "trades_executed": 1896,
+      "net_pnl_usd": 26381.99
+    }
+  },
+  "trained_at": "2026-09-06 23:08:09"
+}

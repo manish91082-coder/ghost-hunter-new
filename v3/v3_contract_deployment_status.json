@@ -1,0 +1,13 @@
+{
+    "contract": "PhantomXV3UniversalMultiChainExecutor",
+    "network": "Polygon Mainnet (Chain ID 137)",
+    "chain_id": 137,
+    "deployed_at": "2026-09-09 19:56:20 UTC",
+    "status": "LIVE_MAINNET_DEPLOYED",
+    "hub_address": "0x24056bCA6538693aE94Cc97E82f21Ee4EC7f1286",
+    "deployment_tx_hash": "0x92bc4dc8b3450332c281445fb4443f8725586b18e880a063e0892af2c28c595a",
+    "deployer_vault": "0x6c32820FC0fEd00E9CF28b67425ba1Ca753bd69e",
+    "polygonscan_url": "https://polygonscan.com/address/0x24056bCA6538693aE94Cc97E82f21Ee4EC7f1286",
+    "zero_loss_reversion": true,
+    "max_slippage_pct": 0.1
+}

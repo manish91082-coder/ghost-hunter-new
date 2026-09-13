@@ -1,0 +1,56 @@
+{
+  "gas_gwei": 284.620505022,
+  "results": [
+    {
+      "symbol": "WETH",
+      "qs_price": 2452.505459282137,
+      "uv3_price": 2456.7527957199127,
+      "spread_pct": 0.1728841601472978,
+      "start_on_qs": true,
+      "max_loan_usdc": 11272.80476143,
+      "aave_fee_usd": 10.145524285287,
+      "qs_swap_fee_usd": 33.81841428429,
+      "uv3_swap_fee_usd": 5.636402380714999,
+      "gas_cost_usd": 0.0711551262555,
+      "total_fees_usd": 49.67149607654749,
+      "gross_profit_usd": 19.488893836842852,
+      "net_profit_usd": -30.182602239704643,
+      "break_even_spread_pct": 0.4406312104907463,
+      "is_profitable": false
+    },
+    {
+      "symbol": "WMATIC",
+      "qs_price": 0.09516668083460478,
+      "uv3_price": 0.09523769695553813,
+      "spread_pct": 0.07456723881774223,
+      "start_on_qs": true,
+      "max_loan_usdc": 2976.08059757,
+      "aave_fee_usd": 2.678472537813,
+      "qs_swap_fee_usd": 8.92824179271,
+      "uv3_swap_fee_usd": 1.488040298785,
+      "gas_cost_usd": 0.0711551262555,
+      "total_fees_usd": 13.1659097555635,
+      "gross_profit_usd": 2.219181126598512,
+      "net_profit_usd": -10.946728628964989,
+      "break_even_spread_pct": 0.4423909005123584,
+      "is_profitable": false
+    },
+    {
+      "symbol": "WBTC",
+      "qs_price": 79593.40502326835,
+      "uv3_price": 79630.7846461909,
+      "spread_pct": 0.046941171167203186,
+      "start_on_qs": true,
+      "max_loan_usdc": 833.8829520500001,
+      "aave_fee_usd": 0.750494656845,
+      "qs_swap_fee_usd": 2.50164885615,
+      "uv3_swap_fee_usd": 0.41694147602500004,
+      "gas_cost_usd": 0.0711551262555,
+      "total_fees_usd": 3.7402401152755,
+      "gross_profit_usd": 0.39143442385591737,
+      "net_profit_usd": -3.3488056914195825,
+      "break_even_spread_pct": 0.448532987283236,
+      "is_profitable": false
+    }
+  ]
+}

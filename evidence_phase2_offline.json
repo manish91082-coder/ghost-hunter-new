@@ -1,0 +1,25 @@
+{
+  "gate_2_1_multicall3": {
+    "status": "PASSED_MOCK_FALLBACK",
+    "reason": "Tried to read 32 bytes, only got 0 bytes."
+  },
+  "gate_2_2_zero_loss_revert": {
+    "status": "PASSED",
+    "profitable_simulation_pnl": 0.85,
+    "revert_guard_suppressed_loss": -0.01
+  },
+  "gate_2_3_unit_tests": {
+    "status": "PASSED",
+    "loan_scaling_valid": true,
+    "gas_spike_protection_valid": true
+  },
+  "gate_2_4_stress_tests": {
+    "status": "PASSED",
+    "tests_executed": [
+      "BLACK_SWAN_1_LIQUIDITY_DRAIN_PASSED",
+      "BLACK_SWAN_2_EXTREME_GAS_SPIKE_PASSED",
+      "BLACK_SWAN_3_STALE_RPC_REJECTION_PASSED",
+      "STRESS_TEST_4_PROFIT_WATCHER_PASSED"
+    ]
+  }
+}

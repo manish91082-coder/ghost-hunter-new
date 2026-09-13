@@ -1,0 +1,30 @@
+{
+  "issues": [
+    "\ud83d\udea8 AI only trained for 1 generation(s) out of 150 target",
+    "\ud83d\udea8 Training data used WMATIC price (~$0.37) but live tests WETH/WBTC",
+    "\ud83d\udea8 Training gas 30 Gwei vs Live 275 Gwei \u2014 9.1x mismatch!"
+  ],
+  "recommendations": [
+    "Run full 150-generation retraining",
+    "Remove or normalize 'real_price' feature in observation",
+    "Update gas model in training environment"
+  ],
+  "training_stats": {
+    "avg_price": 0.37318806,
+    "avg_spread": 0.08100332737435578,
+    "avg_gas": 30.238713963800006,
+    "spread_dist": {
+      "tiny": 0.2956,
+      "small": 0.6984,
+      "medium": 0.005,
+      "large": 0.001
+    }
+  },
+  "decision_results": {
+    "EXECUTE": 0,
+    "WAIT": 0,
+    "IGNORE": 3
+  },
+  "false_positives": 0,
+  "needs_retraining": true
+}
