@@ -16,6 +16,16 @@ CALldata = b"phase19-calldata"
 PRIVATE_KEY = "0x" + "01" * 32
 
 
+class BlindForeignSigner:
+    """Signer without an exposed address, forcing post-signature recovery to be authoritative."""
+
+    def __init__(self, private_key):
+        self._signer = EthereumEip1559Signer(private_key)
+
+    def sign(self, envelope):
+        return self._signer.sign(envelope)
+
+
 class SignerBoundaryTests(unittest.TestCase):
     def setUp(self):
         self.now = 1_700_000_000
@@ -71,27 +81,9 @@ class SignerBoundaryTests(unittest.TestCase):
             self.sign(signer=wrong)
 
     def test_recovered_sender_mismatch_is_blocked(self):
-        foreign = EthereumEip1559Signer("0x" + "02" * 32)
-        intent = replace(self.intent, sender=foreign.address)
-        authorization = replace(
-            self.authorization,
-            intent_hash=intent.intent_hash(),
-            sender=foreign.address,
-        )
-        governor = GovernorDecision(
-            approved=True,
-            reason="all governor policy gates passed",
-            chain_id=137,
-            block_number=5000,
-            intent_hash=intent.intent_hash(),
-            route_hash=ROUTE,
-            economic_proof_hash=ECONOMIC,
-            simulation_proof_hash=SIMULATION,
-            calldata_hash=self.envelope.calldata_hash,
-            ai_rank="0.9",
-        )
-        with self.assertRaisesRegex(SignerError, "signer identity"):
-            self.sign(intent=intent, authorization=authorization, governor=governor)
+        foreign = BlindForeignSigner("0x" + "02" * 32)
+        with self.assertRaisesRegex(SignerError, "recovered transaction sender"):
+            self.sign(signer=foreign)
 
     def test_governor_block_prevents_signer_call(self):
         blocked = GovernorDecision(
@@ -130,9 +122,14 @@ class SignerBoundaryTests(unittest.TestCase):
         with self.assertRaises(SignerError):
             self.sign(now=self.intent.deadline + 1)
 
-    def test_recovery_rejects_non_type2_bytes(self):
+    def test_invalid_signer_output_is_blocked(self):
+        class BadSigner:
+            address = self.sender
+
+            def sign(self, envelope):
+                return b""
         with self.assertRaises(SignerError):
-            recover_eip1559_sender(b"\x01garbage")
+            self.sign(signer=BadSigner())
 
 
 if __name__ == "__main__":
