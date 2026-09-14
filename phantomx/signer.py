@@ -1,10 +1,11 @@
 """Fail-closed Phase-19 signer boundary with cryptographic sender recovery.
 
 The signer accepts only a Governor-approved transaction whose exact intent,
-authorization, and envelope identities still match. The concrete EIP-1559
-signer serializes the exact Ethereum transaction, and the boundary recovers the
-sender from the signed bytes so the cryptographic signing identity must equal
-ExecutionIntent.sender. No RPC, relay, or broadcaster is used here.
+authorization, envelope identities, and deployed executor authority still match.
+The concrete EIP-1559 signer serializes the exact Ethereum transaction, and the
+boundary recovers the sender from the signed bytes so the cryptographic signing
+identity must equal ExecutionIntent.sender. No RPC, relay, or broadcaster is
+used here.
 """
 from __future__ import annotations
 
@@ -16,6 +17,7 @@ from eth_keys import keys
 from eth_keys.exceptions import BadSignature
 
 from .execution import Authorization, ExecutionIntent, TransactionEnvelope
+from .executor_authority import ExecutorAuthorityError, ExecutorAuthorityEvidence, runtime_code_binding_hash, verify_executor_authority
 from .governor import GovernorDecision
 from .hashing import keccak256_hex
 
@@ -49,15 +51,21 @@ def _hex_address(value: str, field: str) -> bytes:
 
 @dataclass(frozen=True)
 class SignedTransaction:
-    """Immutable signed artifact bound to the exact governed envelope."""
+    """Immutable signed artifact bound to the exact governed envelope and executor runtime identity."""
 
     intent_hash: str
     governor_decision_hash: str
+    executor_runtime_binding_hash: str
     transaction_hash: str
     raw_transaction: bytes
 
     def __post_init__(self) -> None:
-        for name in ("intent_hash", "governor_decision_hash", "transaction_hash"):
+        for name in (
+            "intent_hash",
+            "governor_decision_hash",
+            "executor_runtime_binding_hash",
+            "transaction_hash",
+        ):
             value = getattr(self, name)
             if not isinstance(value, str) or len(value) != 66 or not value.startswith("0x"):
                 raise SignerError(f"{name} must be a 32-byte 0x hash")
@@ -156,9 +164,10 @@ def sign_governed_transaction(
     intent: ExecutionIntent,
     authorization: Authorization,
     envelope: TransactionEnvelope,
+    executor_authority: ExecutorAuthorityEvidence,
     now: int,
 ) -> SignedTransaction:
-    """Sign only an exact, approved, still-authorized transaction envelope."""
+    """Sign only an exact, approved, still-authorized transaction envelope and deployed executor identity."""
     if not governor.approved:
         raise SignerError("governor did not approve signing")
     if now < 0:
@@ -177,6 +186,18 @@ def sign_governed_transaction(
         raise SignerError("governor simulation proof identity does not match intent")
     if not authorization.matches_envelope(envelope, now, intent):
         raise SignerError("authorization does not match exact signing envelope")
+    try:
+        verify_executor_authority(
+            executor_authority,
+            chain_id=intent.chain_id,
+            executor=intent.executor,
+            sender=intent.sender,
+            minimum_observed_block=governor.block_number,
+        )
+    except ExecutorAuthorityError as exc:
+        raise SignerError(f"executor authority is invalid: {exc}") from exc
+    if governor.executor_authority_hash.lower() != executor_authority.evidence_hash.lower():
+        raise SignerError("governor executor authority evidence does not match signing evidence")
 
     signer_address = getattr(signer, "address", None)
     if signer_address is not None:
@@ -194,6 +215,7 @@ def sign_governed_transaction(
     return SignedTransaction(
         intent_hash=intent.intent_hash(),
         governor_decision_hash=governor.decision_hash,
+        executor_runtime_binding_hash=runtime_code_binding_hash(executor_authority),
         transaction_hash=keccak256_hex(raw),
         raw_transaction=raw,
     )
