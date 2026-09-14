@@ -57,7 +57,13 @@ class UniswapV3Tests(unittest.TestCase):
         calls = [x for x in rpc.calls if x[0] == "eth_call"]
         self.assertEqual(calls[0][1][1], "0x100")
         self.assertEqual(calls[1][1][1], "0x100")
-        self.assertIn(POOL.lower(), calls[1][1][0]["data"])
+        # Quoter V1 quoteExactInputSingle is keyed by tokenIn/tokenOut/fee,
+        # not by pool address. Pool resolution belongs to the preceding
+        # factory call, so the quoter calldata must contain the requested
+        # token addresses rather than the resolved pool address.
+        self.assertIn(A[2:].lower(), calls[1][1][0]["data"])
+        self.assertIn(B[2:].lower(), calls[1][1][0]["data"])
+        self.assertNotIn(POOL[2:].lower(), calls[1][1][0]["data"])
 
     def test_polygon_chain_is_required(self):
         with self.assertRaises(UniswapV3Error):
