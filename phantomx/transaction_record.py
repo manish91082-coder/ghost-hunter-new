@@ -1,13 +1,4 @@
-"""Immutable transaction record binding for Phase 19.
-
-A TransactionRecord is the forensic identity of a transaction after an
-execution envelope has been authorized. It binds the execution intent,
-authorization, nonce reservation, exact calldata/envelope, and transaction
-hash. This module does not sign, broadcast, replace, or submit transactions.
-
-The record is intentionally immutable. Any material change creates a new
-record rather than mutating the identity of an already authorized transaction.
-"""
+"""Immutable transaction record binding for Phase 19."""
 
 from __future__ import annotations
 
@@ -117,12 +108,12 @@ def build_signed_record(
     envelope: TransactionEnvelope,
     bound_nonce: BoundNonce,
     tx_hash: str,
+    *,
+    now: int = 0,
 ) -> TransactionRecord:
-    """Construct a signed-state record only after all bindings are exact."""
-    if not authorization.matches_envelope(envelope, now=0, intent=intent):
-        # Deadline validation is performed by the caller's current-time authorization check.
-        # This helper deliberately requires the same envelope equality, but cannot infer time.
-        raise ValueError("authorization and transaction envelope do not match")
+    """Construct a signed-state record only after exact binding and deadline validation."""
+    if not authorization.matches_envelope(envelope, now=now, intent=intent):
+        raise ValueError("authorization and transaction envelope do not match or authorization expired")
     if bound_nonce.sender.lower() != envelope.sender.lower() or bound_nonce.nonce != envelope.nonce:
         raise ValueError("nonce reservation does not bind transaction envelope")
     if bound_nonce.intent_hash.lower() != intent.intent_hash().lower():
