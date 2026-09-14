@@ -16,7 +16,7 @@ from phantomx.sqlite_execution_store import SQLiteExecutionStore
 TOKEN_A = "0x" + "aa" * 20
 TOKEN_B = "0x" + "bb" * 20
 EXECUTOR = "0x" + "cc" * 20
-PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf3be6bd"
+PRIVATE_KEY = "0x" + "01" * 32
 SENDER = EthereumEip1559Signer(PRIVATE_KEY).address
 AAVE_POOL = "0x" + "11" * 20
 QUICKSWAP = "0x" + "22" * 20
