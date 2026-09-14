@@ -1,5 +1,6 @@
 """Adversarial and restart tests for durable TransactionRecord storage."""
 
+from dataclasses import replace
 from pathlib import Path
 import tempfile
 import unittest
@@ -47,14 +48,13 @@ class SQLiteTransactionStoreTests(unittest.TestCase):
         self.assertEqual(len(self.store.records()), 1)
 
     def test_intent_mutation_cannot_be_persisted(self):
-        mutated = self.record.with_state(ExecutionState.SIGNED)
-        mutated = mutated.__class__(**{**mutated.canonical(), "intent_hash": "0x" + "aa" * 32})
+        mutated = replace(self.record, intent_hash="0x" + "aa" * 32)
         with self.assertRaises(ValueError):
             self.store.create(mutated, intent=self.intent, bound_nonce=self.bound)
         self.assertEqual(self.store.records(), [])
 
     def test_nonce_mutation_cannot_be_persisted(self):
-        mutated = self.record.__class__(**{**self.record.canonical(), "nonce": 43})
+        mutated = replace(self.record, nonce=43)
         with self.assertRaises(ValueError):
             self.store.create(mutated, intent=self.intent, bound_nonce=self.bound)
         self.assertEqual(self.store.records(), [])
@@ -86,14 +86,14 @@ class SQLiteTransactionStoreTests(unittest.TestCase):
         self.store.create(self.record, intent=self.intent, bound_nonce=self.bound)
         self.store.transition(self.record.record_hash(), ExecutionState.PRIVATE_SUBMITTED)
         replacement_hash = "0x" + "22" * 32
-        replacement = self.record.__class__(**{**self.record.canonical(), "tx_hash": replacement_hash, "replacement_of": self.tx_hash})
+        replacement = replace(self.record, tx_hash=replacement_hash, replacement_of=self.tx_hash)
         stored = self.store.create_replacement(replacement, intent=self.intent, bound_nonce=self.bound, replaces_tx_hash=self.tx_hash)
         self.assertEqual(stored.replacement_of, self.tx_hash)
         self.assertEqual(self.store.get_by_tx_hash(replacement_hash).nonce, self.record.nonce)
 
     def test_replacement_wrong_source_is_rejected(self):
         self.store.create(self.record, intent=self.intent, bound_nonce=self.bound)
-        replacement = self.record.__class__(**{**self.record.canonical(), "tx_hash": "0x" + "22" * 32, "replacement_of": "0x" + "33" * 32})
+        replacement = replace(self.record, tx_hash="0x" + "22" * 32, replacement_of="0x" + "33" * 32)
         with self.assertRaises((ValueError, KeyError)):
             self.store.create_replacement(replacement, intent=self.intent, bound_nonce=self.bound, replaces_tx_hash="0x" + "33" * 32)
         self.assertEqual(len(self.store.records()), 1)
