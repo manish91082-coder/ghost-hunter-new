@@ -164,6 +164,7 @@ def build_economic_proof(
     max_gas_usd: Decimal | int | str,
     max_relay_usd: Decimal | int | str,
     minimum_net_profit_usd: Decimal | int | str = STRICT_MIN_NET_PROFIT_USD,
+    proof_hash: str = "",
 ) -> EconomicProof:
     """Build a deterministic proof and reject candidates at or below the floor."""
     proof = EconomicProof(
@@ -177,6 +178,7 @@ def build_economic_proof(
         max_gas_usd=max_gas_usd,
         max_relay_usd=max_relay_usd,
         minimum_net_profit_usd=minimum_net_profit_usd,
+        proof_hash=proof_hash,
     )
     if not proof.economically_valid:
         raise EconomicProofError("worst-case net profit does not exceed the strict minimum")
