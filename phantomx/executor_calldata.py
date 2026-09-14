@@ -179,20 +179,28 @@ def build_executor_transaction(intent: ExecutionIntent, *, token_mid: str, first
         raise ExecutorCalldataError("Phase-19 executor is Polygon-only")
     if intent.loan_amount <= 0:
         raise ExecutorCalldataError("intent loan amount must be positive")
-    _require_address(intent.loan_asset, "intent.loan_asset")
-    _require_address(intent.executor, "intent.executor")
-    _require_address(intent.sender, "intent.sender")
-    if intent.deadline < 0:
+    if minimum_surplus <= 0:
+        raise ExecutorCalldataError("minimum_surplus must be positive")
+    if intent.minimum_surplus_token_amount not in (0, minimum_surplus):
+        raise ExecutorCalldataError("requested minimum surplus conflicts with intent")
+    execution_intent = intent.with_field(minimum_surplus_token_amount=minimum_surplus)
+    _require_address(execution_intent.loan_asset, "intent.loan_asset")
+    _require_address(execution_intent.executor, "intent.executor")
+    _require_address(execution_intent.sender, "intent.sender")
+    if execution_intent.deadline < 0:
         raise ExecutorCalldataError("deadline cannot be negative")
-    topology_hash = executor_topology_hash(asset=intent.loan_asset, token_mid=token_mid, first_on_quickswap=first_on_quickswap, uniswap_fee=uniswap_fee, aave_pool=aave_pool, quickswap_router=quickswap_router, uniswap_v3_router=uniswap_v3_router, executor=intent.executor, chain_id=intent.chain_id)
-    route_commitment = executor_route_commitment(route_hash=intent.route_hash, topology_hash=topology_hash)
-    commitment_hash = intent.execution_commitment_hash()
-    calldata = _encode_execute(asset=intent.loan_asset, token_mid=token_mid, first_on_quickswap=first_on_quickswap, uniswap_fee=uniswap_fee, amount_out_min_first=amount_out_min_first, amount_out_min_second=amount_out_min_second, minimum_surplus=minimum_surplus, deadline=intent.deadline, route_hash=intent.route_hash, route_commitment=route_commitment, intent_commitment_hash=commitment_hash, amount=intent.loan_amount)
+    topology_hash = executor_topology_hash(asset=execution_intent.loan_asset, token_mid=token_mid, first_on_quickswap=first_on_quickswap, uniswap_fee=uniswap_fee, aave_pool=aave_pool, quickswap_router=quickswap_router, uniswap_v3_router=uniswap_v3_router, executor=execution_intent.executor, chain_id=execution_intent.chain_id)
+    route_commitment = executor_route_commitment(route_hash=execution_intent.route_hash, topology_hash=topology_hash)
+    commitment_hash = execution_intent.execution_commitment_hash()
+    calldata = _encode_execute(asset=execution_intent.loan_asset, token_mid=token_mid, first_on_quickswap=first_on_quickswap, uniswap_fee=uniswap_fee, amount_out_min_first=amount_out_min_first, amount_out_min_second=amount_out_min_second, minimum_surplus=minimum_surplus, deadline=execution_intent.deadline, route_hash=execution_intent.route_hash, route_commitment=route_commitment, intent_commitment_hash=commitment_hash, amount=execution_intent.loan_amount)
     calldata_hash = keccak256_hex(calldata)
-    bound_intent = intent.with_field(calldata_hash=calldata_hash)
+    bound_intent = execution_intent.with_field(calldata_hash=calldata_hash)
     if bound_intent.execution_commitment_hash().lower() != commitment_hash.lower():
         raise ExecutorCalldataError("intent commitment changed during calldata binding")
     if executor_route_commitment(route_hash=bound_intent.route_hash, topology_hash=topology_hash).lower() != route_commitment.lower():
         raise ExecutorCalldataError("route commitment changed during calldata binding")
-    envelope = TransactionEnvelope(chain_id=intent.chain_id, sender=intent.sender, executor=intent.executor, nonce=intent.nonce, calldata=calldata, gas_limit=gas_limit, max_fee_per_gas=max_fee_per_gas, max_priority_fee_per_gas=max_priority_fee_per_gas)
+    decoded = decode_executor_calldata(calldata)
+    if decoded.minimum_surplus != bound_intent.minimum_surplus_token_amount:
+        raise ExecutorCalldataError("calldata surplus floor is not intent-bound")
+    envelope = TransactionEnvelope(chain_id=execution_intent.chain_id, sender=execution_intent.sender, executor=execution_intent.executor, nonce=execution_intent.nonce, calldata=calldata, gas_limit=gas_limit, max_fee_per_gas=max_fee_per_gas, max_priority_fee_per_gas=max_priority_fee_per_gas)
     return BoundExecutorCall(calldata=calldata, calldata_hash=calldata_hash, topology_hash=topology_hash, route_commitment=route_commitment, intent_commitment_hash=commitment_hash, bound_intent=bound_intent, envelope=envelope)
