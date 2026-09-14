@@ -42,7 +42,12 @@ class ExecutorCalldataBindingTests(unittest.TestCase):
         self.assertEqual(bound.envelope.calldata_hash, bound.calldata_hash)
         self.assertEqual(bound.bound_intent.execution_commitment_hash(), bound.intent_commitment_hash)
         self.assertEqual(bound.route_commitment, executor_route_commitment(route_hash=self.route_hash, topology_hash=bound.topology_hash))
+        self.assertEqual(bound.bound_intent.minimum_surplus_token_amount, 5)
         self.assertNotEqual(bound.bound_intent.intent_hash(), self.intent.intent_hash())
+
+    def test_conflicting_intent_surplus_floor_is_rejected(self):
+        with self.assertRaisesRegex(ExecutorCalldataError, "requested minimum surplus"):
+            build_executor_transaction(self.intent.with_field(minimum_surplus_token_amount=6), token_mid=self.mid, first_on_quickswap=True, uniswap_fee=3000, amount_out_min_first=90_000_000, amount_out_min_second=95_000_000, minimum_surplus=5, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni, gas_limit=800_000, max_fee_per_gas=1_000_000_000, max_priority_fee_per_gas=100_000_000)
 
     def test_static_abi_layout_is_exactly_twelve_words_after_selector(self):
         bound = self._build()
@@ -80,6 +85,12 @@ class ExecutorCalldataBindingTests(unittest.TestCase):
         self.assertNotEqual(first, third)
         self.assertNotEqual(first, executor_mutated)
         self.assertNotEqual(first, chain_mutated)
+
+    def test_python_topology_and_commitment_reference_vectors(self):
+        topology = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, uniswap_fee=3000, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni, executor=self.executor)
+        commitment = executor_route_commitment(route_hash=self.route_hash, topology_hash=topology)
+        self.assertEqual(topology, "0x954ad916a97a96b547cb63bf95dcef0b6a3e30756f815d5d56d40fc0f4e47361")
+        self.assertEqual(commitment, "0xa9d40c9574743a5e0c42c37012a7e9c8ceeb6279336bca94c9c48aa0f5e9de13")
 
     def test_selector_is_ethereum_keccak_of_exact_signature(self):
         self.assertEqual(executor_selector().hex(), keccak256_hex(EXECUTE_SIGNATURE.encode("ascii"))[2:10])
