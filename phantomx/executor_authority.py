@@ -96,6 +96,21 @@ class ExecutorAuthorityEvidence:
         return keccak256_hex(encoded)
 
 
+def runtime_code_binding_hash(evidence: ExecutorAuthorityEvidence) -> str:
+    """Return a stable identity for one deployed owner/code instance across blocks."""
+    if not isinstance(evidence, ExecutorAuthorityEvidence):
+        raise ExecutorAuthorityError("runtime code binding requires executor authority evidence")
+    payload = {
+        "schema_version": evidence.schema_version,
+        "chain_id": evidence.chain_id,
+        "executor": evidence.executor,
+        "owner": evidence.owner,
+        "runtime_code_hash": evidence.runtime_code_hash,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return keccak256_hex(encoded)
+
+
 def observe_executor_authority(provider: RPCProvider, executor: str) -> ExecutorAuthorityEvidence:
     """Observe owner and runtime code at one explicit Polygon block."""
     executor = _address(executor, "executor")
