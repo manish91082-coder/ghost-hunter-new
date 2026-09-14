@@ -40,5 +40,11 @@ class Phase19ExecutorSourceTests(unittest.TestCase):
     def test_reentrancy_guard_does_not_wrap_flashloan_entrypoint(self):
         execute_match = re.search(r"function execute\([^)]*\) external onlyOwner([^\{]*)\{", self.source); self.assertIsNotNone(execute_match); self.assertNotIn("nonReentrant", execute_match.group(1)); self.assertIsNotNone(re.search(r"function executeOperation\([^)]*\) external nonReentrant", self.source))
 
+    def test_withdrawal_isolation_during_active_execution(self):
+        self.assertIn("error WithdrawalWhileActive();", self.source)
+        withdraw_match = re.search(r"function withdraw\([^)]*\) external nonReentrant onlyOwner \{", self.source)
+        self.assertIsNotNone(withdraw_match)
+        self.assertIn("if (activeExecution) revert WithdrawalWhileActive();", self.source)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
