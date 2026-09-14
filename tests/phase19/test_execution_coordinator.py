@@ -10,12 +10,14 @@ from phantomx.quote_engine import ExactQuote
 from phantomx.quote_snapshot import QuoteSnapshot
 from phantomx.route_simulator import simulate_two_leg
 from phantomx.governor import GovernorPolicy
+from phantomx.signer import EthereumEip1559Signer
 from phantomx.sqlite_execution_store import SQLiteExecutionStore
 
 TOKEN_A = "0x" + "aa" * 20
 TOKEN_B = "0x" + "bb" * 20
 EXECUTOR = "0x" + "cc" * 20
-SENDER = "0x" + "dd" * 20
+PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf3be6bd"
+SENDER = EthereumEip1559Signer(PRIVATE_KEY).address
 AAVE_POOL = "0x" + "11" * 20
 QUICKSWAP = "0x" + "22" * 20
 UNISWAP = "0x" + "33" * 20
@@ -25,10 +27,12 @@ VALUATION = "0x" + "44" * 32
 class FakeSigner:
     def __init__(self):
         self.calls = 0
+        self._signer = EthereumEip1559Signer(PRIVATE_KEY)
+        self.address = self._signer.address
 
     def sign(self, envelope):
         self.calls += 1
-        return b"phase19-signed:" + envelope.calldata
+        return self._signer.sign(envelope)
 
 
 class ExecutionCoordinatorTests(unittest.TestCase):
