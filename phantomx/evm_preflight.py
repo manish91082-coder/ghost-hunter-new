@@ -87,6 +87,8 @@ def _validate_executor_calldata(
         raise EVMPreflightError("executor calldata route does not match simulation")
     if decoded.intent_commitment_hash.lower() != intent.execution_commitment_hash().lower():
         raise EVMPreflightError("executor calldata commitment does not match intent")
+    if decoded.route_commitment == "0x" + "00" * 32:
+        raise EVMPreflightError("executor calldata route commitment is empty")
 
     first_is_quick = "quickswap" in first_leg.dex.lower()
     first_is_uni = "uniswap" in first_leg.dex.lower()
@@ -109,8 +111,6 @@ def _validate_executor_calldata(
         raise EVMPreflightError("executor calldata second minimum exceeds proven quote")
     if decoded.minimum_surplus <= 0:
         raise EVMPreflightError("executor calldata minimum surplus must be positive")
-    if decoded.topology_hash == "0x" + "00" * 32:
-        raise EVMPreflightError("executor calldata topology commitment is empty")
 
 
 def preflight_execution(
@@ -180,15 +180,13 @@ def preflight_execution(
             raise EVMPreflightError("worst-case economics fail the strict gate")
 
         return EVMPreflightResult(
-            chain_id=envelope.chain_id,
+            chain_id=intent.chain_id,
             block_number=simulation.block_number,
             intent_hash=intent.intent_hash(),
-            route_hash=simulation.route_hash,
-            economic_proof_hash=economic_proof.proof_hash,
-            simulation_proof_hash=simulation_hash(simulation),
+            route_hash=intent.route_hash,
+            economic_proof_hash=intent.economic_proof_hash,
+            simulation_proof_hash=intent.simulation_proof_hash,
             calldata_hash=envelope.calldata_hash,
         )
-    except (EconomicProofError, RouteSimulationError, ExecutorCalldataError, ValueError, TypeError) as exc:
-        if isinstance(exc, EVMPreflightError):
-            raise
+    except (ExecutorCalldataError, EconomicProofError, RouteSimulationError) as exc:
         raise EVMPreflightError(str(exc)) from exc
