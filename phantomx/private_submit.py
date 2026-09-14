@@ -120,8 +120,6 @@ def submit_governed_transaction(
         )
     except ExecutorAuthorityError as exc:
         raise PrivateSubmitError(f"executor authority is invalid at submission: {exc}") from exc
-    if governor.executor_authority_hash.lower() != executor_authority.evidence_hash.lower():
-        raise PrivateSubmitError("governor executor authority evidence does not match submission evidence")
     if signed_transaction.executor_runtime_binding_hash.lower() != runtime_code_binding_hash(executor_authority).lower():
         raise PrivateSubmitError("deployed executor runtime identity changed after signing")
 
