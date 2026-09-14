@@ -15,6 +15,7 @@ from .economic_proof import EconomicProof
 from .economics import STRICT_MIN_NET_PROFIT_USD
 from .evm_preflight import EVMPreflightResult
 from .execution import ExecutionIntent, ExecutionState, TransactionEnvelope
+from .executor_authority import ExecutorAuthorityEvidence, ExecutorAuthorityError, verify_executor_authority
 from .hashing import keccak256_hex
 
 
@@ -107,6 +108,7 @@ class GovernorDecision:
     economic_proof_hash: str
     simulation_proof_hash: str
     calldata_hash: str
+    executor_authority_hash: str
     ai_rank: str | None = None
     decision_hash: str = ""
 
@@ -119,6 +121,7 @@ class GovernorDecision:
             "economic_proof_hash",
             "simulation_proof_hash",
             "calldata_hash",
+            "executor_authority_hash",
         ):
             object.__setattr__(self, name, _hash(getattr(self, name), name))
         expected = self._digest()
@@ -140,6 +143,7 @@ class GovernorDecision:
             "economic_proof_hash": self.economic_proof_hash.lower(),
             "simulation_proof_hash": self.simulation_proof_hash.lower(),
             "calldata_hash": self.calldata_hash.lower(),
+            "executor_authority_hash": self.executor_authority_hash.lower(),
             "ai_rank": self.ai_rank,
         }
         encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -153,6 +157,7 @@ def govern_execution(
     intent: ExecutionIntent,
     envelope: TransactionEnvelope,
     economic_proof: EconomicProof,
+    executor_authority: ExecutorAuthorityEvidence,
     lifecycle_state: ExecutionState,
     nonce_reserved: bool,
     replay_consumed: bool,
@@ -163,7 +168,9 @@ def govern_execution(
     """Apply the final policy firewall without performing any external action.
 
     A blocked decision is returned as explicit audit evidence. No condition
-    involving AI ranking can turn a policy failure into approval.
+    involving AI ranking can turn a policy failure into approval. The decision
+    itself commits to the exact deployed-executor authority evidence that was
+    validated against the execution sender and proven route block.
     """
     rank_text: str | None
     if ai_rank is None:
@@ -171,6 +178,8 @@ def govern_execution(
     else:
         rank = _decimal(ai_rank, "ai_rank")
         rank_text = str(rank)
+
+    authority_hash = _hash(executor_authority.evidence_hash, "executor authority hash")
 
     def block(reason: str) -> GovernorDecision:
         return GovernorDecision(
@@ -183,6 +192,7 @@ def govern_execution(
             economic_proof_hash=preflight.economic_proof_hash,
             simulation_proof_hash=preflight.simulation_proof_hash,
             calldata_hash=preflight.calldata_hash,
+            executor_authority_hash=authority_hash,
             ai_rank=rank_text,
         )
 
@@ -208,6 +218,18 @@ def govern_execution(
         return block("simulation block is outside the permitted block-drift window")
     if intent.deadline < now:
         return block("execution deadline has expired")
+
+    try:
+        verify_executor_authority(
+            executor_authority,
+            chain_id=intent.chain_id,
+            executor=intent.executor,
+            sender=intent.sender,
+            minimum_observed_block=preflight.block_number,
+        )
+    except ExecutorAuthorityError:
+        return block("deployed executor authority evidence is invalid at governor boundary")
+
     if envelope.gas_limit > policy.max_gas_limit:
         return block("gas limit exceeds governor ceiling")
     if envelope.max_fee_per_gas > policy.max_fee_per_gas:
@@ -263,5 +285,6 @@ def govern_execution(
         economic_proof_hash=preflight.economic_proof_hash,
         simulation_proof_hash=preflight.simulation_proof_hash,
         calldata_hash=preflight.calldata_hash,
+        executor_authority_hash=authority_hash,
         ai_rank=rank_text,
     )
