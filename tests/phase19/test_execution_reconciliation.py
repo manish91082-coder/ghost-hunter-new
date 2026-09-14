@@ -22,7 +22,13 @@ class ExecutionReconciliationTests(unittest.TestCase):
         self.addCleanup(self.fixture.tearDown)
         self.store = self.fixture.store
         self.prepared = self.fixture._prepare()
-        submit_prepared_execution(store=self.store, prepared=self.prepared, relay=FakeRelay(), now=self.fixture.now)
+        submit_prepared_execution(
+            store=self.store,
+            prepared=self.prepared,
+            relay=FakeRelay(),
+            now=self.fixture.now,
+            submission_authority=self.prepared.authority,
+        )
         self.tx_hash = self.prepared.signed_transaction.transaction_hash
         self.included_observation = ObservationDecision(
             state=ChainObservationState.INCLUDED,
@@ -105,6 +111,7 @@ class ExecutionReconciliationTests(unittest.TestCase):
                 intent=self.prepared.assembly.intent,
                 observation=bad_observation,
                 tx_nonce=self.prepared.assembly.intent.nonce,
+                pending_nonce=self.prepared.assembly.intent.nonce + 1,
                 block_hash=BLOCK_HASH,
                 block_number=6000,
                 canonical_block_hash=BAD_BLOCK_HASH,
