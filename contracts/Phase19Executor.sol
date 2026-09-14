@@ -52,6 +52,7 @@ contract Phase19Executor {
     error IntentAlreadyConsumed();
     error NoActiveExecution();
     error ActiveExecutionMismatch();
+    error WithdrawalWhileActive();
 
     address public immutable owner;
     address public immutable aavePool;
@@ -228,7 +229,8 @@ contract Phase19Executor {
         if (amountOut < amountOutMin) revert MinimumOutputFailed();
     }
 
-    function withdraw(address token, uint256 amount) external onlyOwner nonReentrant {
+    function withdraw(address token, uint256 amount) external nonReentrant onlyOwner {
+        if (activeExecution) revert WithdrawalWhileActive();
         if (token == address(0) || amount == 0) revert InvalidAmount();
         if (!IERC20Phase19(token).transfer(owner, amount)) revert TransferFailed();
     }
