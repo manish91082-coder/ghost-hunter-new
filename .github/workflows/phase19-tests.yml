@@ -27,8 +27,21 @@ jobs:
       - name: Run Phase-19 EVM integration harness
         run: forge test --root . --match-path tests/evm/Phase19Executor.t.sol -vv
       - name: Run Polygon fork protocol smoke harness
-        env:
-          POLYGON_RPC_URL: https://polygon-rpc.com
-        run: forge test --root . --fork-url "$POLYGON_RPC_URL" --match-path tests/evm/PolygonForkSmoke.t.sol -vv
+        run: |
+          set -euo pipefail
+          endpoints=(
+            "https://polygon-bor-rpc.publicnode.com"
+            "https://polygon-rpc.com"
+          )
+          for endpoint in "${endpoints[@]}"; do
+            echo "Attempting Polygon fork endpoint: ${endpoint}"
+            if forge test --root . --fork-url "${endpoint}" --match-path tests/evm/PolygonForkSmoke.t.sol -vv; then
+              echo "Polygon fork smoke passed using ${endpoint}"
+              exit 0
+            fi
+            echo "Polygon fork endpoint failed: ${endpoint}"
+          done
+          echo "All configured Polygon fork endpoints failed"
+          exit 1
       - name: Run Phase-19 unittest suite
         run: python -m unittest discover -s tests/phase19 -v
