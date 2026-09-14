@@ -1,8 +1,4 @@
-"""Phase-19 adversarial tests for non-negotiable execution invariants.
-
-These tests validate policy/data contracts only. They do NOT claim Polygon
-execution, fork execution, production signing, or live relay submission.
-"""
+"""Phase-19 adversarial tests for non-negotiable execution invariants."""
 
 from decimal import Decimal
 from pathlib import Path
@@ -51,7 +47,7 @@ class BindingTests(unittest.TestCase):
             self.intent.intent_hash(), self.intent.calldata_hash,
             self.intent.economic_proof_hash, self.intent.simulation_proof_hash,
             self.intent.chain_id, self.intent.executor, self.intent.sender,
-            self.intent.nonce, self.intent.deadline,
+            self.intent.nonce, self.intent.deadline, 300_000, 100, 30,
         )
 
     def test_authorization_matches_unchanged_intent(self):
