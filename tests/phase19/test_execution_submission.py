@@ -7,6 +7,7 @@ from phantomx.economics import CostBreakdown
 from phantomx.execution import ExecutionState
 from phantomx.execution_coordinator import ExecutionCoordinatorError, prepare_signed_execution
 from phantomx.execution_submission import ExecutionSubmissionError, submit_prepared_execution
+from phantomx.executor_authority import ExecutorAuthorityEvidence
 from phantomx.governor import GovernorPolicy
 from phantomx.hashing import keccak256_hex
 from phantomx.quote_engine import ExactQuote
@@ -25,6 +26,7 @@ AAVE_POOL = "0x" + "11" * 20
 QUICKSWAP = "0x" + "22" * 20
 UNISWAP = "0x" + "33" * 20
 VALUATION = "0x" + "44" * 32
+RUNTIME_CODE_HASH = "0x" + "55" * 32
 
 
 class FakeSigner:
@@ -75,6 +77,14 @@ class ExecutionSubmissionTests(unittest.TestCase):
         )
         simulation = simulate_two_leg(leg_one, leg_two)
         self.simulation = simulation
+        self.authority = ExecutorAuthorityEvidence(
+            schema_version=1,
+            chain_id=137,
+            executor=EXECUTOR,
+            owner=SENDER,
+            observed_block=block + 1,
+            runtime_code_hash=RUNTIME_CODE_HASH,
+        )
         self.proof = build_economic_proof(
             route_hash=simulation.route_hash,
             quote_hashes=tuple(leg.quote_hash for leg in simulation.legs),
@@ -108,6 +118,7 @@ class ExecutionSubmissionTests(unittest.TestCase):
             economic_proof=self.proof,
             executor=EXECUTOR,
             sender=SENDER,
+            executor_authority=self.authority,
             chain_pending_nonce=7,
             deadline=self.now + 60,
             first_on_quickswap=True,
