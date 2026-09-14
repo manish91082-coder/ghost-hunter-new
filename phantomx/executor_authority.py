@@ -120,11 +120,6 @@ def observe_executor_authority(provider: RPCProvider, executor: str) -> Executor
         provider.transport("eth_call", {"to": executor, "data": "0x8da5cb5b"}, block_tag),
         "eth_call owner",
     )
-    code_result = _rpc_result(
-        provider.transport("eth_getCode", executor, block_tag),
-        "eth_getCode",
-    )
-
     if not isinstance(owner_result, str) or not owner_result.startswith("0x"):
         raise ExecutorAuthorityError("owner() result must be hex")
     try:
@@ -135,6 +130,10 @@ def observe_executor_authority(provider: RPCProvider, executor: str) -> Executor
         raise ExecutorAuthorityError("owner() result is not a canonical ABI address word")
     owner = "0x" + owner_encoded[12:].hex()
 
+    code_result = _rpc_result(
+        provider.transport("eth_getCode", executor, block_tag),
+        "eth_getCode",
+    )
     if not isinstance(code_result, str) or not code_result.startswith("0x") or len(code_result) <= 2 or (len(code_result) - 2) % 2:
         raise ExecutorAuthorityError("runtime code must be non-empty even-length hex")
     try:
