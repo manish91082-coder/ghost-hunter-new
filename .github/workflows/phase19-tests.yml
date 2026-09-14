@@ -26,5 +26,9 @@ jobs:
         run: forge build --root . --contracts contracts --out out --cache-path .forge-cache
       - name: Run Phase-19 EVM integration harness
         run: forge test --root . --match-path tests/evm/Phase19Executor.t.sol -vv
+      - name: Run Polygon fork protocol smoke harness
+        env:
+          POLYGON_RPC_URL: https://polygon-rpc.com
+        run: forge test --root . --fork-url "$POLYGON_RPC_URL" --match-path tests/evm/PolygonForkSmoke.t.sol -vv
       - name: Run Phase-19 unittest suite
         run: python -m unittest discover -s tests/phase19 -v
