@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-14
 **Branch:** `phase-19-e2e-harness`
-**Latest implementation commit:** `e98cb2ecb5bd0ea1efe3bf5574caf931a0473715`
+**Latest implementation commit:** `79fe97b421bde681868f7fb7cf600ad368c32b5e`
 **Phase:** 19
 **Live execution:** LOCKED
 
@@ -19,16 +19,16 @@ The nonce layer includes persistent local storage plus a chain-aware recovery bo
 - `.github/workflows/phase19-tests.yml`
 - `PHASE19_CHAIN_RECOVERY_STATUS.md`
 
-### CI forensic finding and repair
-GitHub Actions run `34829714048` exposed a real environment defect: the runner did not have the Ethereum Keccak backend installed, causing 38 errors. The run also exposed stale tests that had not been updated after the `ExecutionIntent` and `Authorization` schemas changed. The failures were not suppressed.
+### CI forensic loop
 
-Repairs committed:
-- declare/install `pycryptodome` for Ethereum Keccak-256;
-- update stale `ExecutionIntent` test fixtures;
-- update stale keyword-only settlement calls;
-- update stale `Authorization` fixtures with gas/fee fields.
+A GitHub Actions run exposed two real defects and they were repaired rather than suppressed:
 
-Run `34829828141` verified the dependency repair and reduced the suite to the remaining transaction-binding fixture errors. Those fixtures were then corrected in commit `e98cb2ecb5bd0ea1efe3bf5574caf931a0473715`. A successful run for that latest commit is still pending verification.
+1. Ethereum Keccak-256 backend was absent on the runner. `pycryptodome` is now declared and installed by the Phase-19 workflow.
+2. Several Phase-19 tests were stale after the `ExecutionIntent`, `Authorization`, and settlement-call schemas evolved. Those fixtures/calls were corrected.
+
+The repaired head `e98cb2ecb5bd0ea1efe3bf5574caf931a0473715` then received a **successful GitHub Actions run** (`34829892489`). The suite completed successfully after the fixes.
+
+This checkpoint commit itself is a status-only update and therefore requires its own workflow run before the newest HEAD can be considered green.
 
 ### Chain nonce invariants implemented
 - `eth_getTransactionCount(sender, "pending")` is treated as a read-only chain-state observation
@@ -48,13 +48,13 @@ Run `34829828141` verified the dependency repair and reduced the suite to the re
 
 ## Evidence boundary
 
-CI is now demonstrably executing the suite. However, **latest-head green evidence is still open** because the newest commit must complete its own workflow run. Implementation commits are not treated as test proof.
+CI execution is now proven for the repaired `e98cb2ec...` head. The newest status-only HEAD must still complete its own workflow before it is marked green. No implementation commit is treated as test proof without a corresponding run.
 
 No live Polygon RPC call, private-key signing, transaction broadcast, private relay submission, or live capital execution was performed.
 
 ## Remaining nonce/recovery P0 work
 
-1. verify a green GitHub Actions run for the latest head
+1. verify green CI for this latest checkpoint HEAD
 2. wire the read-only nonce adapter to approved Polygon RPC endpoints and enforce production provider/quorum policy
 3. startup crash/restart reconciliation for `RESERVED → SIGNED → SUBMITTED` records
 4. deterministic replacement fee-policy bounds and replacement authorization
