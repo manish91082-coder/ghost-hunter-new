@@ -37,7 +37,7 @@ class TransactionBindingTests(unittest.TestCase):
             self.intent.intent_hash(), self.intent.calldata_hash,
             self.intent.economic_proof_hash, self.intent.simulation_proof_hash,
             self.intent.chain_id, self.intent.executor, self.intent.sender,
-            self.intent.nonce, self.intent.deadline,
+            self.intent.nonce, self.intent.deadline, 300_000, 100, 30,
         )
         self.envelope = TransactionEnvelope(
             137, self.intent.sender, self.intent.executor, 42,
