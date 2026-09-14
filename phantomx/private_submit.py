@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from .execution import Authorization, ExecutionIntent, TransactionEnvelope
+from .executor_authority import ExecutorAuthorityError, ExecutorAuthorityEvidence, runtime_code_binding_hash, verify_executor_authority
 from .governor import GovernorDecision
 from .hashing import keccak256_hex
 from .signer import SignedTransaction
@@ -40,6 +41,7 @@ class PrivateSubmission:
 
     intent_hash: str
     governor_decision_hash: str
+    executor_runtime_binding_hash: str
     transaction_hash: str
     relay_name: str
     relay_private: bool
@@ -48,6 +50,7 @@ class PrivateSubmission:
         for name in (
             "intent_hash",
             "governor_decision_hash",
+            "executor_runtime_binding_hash",
             "transaction_hash",
         ):
             value = getattr(self, name)
@@ -67,13 +70,14 @@ def submit_governed_transaction(
     intent: ExecutionIntent,
     authorization: Authorization,
     envelope: TransactionEnvelope,
+    executor_authority: ExecutorAuthorityEvidence,
     now: int,
 ) -> PrivateSubmission:
     """Submit an exact governed signed transaction to a private relay only.
 
-    Any relay that is not explicitly marked private is rejected before network
-    I/O. Relay failures are surfaced as submission failures and never trigger
-    a public endpoint fallback.
+    The deployed executor owner/code identity is revalidated immediately before
+    network I/O. A later observation may have a different block number, but the
+    stable owner+runtime-code binding must remain identical to the signed artifact.
     """
     if not governor.approved:
         raise PrivateSubmitError("governor did not approve private submission")
@@ -106,6 +110,20 @@ def submit_governed_transaction(
         raise PrivateSubmitError("governor simulation proof identity does not match intent")
     if not authorization.matches_envelope(envelope, now, intent):
         raise PrivateSubmitError("authorization does not match exact submission envelope")
+    try:
+        verify_executor_authority(
+            executor_authority,
+            chain_id=intent.chain_id,
+            executor=intent.executor,
+            sender=intent.sender,
+            minimum_observed_block=governor.block_number,
+        )
+    except ExecutorAuthorityError as exc:
+        raise PrivateSubmitError(f"executor authority is invalid at submission: {exc}") from exc
+    if governor.executor_authority_hash.lower() != executor_authority.evidence_hash.lower():
+        raise PrivateSubmitError("governor executor authority evidence does not match submission evidence")
+    if signed_transaction.executor_runtime_binding_hash.lower() != runtime_code_binding_hash(executor_authority).lower():
+        raise PrivateSubmitError("deployed executor runtime identity changed after signing")
 
     try:
         returned_hash = relay.submit_raw_transaction(signed_transaction.raw_transaction)
@@ -120,6 +138,7 @@ def submit_governed_transaction(
     return PrivateSubmission(
         intent_hash=expected_intent_hash,
         governor_decision_hash=governor.decision_hash,
+        executor_runtime_binding_hash=signed_transaction.executor_runtime_binding_hash,
         transaction_hash=signed_transaction.transaction_hash,
         relay_name=relay_name,
         relay_private=True,
