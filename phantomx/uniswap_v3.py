@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping, Protocol, Sequence
 
 from .quote_engine import ExactQuote, QuoteEngineError
+from .quote_snapshot import QuoteSnapshot
 
 POLYGON_CHAIN_ID = 137
 GET_POOL_SELECTOR = "1698ee82"  # factory.getPool(address,address,uint24)
@@ -32,6 +33,7 @@ class UniswapV3Error(QuoteEngineError):
 class BlockSnapshot:
     chain_id: int
     block_number: int
+    timestamp: int = 0
 
 
 def _address_word(address: str) -> bytes:
@@ -111,6 +113,12 @@ def _parse_quantity(value: Any, name: str) -> int:
     return parsed
 
 
+def _decode_block_timestamp(result: Any) -> int:
+    if not isinstance(result, Mapping):
+        raise UniswapV3Error("block: result must be an object")
+    return _parse_quantity(result.get("timestamp"), "block timestamp")
+
+
 class UniswapV3ExactQuoter:
     """Exact single-hop Uniswap V3 Quoter V1 over injected read-only RPC."""
 
@@ -129,8 +137,10 @@ class UniswapV3ExactQuoter:
         chain_id = _parse_quantity(self._rpc.call("eth_chainId", []), "chainId")
         if chain_id != self.chain_id:
             raise UniswapV3Error(f"unexpected chain id: {chain_id}")
-        block = _parse_quantity(self._rpc.call("eth_blockNumber", []), "blockNumber")
-        return BlockSnapshot(chain_id, block)
+        block_number = _parse_quantity(self._rpc.call("eth_blockNumber", []), "blockNumber")
+        block = self._rpc.call("eth_getBlockByNumber", [hex(block_number), False])
+        timestamp = _decode_block_timestamp(block)
+        return BlockSnapshot(chain_id, block_number, timestamp)
 
     def resolve_pool(self, token_in: str, token_out: str, fee: int, snapshot: BlockSnapshot) -> str:
         if snapshot.chain_id != self.chain_id:
@@ -161,6 +171,21 @@ class UniswapV3ExactQuoter:
             amount_out=amount_out,
             block_number=snapshot.block_number,
             fee_raw=fee,
+        )
+
+    def quote_snapshot(self, amount_in: int, token_in: str, token_out: str, fee: int,
+                       snapshot: BlockSnapshot, gas_estimate: int | None = None) -> QuoteSnapshot:
+        """Return hash-bound canonical quote evidence for one pinned block."""
+        if snapshot.timestamp <= 0:
+            raise UniswapV3Error("snapshot timestamp is required for canonical quote evidence")
+        quote = self.quote(amount_in, token_in, token_out, fee, snapshot)
+        pool = quote.venue.split(":", 1)[1]
+        return QuoteSnapshot.from_exact_quote(
+            quote,
+            chain_id=self.chain_id,
+            observed_at_unix=snapshot.timestamp,
+            pool_or_router=pool,
+            gas_estimate=gas_estimate,
         )
 
 
