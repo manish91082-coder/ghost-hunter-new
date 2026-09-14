@@ -31,6 +31,7 @@ class QuickSwapV2Error(QuoteEngineError):
 class BlockSnapshot:
     chain_id: int
     block_number: int
+    timestamp: int
 
 
 def _hex_uint(value: int, *, name: str) -> str:
@@ -110,6 +111,18 @@ def _parse_block_number(value: Any) -> int:
     return block
 
 
+def _parse_block_timestamp(value: Any) -> int:
+    if not isinstance(value, str) or not value.startswith("0x"):
+        raise QuickSwapV2Error("block timestamp is malformed")
+    try:
+        timestamp = int(value, 16)
+    except ValueError as exc:
+        raise QuickSwapV2Error("block timestamp is not valid hexadecimal") from exc
+    if timestamp <= 0:
+        raise QuickSwapV2Error("block timestamp must be positive")
+    return timestamp
+
+
 class QuickSwapV2ExactQuoter:
     """Exact QuickSwap V2 router quoting over an injected read-only RPC."""
 
@@ -126,7 +139,12 @@ class QuickSwapV2ExactQuoter:
         if chain_id != self.chain_id:
             raise QuickSwapV2Error(f"unexpected chain id: {chain_id}")
         block_number = _parse_block_number(self._rpc.call("eth_blockNumber", []))
-        return BlockSnapshot(chain_id=chain_id, block_number=block_number)
+        block_tag = _hex_uint(block_number, name="block_number")
+        block = self._rpc.call("eth_getBlockByNumber", [block_tag, False])
+        if not isinstance(block, Mapping) or "timestamp" not in block:
+            raise QuickSwapV2Error("eth_getBlockByNumber returned malformed data")
+        timestamp = _parse_block_timestamp(block["timestamp"])
+        return BlockSnapshot(chain_id=chain_id, block_number=block_number, timestamp=timestamp)
 
     def quote(
         self,
@@ -138,6 +156,8 @@ class QuickSwapV2ExactQuoter:
             raise QuickSwapV2Error("snapshot chain identity mismatch")
         if snapshot.block_number < 0:
             raise QuickSwapV2Error("snapshot block number cannot be negative")
+        if snapshot.timestamp <= 0:
+            raise QuickSwapV2Error("snapshot timestamp must be positive")
         if amount_in <= 0:
             raise QuickSwapV2Error("amount_in must be positive")
         if len(path) < 2:
@@ -174,15 +194,14 @@ class QuickSwapV2ExactQuoter:
         path: Sequence[str],
         snapshot: BlockSnapshot,
         *,
-        observed_at_unix: int,
         gas_estimate: int | None = None,
     ) -> QuoteSnapshot:
-        """Create the hash-bound evidence object used by later execution stages."""
+        """Create evidence anchored to the actual timestamp of the pinned block."""
         quote = self.quote(amount_in, path, snapshot)
         return QuoteSnapshot.from_exact_quote(
             quote,
             chain_id=self.chain_id,
-            observed_at_unix=observed_at_unix,
+            observed_at_unix=snapshot.timestamp,
             pool_or_router=self.router_address,
             gas_estimate=gas_estimate,
         )
