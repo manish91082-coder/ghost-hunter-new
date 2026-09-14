@@ -1,9 +1,10 @@
-"""Dependency-free execution integrity primitives for Phase 19 tests.
+"""Execution integrity primitives.
 
-The digest helper in this module is a TEST-ONLY deterministic fingerprint.
-It deliberately uses Python SHA-256 so Phase 19 remains dependency-free. It is
-NOT the production Ethereum Keccak-256 implementation. Production hashing is
-scheduled for the canonical hashing module in the execution integration phase.
+Production-facing hash methods use Ethereum Keccak-256 through
+``phantomx.hashing`` and fail closed when no compatible backend exists.
+The legacy SHA-256 fingerprint remains available only as an explicitly named
+TEST-ONLY helper so old dependency-free tests cannot accidentally become a
+production authorization primitive.
 """
 
 from __future__ import annotations
@@ -13,6 +14,8 @@ from enum import Enum
 import hashlib
 import json
 from typing import Any
+
+from .hashing import keccak256_hex
 
 
 class ExecutionState(str, Enum):
@@ -58,12 +61,18 @@ class ExecutionIntent:
             "minimum_net_profit_usd": self.minimum_net_profit_usd,
         }
 
+    def canonical_bytes(self) -> bytes:
+        return json.dumps(self.canonical(), sort_keys=True, separators=(",", ":")).encode("utf-8")
+
     def intent_hash(self) -> str:
-        payload = json.dumps(self.canonical(), sort_keys=True, separators=(",", ":"))
-        return "0x" + hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        """Canonical Ethereum Keccak-256 intent digest."""
+        return keccak256_hex(self.canonical_bytes())
+
+    def test_only_sha256_fingerprint(self) -> str:
+        """Legacy dependency-free fingerprint; never use for authorization."""
+        return "0x" + hashlib.sha256(self.canonical_bytes()).hexdigest()
 
     def with_field(self, **changes: Any) -> "ExecutionIntent":
-        """Testing helper: mutation creates a distinct intent/fingerprint."""
         return replace(self, **changes)
 
 
@@ -80,7 +89,7 @@ class Authorization:
     def matches(self, intent: ExecutionIntent, now: int) -> bool:
         return (
             now <= self.deadline
-            and self.intent_hash == intent.intent_hash()
+            and self.intent_hash.lower() == intent.intent_hash().lower()
             and self.calldata_hash.lower() == intent.calldata_hash.lower()
             and self.chain_id == intent.chain_id
             and self.executor.lower() == intent.executor.lower()
@@ -102,6 +111,10 @@ class TransactionEnvelope:
 
     @property
     def calldata_hash(self) -> str:
+        return keccak256_hex(self.calldata)
+
+    @property
+    def test_only_sha256_calldata_fingerprint(self) -> str:
         return "0x" + hashlib.sha256(self.calldata).hexdigest()
 
     def canonical(self) -> dict[str, Any]:
