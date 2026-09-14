@@ -58,7 +58,8 @@ class SQLiteExecutionStoreTests(unittest.TestCase):
             self.store.create_signed_transaction(bad, intent=self.intent, bound_nonce=self.bound)
         restarted = SQLiteExecutionStore(self.path)
         self.assertEqual(restarted.get_nonce(self.sender, 42).status, NonceStatus.RESERVED)
-        self.assertEqual(restarted.next_nonce(self.sender), 43)
+        with restarted._connect() as db:
+            self.assertEqual(db.execute("SELECT next_nonce FROM nonce_cursors WHERE sender=?", (self.sender,)).fetchone()[0], 43)
         self.assertEqual(restarted.pending_journal(), [])
 
     def test_recovery_updates_transaction_nonce_and_journal_in_one_commit(self):
