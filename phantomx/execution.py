@@ -1,10 +1,4 @@
-"""Execution integrity primitives.
-
-Production-facing hash methods use Ethereum Keccak-256 through
-``phantomx.hashing`` and fail closed when no compatible backend exists.
-The legacy SHA-256 fingerprint remains available only as an explicitly named
-TEST-ONLY helper.
-"""
+"""Execution integrity primitives."""
 
 from __future__ import annotations
 
@@ -78,32 +72,6 @@ class ExecutionIntent:
 
 
 @dataclass(frozen=True)
-class Authorization:
-    intent_hash: str
-    calldata_hash: str
-    economic_proof_hash: str
-    simulation_proof_hash: str
-    chain_id: int
-    executor: str
-    sender: str
-    nonce: int
-    deadline: int
-
-    def matches(self, intent: ExecutionIntent, now: int) -> bool:
-        return (
-            now <= self.deadline
-            and self.intent_hash.lower() == intent.intent_hash().lower()
-            and self.calldata_hash.lower() == intent.calldata_hash.lower()
-            and self.economic_proof_hash.lower() == intent.economic_proof_hash.lower()
-            and self.simulation_proof_hash.lower() == intent.simulation_proof_hash.lower()
-            and self.chain_id == intent.chain_id
-            and self.executor.lower() == intent.executor.lower()
-            and self.sender.lower() == intent.sender.lower()
-            and self.nonce == intent.nonce
-        )
-
-
-@dataclass(frozen=True)
 class TransactionEnvelope:
     chain_id: int
     sender: str
@@ -133,3 +101,50 @@ class TransactionEnvelope:
             "max_fee_per_gas": self.max_fee_per_gas,
             "max_priority_fee_per_gas": self.max_priority_fee_per_gas,
         }
+
+
+@dataclass(frozen=True)
+class Authorization:
+    """Immutable authorization binding intent and transaction envelope fields."""
+
+    intent_hash: str
+    calldata_hash: str
+    economic_proof_hash: str
+    simulation_proof_hash: str
+    chain_id: int
+    executor: str
+    sender: str
+    nonce: int
+    deadline: int
+    gas_limit: int
+    max_fee_per_gas: int
+    max_priority_fee_per_gas: int
+
+    def matches(self, intent: ExecutionIntent, now: int) -> bool:
+        return (
+            now <= self.deadline
+            and self.intent_hash.lower() == intent.intent_hash().lower()
+            and self.calldata_hash.lower() == intent.calldata_hash.lower()
+            and self.economic_proof_hash.lower() == intent.economic_proof_hash.lower()
+            and self.simulation_proof_hash.lower() == intent.simulation_proof_hash.lower()
+            and self.chain_id == intent.chain_id
+            and self.executor.lower() == intent.executor.lower()
+            and self.sender.lower() == intent.sender.lower()
+            and self.nonce == intent.nonce
+            and self.gas_limit > 0
+            and self.max_fee_per_gas >= self.max_priority_fee_per_gas >= 0
+        )
+
+    def matches_envelope(self, envelope: TransactionEnvelope, now: int, intent: ExecutionIntent) -> bool:
+        """Return true only when the transaction envelope is fully authorization-bound."""
+        return (
+            self.matches(intent, now)
+            and envelope.chain_id == self.chain_id
+            and envelope.sender.lower() == self.sender.lower()
+            and envelope.executor.lower() == self.executor.lower()
+            and envelope.nonce == self.nonce
+            and envelope.calldata_hash.lower() == self.calldata_hash.lower()
+            and envelope.gas_limit == self.gas_limit
+            and envelope.max_fee_per_gas == self.max_fee_per_gas
+            and envelope.max_priority_fee_per_gas == self.max_priority_fee_per_gas
+        )
