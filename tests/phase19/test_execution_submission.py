@@ -1,11 +1,12 @@
 import tempfile
 import unittest
 from pathlib import Path
+from dataclasses import replace
 
 from phantomx.economic_proof import build_economic_proof
 from phantomx.economics import CostBreakdown
 from phantomx.execution import ExecutionState
-from phantomx.execution_coordinator import ExecutionCoordinatorError, prepare_signed_execution
+from phantomx.execution_coordinator import prepare_signed_execution
 from phantomx.execution_submission import ExecutionSubmissionError, submit_prepared_execution
 from phantomx.executor_authority import ExecutorAuthorityEvidence
 from phantomx.governor import GovernorPolicy
@@ -75,8 +76,7 @@ class ExecutionSubmissionTests(unittest.TestCase):
             pool_or_router=UNISWAP,
             gas_estimate=120_000,
         )
-        simulation = simulate_two_leg(leg_one, leg_two)
-        self.simulation = simulation
+        self.simulation = simulate_two_leg(leg_one, leg_two)
         self.authority = ExecutorAuthorityEvidence(
             schema_version=1,
             chain_id=137,
@@ -86,8 +86,8 @@ class ExecutionSubmissionTests(unittest.TestCase):
             runtime_code_hash=RUNTIME_CODE_HASH,
         )
         self.proof = build_economic_proof(
-            route_hash=simulation.route_hash,
-            quote_hashes=tuple(leg.quote_hash for leg in simulation.legs),
+            route_hash=self.simulation.route_hash,
+            quote_hashes=tuple(leg.quote_hash for leg in self.simulation.legs),
             valuation_hash=VALUATION,
             final_settlement_usd="101.00",
             loan_principal_usd="100.00",
@@ -100,7 +100,7 @@ class ExecutionSubmissionTests(unittest.TestCase):
             approved_executors=(EXECUTOR,),
             approved_senders=(SENDER,),
             allowed_loan_assets=(TOKEN_A,),
-            allowed_route_hashes=(simulation.route_hash,),
+            allowed_route_hashes=(self.simulation.route_hash,),
             max_gas_limit=300_000,
             max_fee_per_gas=100,
             max_priority_fee_per_gas=30,
@@ -138,10 +138,19 @@ class ExecutionSubmissionTests(unittest.TestCase):
             reservation_id="res-submit",
         )
 
+    def _submit(self, prepared, relay=None, authority=None):
+        return submit_prepared_execution(
+            store=self.store,
+            prepared=prepared,
+            relay=relay or FakeRelay(),
+            now=self.now,
+            submission_authority=authority or self.authority,
+        )
+
     def test_private_submission_updates_both_durable_states(self):
         prepared = self._prepare()
         relay = FakeRelay()
-        submitted = submit_prepared_execution(store=self.store, prepared=prepared, relay=relay, now=self.now)
+        submitted = self._submit(prepared, relay=relay)
         self.assertEqual(relay.calls, 1)
         self.assertEqual(submitted.transaction_state, ExecutionState.PRIVATE_SUBMITTED)
         self.assertEqual(submitted.nonce_state, NonceStatus.SUBMITTED)
@@ -150,11 +159,46 @@ class ExecutionSubmissionTests(unittest.TestCase):
         self.assertEqual(nonce.status, NonceStatus.SUBMITTED)
         self.assertEqual(nonce.tx_hash, prepared.signed_transaction.transaction_hash)
 
+    def test_later_observation_with_same_runtime_identity_is_accepted(self):
+        prepared = self._prepare()
+        later = replace(self.authority, observed_block=self.authority.observed_block + 2)
+        relay = FakeRelay()
+        submitted = self._submit(prepared, relay=relay, authority=later)
+        self.assertEqual(relay.calls, 1)
+        self.assertEqual(submitted.transaction_state, ExecutionState.PRIVATE_SUBMITTED)
+
+    def test_runtime_code_drift_is_rejected_before_network_and_durable_transition(self):
+        prepared = self._prepare()
+        mutated = replace(self.authority, observed_block=self.authority.observed_block + 1, runtime_code_hash="0x" + "66" * 32)
+        relay = FakeRelay()
+        with self.assertRaisesRegex(ExecutionSubmissionError, "runtime identity differs"):
+            self._submit(prepared, relay=relay, authority=mutated)
+        self.assertEqual(relay.calls, 0)
+        self.assertEqual(self.store.get_transaction(prepared.transaction_record.record_hash()).state, ExecutionState.SIGNED)
+        self.assertEqual(self.store.get_nonce(SENDER, 7).status, NonceStatus.SIGNED)
+
+    def test_owner_drift_is_rejected_before_network_and_durable_transition(self):
+        prepared = self._prepare()
+        mutated = replace(self.authority, observed_block=self.authority.observed_block + 1, owner="0x" + "22" * 20)
+        relay = FakeRelay()
+        with self.assertRaises(ExecutionSubmissionError):
+            self._submit(prepared, relay=relay, authority=mutated)
+        self.assertEqual(relay.calls, 0)
+        self.assertEqual(self.store.get_transaction(prepared.transaction_record.record_hash()).state, ExecutionState.SIGNED)
+
+    def test_older_submission_observation_is_rejected_before_network(self):
+        prepared = self._prepare()
+        stale = replace(self.authority, observed_block=self.authority.observed_block - 2)
+        relay = FakeRelay()
+        with self.assertRaises(ExecutionSubmissionError):
+            self._submit(prepared, relay=relay, authority=stale)
+        self.assertEqual(relay.calls, 0)
+
     def test_public_relay_is_rejected_before_network_call(self):
         prepared = self._prepare()
         relay = FakeRelay(private=False)
         with self.assertRaises(ExecutionSubmissionError):
-            submit_prepared_execution(store=self.store, prepared=prepared, relay=relay, now=self.now)
+            self._submit(prepared, relay=relay)
         self.assertEqual(relay.calls, 0)
         self.assertEqual(self.store.get_transaction(prepared.transaction_record.record_hash()).state, ExecutionState.SIGNED)
 
@@ -162,7 +206,7 @@ class ExecutionSubmissionTests(unittest.TestCase):
         prepared = self._prepare()
         relay = FakeRelay(returned_hash="0x" + "99" * 32)
         with self.assertRaises(ExecutionSubmissionError):
-            submit_prepared_execution(store=self.store, prepared=prepared, relay=relay, now=self.now)
+            self._submit(prepared, relay=relay)
         self.assertEqual(self.store.get_transaction(prepared.transaction_record.record_hash()).state, ExecutionState.SIGNED)
         self.assertEqual(self.store.get_nonce(SENDER, 7).status, NonceStatus.SIGNED)
 
@@ -170,7 +214,7 @@ class ExecutionSubmissionTests(unittest.TestCase):
         prepared = self._prepare()
         relay = FakeRelay(fail=True)
         with self.assertRaises(ExecutionSubmissionError):
-            submit_prepared_execution(store=self.store, prepared=prepared, relay=relay, now=self.now)
+            self._submit(prepared, relay=relay)
         self.assertEqual(self.store.get_transaction(prepared.transaction_record.record_hash()).state, ExecutionState.SIGNED)
         self.assertEqual(self.store.get_nonce(SENDER, 7).status, NonceStatus.SIGNED)
 
