@@ -34,7 +34,8 @@ def audit_store(store: SQLiteExecutionStore) -> RecoveryAudit:
     SIGNED is a legitimate pre-submission state: its durable transaction row
     already carries the transaction hash, while the nonce row may intentionally
     remain hash-free until submission. SUBMITTED/INCLUDED require the nonce row
-    to carry the active transaction hash.
+    to carry the active transaction hash. REORGED/REPLACED/DROPPED are explicit
+    recovery states and also require the transaction identity to remain bound.
     """
     anomalies: list[str] = []
     with store._connect() as db:
@@ -67,13 +68,27 @@ def audit_store(store: SQLiteExecutionStore) -> RecoveryAudit:
                 ExecutionState.PRIVATE_SUBMITTED.value: NonceStatus.SUBMITTED.value,
                 ExecutionState.PENDING.value: NonceStatus.SUBMITTED.value,
                 ExecutionState.INCLUDED.value: NonceStatus.INCLUDED.value,
+                ExecutionState.REORGED.value: NonceStatus.REORGED.value,
+                ExecutionState.REPLACED.value: NonceStatus.REPLACED.value,
+                ExecutionState.DROPPED.value: NonceStatus.DROPPED.value,
             }.get(state)
             if expected is not None and nrow[2] != expected:
                 anomalies.append(f"transaction {record_hash}: lifecycle mismatch {state}/{nrow[2]}")
+            if state in {
+                ExecutionState.REORGED.value,
+                ExecutionState.REPLACED.value,
+                ExecutionState.DROPPED.value,
+            } and not tx_hash:
+                anomalies.append(f"transaction {record_hash}: recovery state without transaction hash")
 
         for sender, nonce, reservation_id, intent_hash, status, tx_hash, replacement_of in nonce_rows:
-            if status in {NonceStatus.SUBMITTED.value, NonceStatus.INCLUDED.value} and not tx_hash:
-                anomalies.append(f"nonce {sender}:{nonce}: active submitted state without tx hash")
+            if status in {
+                NonceStatus.SUBMITTED.value,
+                NonceStatus.INCLUDED.value,
+                NonceStatus.REORGED.value,
+                NonceStatus.REPLACED.value,
+            } and not tx_hash:
+                anomalies.append(f"nonce {sender}:{nonce}: active submitted/recovery state without tx hash")
             if replacement_of and not tx_hash:
                 anomalies.append(f"nonce {sender}:{nonce}: replacement linkage without active tx hash")
             tx = db.execute(
