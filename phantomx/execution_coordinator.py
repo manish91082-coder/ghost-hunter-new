@@ -174,6 +174,7 @@ def prepare_signed_execution(
             intent=assembly.intent,
             authorization=assembly.authorization,
             envelope=assembly.envelope,
+            executor_authority=executor_authority,
             now=now,
         )
         signed = True
