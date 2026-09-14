@@ -2,15 +2,15 @@
 
 **Date:** 2026-09-14
 **Branch:** `phase-19-e2e-harness`
-**Latest implementation commit:** `e513cc65da5e7afcea9f6a57497930ef224713db`
+**Latest implementation commit:** `4c80e656b7eeba30b0cb1cdec4f293fea200c584`
 **Phase:** 19
 **Live execution:** LOCKED
 
 ## This checkpoint
 
-The nonce layer has advanced from an in-memory policy/state model to a persistent SQLite adapter with atomic writer transactions and process-concurrency coverage.
+The nonce layer now includes a persistent SQLite adapter with atomic writer transactions, restart persistence, local multi-process concurrency coverage, and strict replacement-transaction binding.
 
-### Added
+### Added / hardened
 - `phantomx/sqlite_nonce_store.py`
 - `tests/phase19/test_sqlite_nonce_store.py`
 - `.github/workflows/phase19-tests.yml`
@@ -24,6 +24,7 @@ The nonce layer has advanced from an in-memory policy/state model to a persisten
 - state transitions are persisted atomically
 - submitted/included/replaced states require transaction hashes
 - replacement state requires `replacement_of`
+- `replacement_of` must match the currently active transaction hash
 - invalid transitions roll back without mutating the record
 - state survives process restart through the database file
 - concurrent local processes are serialized by SQLite writer transactions
@@ -33,7 +34,7 @@ SQLite WAL is intentionally a **single-host** persistence boundary. It must not 
 
 ## Evidence boundary
 
-The implementation and adversarial tests are committed, but **actual CI execution evidence is still open** at this checkpoint. No test-pass claim is made until GitHub Actions produces a successful run artifact/status.
+The implementation and adversarial tests are committed, but **actual CI execution evidence is still open**. GitHub Actions has not yet exposed a workflow run for the Phase-19 branch commits, so no test-pass claim is made.
 
 No Polygon RPC, private-key signing, transaction broadcast, or live capital is enabled.
 
@@ -44,7 +45,7 @@ No Polygon RPC, private-key signing, transaction broadcast, or live capital is e
 3. crash/restart recovery policy for in-flight signed/submitted records
 4. replacement transaction fee-policy integration
 5. dropped/reorg observation integration
-6. transaction-record binding
+6. TransactionRecord binding
 
 Only after these gates are proven should signer/transaction-builder integration begin.
 
