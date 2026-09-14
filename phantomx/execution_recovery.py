@@ -88,7 +88,7 @@ def audit_store(store: SQLiteExecutionStore) -> RecoveryAudit:
                 NonceStatus.REORGED.value,
                 NonceStatus.REPLACED.value,
             } and not tx_hash:
-                anomalies.append(f"nonce {sender}:{nonce}: active submitted/recovery state without tx hash")
+                anomalies.append(f"nonce {sender}:{nonce}: submitted state without tx hash (active recovery/submitted state)")
             if replacement_of and not tx_hash:
                 anomalies.append(f"nonce {sender}:{nonce}: replacement linkage without active tx hash")
             tx = db.execute(
