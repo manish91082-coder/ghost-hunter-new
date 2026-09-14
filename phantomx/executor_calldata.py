@@ -1,11 +1,15 @@
 """Deterministic Phase-19 executor calldata binding.
 
-The on-chain executor needs an intent commitment inside calldata, while the
-full off-chain intent also contains calldata_hash. Putting the full intent
-hash inside its own calldata would create a cryptographic fixed-point cycle.
+The on-chain executor needs the quote-route identity inside calldata, while the
+full off-chain intent also contains calldata_hash. Putting the full intent hash
+inside its own calldata would create a cryptographic fixed-point cycle.
 Phase-19 therefore uses ExecutionIntent.execution_commitment_hash(), which
-commits every intent field except calldata_hash. The full intent_hash remains
-the authorization/audit identity and binds the resulting calldata separately.
+commits every intent field except calldata_hash.
+
+The off-chain quote route hash and executable topology hash are additionally
+joined into one end-to-end route commitment. The executor recomputes that
+commitment from the supplied quote-route hash and its own canonical topology,
+so neither side can silently drift.
 """
 
 from __future__ import annotations
@@ -99,6 +103,11 @@ def executor_topology_hash(
     return keccak256_hex(payload)
 
 
+def executor_route_commitment(*, route_hash: str, topology_hash: str) -> str:
+    """Join quote-route evidence and executable topology into one commitment."""
+    return keccak256_hex(_word_hash(route_hash, "route_hash") + _word_hash(topology_hash, "topology_hash"))
+
+
 def _encode_execute(
     *,
     asset: str,
@@ -181,6 +190,10 @@ class DecodedExecutorCall:
     intent_commitment_hash: str
     amount: int
 
+    @property
+    def route_commitment(self) -> str:
+        return executor_route_commitment(route_hash=self.route_hash, topology_hash=self.topology_hash)
+
 
 def decode_executor_calldata(calldata: bytes) -> DecodedExecutorCall:
     """Decode and validate the exact static Phase-19 execute calldata layout."""
@@ -221,6 +234,7 @@ def decode_executor_calldata(calldata: bytes) -> DecodedExecutorCall:
         raise ExecutorCalldataError("minimum_surplus must be positive")
     if result.deadline == 0:
         raise ExecutorCalldataError("deadline must be positive")
+    _word_hash(executor_route_commitment(route_hash=result.route_hash, topology_hash=result.topology_hash), "route_commitment")
     return result
 
 
@@ -231,6 +245,7 @@ class BoundExecutorCall:
     calldata: bytes
     calldata_hash: str
     topology_hash: str
+    route_commitment: str
     intent_commitment_hash: str
     bound_intent: ExecutionIntent
     envelope: TransactionEnvelope
@@ -252,12 +267,7 @@ def build_executor_transaction(
     max_fee_per_gas: int,
     max_priority_fee_per_gas: int,
 ) -> BoundExecutorCall:
-    """Build exact calldata and bind its hash back into an immutable intent.
-
-    The function deliberately uses the commitment hash rather than the final
-    intent_hash inside calldata. This removes the otherwise unavoidable cycle:
-    intent_hash -> calldata -> calldata_hash -> intent_hash.
-    """
+    """Build exact calldata and bind its hashes back into an immutable intent."""
     if intent.chain_id != 137:
         raise ExecutorCalldataError("Phase-19 executor is Polygon-only")
     if intent.loan_amount <= 0:
@@ -277,6 +287,7 @@ def build_executor_transaction(
         quickswap_router=quickswap_router,
         uniswap_v3_router=uniswap_v3_router,
     )
+    route_commitment = executor_route_commitment(route_hash=intent.route_hash, topology_hash=topology_hash)
     commitment_hash = intent.execution_commitment_hash()
     calldata = _encode_execute(
         asset=intent.loan_asset,
@@ -296,6 +307,8 @@ def build_executor_transaction(
     bound_intent = intent.with_field(calldata_hash=calldata_hash)
     if bound_intent.execution_commitment_hash().lower() != commitment_hash.lower():
         raise ExecutorCalldataError("intent commitment changed during calldata binding")
+    if executor_route_commitment(route_hash=bound_intent.route_hash, topology_hash=topology_hash).lower() != route_commitment.lower():
+        raise ExecutorCalldataError("route commitment changed during calldata binding")
 
     envelope = TransactionEnvelope(
         chain_id=intent.chain_id,
@@ -311,6 +324,7 @@ def build_executor_transaction(
         calldata=calldata,
         calldata_hash=calldata_hash,
         topology_hash=topology_hash,
+        route_commitment=route_commitment,
         intent_commitment_hash=commitment_hash,
         bound_intent=bound_intent,
         envelope=envelope,
