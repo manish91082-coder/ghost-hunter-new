@@ -2,8 +2,8 @@
 
 This layer does not sign or submit transactions. It proves that the exact
 transaction envelope still matches the already-proven route, simulation,
-economic proof, authorization, and execution identities immediately before
-the signer boundary.
+economic proof, authorization, and executable calldata semantics immediately
+before the signer boundary.
 """
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from decimal import Decimal
 
 from .economic_proof import EconomicProof, EconomicProofError
 from .execution import Authorization, ExecutionIntent, TransactionEnvelope
+from .executor_calldata import ExecutorCalldataError, decode_executor_calldata
 from .hashing import keccak256_hex
 from .route_simulator import RouteSimulation, RouteSimulationError
 
@@ -62,6 +63,54 @@ class EVMPreflightResult:
             value = getattr(self, name)
             if not isinstance(value, str) or len(value) != 66 or not value.startswith("0x"):
                 raise EVMPreflightError(f"{name} must be a 32-byte 0x hash")
+
+
+def _validate_executor_calldata(
+    *,
+    intent: ExecutionIntent,
+    envelope: TransactionEnvelope,
+    simulation: RouteSimulation,
+) -> None:
+    """Verify executor calldata semantics, not merely its outer calldata hash."""
+    decoded = decode_executor_calldata(envelope.calldata)
+    first_leg, second_leg = simulation.legs
+
+    if decoded.asset.lower() != intent.loan_asset.lower():
+        raise EVMPreflightError("executor calldata asset does not match intent")
+    if decoded.token_mid.lower() != first_leg.token_out.lower():
+        raise EVMPreflightError("executor calldata middle token does not match simulation")
+    if decoded.amount != simulation.initial_amount:
+        raise EVMPreflightError("executor calldata loan amount does not match simulation")
+    if decoded.deadline != intent.deadline:
+        raise EVMPreflightError("executor calldata deadline does not match intent")
+    if decoded.route_hash.lower() != simulation.route_hash.lower():
+        raise EVMPreflightError("executor calldata route does not match simulation")
+    if decoded.intent_commitment_hash.lower() != intent.execution_commitment_hash().lower():
+        raise EVMPreflightError("executor calldata commitment does not match intent")
+
+    first_is_quick = "quickswap" in first_leg.dex.lower()
+    first_is_uni = "uniswap" in first_leg.dex.lower()
+    second_is_quick = "quickswap" in second_leg.dex.lower()
+    second_is_uni = "uniswap" in second_leg.dex.lower()
+    if first_is_quick and second_is_uni:
+        expected_uni_fee = second_leg.fee_raw
+    elif first_is_uni and second_is_quick:
+        expected_uni_fee = first_leg.fee_raw
+    else:
+        raise EVMPreflightError("simulation venue order is not a supported two-venue route")
+
+    if decoded.first_on_quickswap != first_is_quick:
+        raise EVMPreflightError("executor calldata direction does not match venue order")
+    if decoded.uniswap_fee != expected_uni_fee:
+        raise EVMPreflightError("executor calldata Uniswap fee does not match simulation")
+    if decoded.amount_out_min_first > first_leg.amount_out:
+        raise EVMPreflightError("executor calldata first minimum exceeds proven quote")
+    if decoded.amount_out_min_second > second_leg.amount_out:
+        raise EVMPreflightError("executor calldata second minimum exceeds proven quote")
+    if decoded.minimum_surplus <= 0:
+        raise EVMPreflightError("executor calldata minimum surplus must be positive")
+    if decoded.topology_hash == "0x" + "00" * 32:
+        raise EVMPreflightError("executor calldata topology commitment is empty")
 
 
 def preflight_execution(
@@ -114,6 +163,8 @@ def preflight_execution(
         if simulation.final_amount <= 0:
             raise EVMPreflightError("final route settlement must be positive")
 
+        _validate_executor_calldata(intent=intent, envelope=envelope, simulation=simulation)
+
         if envelope.gas_limit <= 0:
             raise EVMPreflightError("gas limit must be positive")
         if envelope.max_priority_fee_per_gas < 0:
@@ -125,8 +176,6 @@ def preflight_execution(
         if intent.deadline < now:
             raise EVMPreflightError("execution deadline has expired")
 
-        # Defensive Decimal sanity check at the final boundary. The economic
-        # proof itself is authoritative for the actual floor decision.
         if Decimal(economic_proof.worst_case_net_profit_usd) <= Decimal(economic_proof.minimum_net_profit_usd):
             raise EVMPreflightError("worst-case economics fail the strict gate")
 
@@ -139,7 +188,7 @@ def preflight_execution(
             simulation_proof_hash=simulation_hash(simulation),
             calldata_hash=envelope.calldata_hash,
         )
-    except (EconomicProofError, RouteSimulationError, ValueError, TypeError) as exc:
+    except (EconomicProofError, RouteSimulationError, ExecutorCalldataError, ValueError, TypeError) as exc:
         if isinstance(exc, EVMPreflightError):
             raise
         raise EVMPreflightError(str(exc)) from exc
