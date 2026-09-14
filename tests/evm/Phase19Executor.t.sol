@@ -70,4 +70,20 @@ contract Phase19ExecutorTest {
     function test_insufficient_second_leg_output_reverts_atomically() public { Phase19Executor.ExecutionParams memory p = _params(bytes32(uint256(7))); p.amountOutMinSecond = 107 ether; vm.expectRevert(); executor.execute(p, LOAN); require(asset.balanceOf(address(executor)) == 0, "rollback failed"); require(!executor.consumedIntent(p.intentHash), "intent consumed on revert"); }
 
     function test_expired_deadline_is_rejected_before_flash_loan() public { Phase19Executor.ExecutionParams memory p = _params(bytes32(uint256(10))); p.deadline = 999_999; vm.expectRevert(Phase19Executor.InvalidDeadline.selector); executor.execute(p, LOAN); require(!executor.activeExecution(), "expired execution activated"); }
+
+    function test_solidity_route_commitment_reference_vectors_match_python() public {
+        uint256 chainId = 137;
+        address fixedExecutor = 0x3333333333333333333333333333333333333333;
+        address fixedAsset = 0x1111111111111111111111111111111111111111;
+        address fixedMid = 0x2222222222222222222222222222222222222222;
+        address fixedAave = 0x5555555555555555555555555555555555555555;
+        address fixedQuick = 0x6666666666666666666666666666666666666666;
+        address fixedUni = 0x7777777777777777777777777777777777777777;
+        bytes32 routeHash = 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
+        bytes32 topology = keccak256(abi.encode(chainId, fixedExecutor, fixedAsset, fixedMid, true, uint24(3000), fixedAave, fixedQuick, fixedUni));
+        bytes32 commitment = keccak256(abi.encode(routeHash, topology));
+        require(topology == 0x954ad916a97a96b547cb63bf95dcef0b6a3e30756f815d5d56d40fc0f4e47361, "topology vector mismatch");
+        require(commitment == 0xa9d40c9574743a5e0c42c37012a7e9c8ceeb6279336bca94c9c48aa0f5e9de13, "commitment vector mismatch");
+        require(executor.routeCommitment(routeHash, topology) == commitment, "route commitment mismatch");
+    }
 }
