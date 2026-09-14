@@ -33,15 +33,15 @@ class ExecutorAuthorityTests(unittest.TestCase):
         )
 
     def test_runtime_code_binding_is_stable_across_block_observations(self):
-        later = replace(self.evidence, observed_block=2000)
+        later = replace(self.evidence, observed_block=2000, evidence_hash="")
         self.assertEqual(runtime_code_binding_hash(self.evidence), runtime_code_binding_hash(later))
 
     def test_runtime_code_binding_changes_when_code_identity_changes(self):
-        changed = replace(self.evidence, runtime_code_hash="0x" + "66" * 32)
+        changed = replace(self.evidence, runtime_code_hash="0x" + "66" * 32, evidence_hash="")
         self.assertNotEqual(runtime_code_binding_hash(self.evidence), runtime_code_binding_hash(changed))
 
     def test_runtime_code_binding_changes_when_owner_changes(self):
-        changed = replace(self.evidence, owner=OTHER)
+        changed = replace(self.evidence, owner=OTHER, evidence_hash="")
         self.assertNotEqual(runtime_code_binding_hash(self.evidence), runtime_code_binding_hash(changed))
 
     def test_owner_mismatch_is_rejected(self):
