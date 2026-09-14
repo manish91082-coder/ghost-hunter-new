@@ -53,6 +53,9 @@ contract Phase19Executor {
     error NoActiveExecution();
     error ActiveExecutionMismatch();
     error WithdrawalWhileActive();
+    error InvalidChain();
+
+    uint256 public constant POLYGON_CHAIN_ID = 137;
 
     address public immutable owner;
     address public immutable aavePool;
@@ -117,8 +120,9 @@ contract Phase19Executor {
     }
 
     function routeTopologyHash(address asset, address tokenMid, bool firstOnQuickSwap, uint24 uniswapFee) public view returns (bytes32) {
+        if (block.chainid != POLYGON_CHAIN_ID) revert InvalidChain();
         if (asset == address(0) || tokenMid == address(0) || uniswapFee == 0) revert InvalidRoute();
-        return keccak256(abi.encode(asset, tokenMid, firstOnQuickSwap, uniswapFee, aavePool, quickSwapRouter, uniswapV3Router));
+        return keccak256(abi.encode(block.chainid, address(this), asset, tokenMid, firstOnQuickSwap, uniswapFee, aavePool, quickSwapRouter, uniswapV3Router));
     }
 
     function routeCommitment(bytes32 routeHash, bytes32 topologyHash) public pure returns (bytes32) {
@@ -127,6 +131,7 @@ contract Phase19Executor {
     }
 
     function execute(ExecutionParams calldata p, uint256 amount) external onlyOwner {
+        if (block.chainid != POLYGON_CHAIN_ID) revert InvalidChain();
         if (activeExecution) revert Reentrancy();
         if (p.asset == address(0) || p.tokenMid == address(0)) revert InvalidAddress();
         if (amount == 0) revert InvalidAmount();
@@ -150,6 +155,7 @@ contract Phase19Executor {
     }
 
     function executeOperation(address asset, uint256 amount, uint256 premium, address initiator, bytes calldata encodedParams) external nonReentrant returns (bool) {
+        if (block.chainid != POLYGON_CHAIN_ID) revert InvalidChain();
         if (msg.sender != aavePool) revert InvalidCaller();
         if (initiator != address(this)) revert InvalidInitiator();
         if (!activeExecution) revert NoActiveExecution();
