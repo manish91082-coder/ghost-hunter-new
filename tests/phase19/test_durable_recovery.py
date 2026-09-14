@@ -17,7 +17,13 @@ class DurableRecoveryTests(unittest.TestCase):
         self.addCleanup(self.fixture.tearDown)
         self.store = self.fixture.store
         self.prepared = self.fixture._prepare()
-        submit_prepared_execution(store=self.store, prepared=self.prepared, relay=FakeRelay(), now=self.fixture.now)
+        submit_prepared_execution(
+            store=self.store,
+            prepared=self.prepared,
+            relay=FakeRelay(),
+            now=self.fixture.now,
+            submission_authority=self.prepared.authority,
+        )
         self.tx_hash = self.prepared.signed_transaction.transaction_hash
         self.intent = self.prepared.assembly.intent
         self.nonce = self.intent.nonce
