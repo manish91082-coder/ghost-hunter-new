@@ -169,8 +169,8 @@ def govern_execution(
 
     A blocked decision is returned as explicit audit evidence. No condition
     involving AI ranking can turn a policy failure into approval. The decision
-    itself commits to the exact deployed-executor authority evidence that was
-    validated against the execution sender and proven route block.
+    commits to the same authority evidence hash carried by preflight and
+    revalidates that evidence against the exact execution identities.
     """
     rank_text: str | None
     if ai_rank is None:
@@ -218,6 +218,11 @@ def govern_execution(
         return block("simulation block is outside the permitted block-drift window")
     if intent.deadline < now:
         return block("execution deadline has expired")
+
+    if not preflight.authority_evidence_hash:
+        return block("preflight authority evidence binding is missing")
+    if preflight.authority_evidence_hash.lower() != authority_hash:
+        return block("preflight authority evidence binding changed before governor")
 
     try:
         verify_executor_authority(
