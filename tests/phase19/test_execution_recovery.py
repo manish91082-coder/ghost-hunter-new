@@ -4,11 +4,10 @@ import unittest
 from pathlib import Path
 
 from phantomx.durable_nonce import NonceStatus
-from phantomx.execution import ExecutionIntent, ExecutionState, TransactionEnvelope
+from phantomx.execution import ExecutionIntent, ExecutionState, TransactionEnvelope, Authorization
 from phantomx.execution_recovery import RecoveryAuditState, audit_store
 from phantomx.nonce_manager import NonceManager
 from phantomx.nonce_binding import bind_nonce
-from phantomx.execution import Authorization
 from phantomx.sqlite_execution_store import SQLiteExecutionStore
 from phantomx.transaction_record import build_signed_record
 
@@ -57,14 +56,14 @@ class ExecutionRecoveryAuditTests(unittest.TestCase):
         self.assertEqual(result.state, RecoveryAuditState.INCONSISTENT)
         self.assertTrue(any("missing nonce record" in item for item in result.anomalies))
 
-    def test_active_nonce_without_tx_hash_is_inconsistent(self):
+    def test_submitted_nonce_without_tx_hash_is_inconsistent(self):
         with self.store._connect() as db:
             db.execute("BEGIN IMMEDIATE")
-            db.execute("UPDATE nonce_records SET tx_hash=NULL WHERE sender=? AND nonce=?", (self.sender, 7))
+            db.execute("UPDATE nonce_records SET status=?, tx_hash=NULL WHERE sender=? AND nonce=?", (NonceStatus.SUBMITTED.value, self.sender, 7))
             db.execute("COMMIT")
         result = audit_store(SQLiteExecutionStore(self.store.path))
         self.assertEqual(result.state, RecoveryAuditState.INCONSISTENT)
-        self.assertTrue(any("active state without tx hash" in item for item in result.anomalies))
+        self.assertTrue(any("submitted state without tx hash" in item for item in result.anomalies))
 
 
 if __name__ == "__main__":
