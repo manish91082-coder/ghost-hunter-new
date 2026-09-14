@@ -1,7 +1,7 @@
 import unittest
 from dataclasses import replace
 
-from phantomx.executor_authority import ExecutorAuthorityError, ExecutorAuthorityEvidence, observe_executor_authority, verify_executor_authority
+from phantomx.executor_authority import ExecutorAuthorityError, ExecutorAuthorityEvidence, observe_executor_authority, runtime_code_binding_hash, verify_executor_authority
 from phantomx.hashing import keccak256_hex
 from phantomx.polygon_rpc import RPCProvider
 
@@ -31,6 +31,18 @@ class ExecutorAuthorityTests(unittest.TestCase):
             sender=OWNER,
             minimum_observed_block=999,
         )
+
+    def test_runtime_code_binding_is_stable_across_block_observations(self):
+        later = replace(self.evidence, observed_block=2000)
+        self.assertEqual(runtime_code_binding_hash(self.evidence), runtime_code_binding_hash(later))
+
+    def test_runtime_code_binding_changes_when_code_identity_changes(self):
+        changed = replace(self.evidence, runtime_code_hash="0x" + "66" * 32)
+        self.assertNotEqual(runtime_code_binding_hash(self.evidence), runtime_code_binding_hash(changed))
+
+    def test_runtime_code_binding_changes_when_owner_changes(self):
+        changed = replace(self.evidence, owner=OTHER)
+        self.assertNotEqual(runtime_code_binding_hash(self.evidence), runtime_code_binding_hash(changed))
 
     def test_owner_mismatch_is_rejected(self):
         with self.assertRaisesRegex(ExecutorAuthorityError, "owner"):
