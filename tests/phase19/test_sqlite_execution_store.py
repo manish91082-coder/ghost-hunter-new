@@ -1,14 +1,14 @@
 """Adversarial tests for the unified Phase-19 SQLite execution boundary."""
-
 from dataclasses import replace
 from pathlib import Path
 import tempfile
 import unittest
 
 from phantomx.chain_observer import ChainObservationState
+from phantomx.durable_nonce import NonceStatus
 from phantomx.execution import Authorization, ExecutionIntent, ExecutionState, TransactionEnvelope
-from phantomx.nonce_manager import NonceManager
 from phantomx.nonce_binding import bind_nonce
+from phantomx.nonce_manager import NonceManager
 from phantomx.recovery_coordinator import RecoveryAction, RecoveryDecision
 from phantomx.sqlite_execution_store import SQLiteExecutionStore
 from phantomx.transaction_record import build_signed_record
@@ -37,61 +37,66 @@ class SQLiteExecutionStoreTests(unittest.TestCase):
         self.store.reserve_nonce(self.sender, self.bound.reservation_id, self.intent.intent_hash(), chain_pending_nonce=42)
         self.store.create_signed_transaction(self.record, intent=self.intent, bound_nonce=self.bound)
 
-    def test_reserve_and_sign_are_one_durable_domain(self):
+    def _move_to_pending(self):
+        self._seed_signed()
+        with self.store._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            db.execute("UPDATE nonce_records SET status=? WHERE sender=? AND nonce=?", (NonceStatus.SUBMITTED.value, self.sender, 42))
+            db.execute("UPDATE transaction_records SET state=? WHERE record_hash=?", (ExecutionState.PENDING.value, self.record.record_hash()))
+            db.execute("COMMIT")
+
+    def test_reserve_and_sign_persist_as_one_durable_domain(self):
         self._seed_signed()
         restarted = SQLiteExecutionStore(self.path)
-        self.assertEqual(restarted.get_nonce(self.sender, 42).status.value, "SIGNED")
+        self.assertEqual(restarted.get_nonce(self.sender, 42).status, NonceStatus.SIGNED)
         self.assertEqual(restarted.get_transaction(self.record.record_hash()).state, ExecutionState.SIGNED)
 
     def test_failed_signed_creation_rolls_back_nonce_state(self):
         self.store.reserve_nonce(self.sender, self.bound.reservation_id, self.intent.intent_hash(), chain_pending_nonce=42)
         bad = replace(self.record, tx_hash="not-a-valid-hash")
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValueError):
             self.store.create_signed_transaction(bad, intent=self.intent, bound_nonce=self.bound)
         restarted = SQLiteExecutionStore(self.path)
-        self.assertEqual(restarted.get_nonce(self.sender, 42).status.value, "RESERVED")
+        self.assertEqual(restarted.get_nonce(self.sender, 42).status, NonceStatus.RESERVED)
         self.assertEqual(restarted.next_nonce(self.sender), 43)
-        self.assertEqual(len(restarted.pending_journal()), 0)
+        self.assertEqual(restarted.pending_journal(), [])
 
-    def test_recovery_updates_transaction_nonce_and_journal_together(self):
-        self._seed_signed()
-        db = self.store._connect()
-        db.execute("BEGIN IMMEDIATE")
-        db.execute("UPDATE nonce_records SET status=? WHERE sender=? AND nonce=?", ("SUBMITTED", self.sender, 42))
-        db.execute("UPDATE transaction_records SET state=? WHERE record_hash=?", (ExecutionState.PENDING.value, self.record.record_hash()))
-        db.execute("COMMIT")
-        db.close()
+    def test_recovery_updates_transaction_nonce_and_journal_in_one_commit(self):
+        self._move_to_pending()
         decision = RecoveryDecision(self.record.record_hash(), RecoveryAction.RECONCILE_INCLUDED, "canonical successful receipt")
-        result = self.store.apply_recovery(decision=decision, chain_state=ChainObservationState.INCLUDED.value, tx_hash=self.tx_hash, replacement_tx_hash=None, transaction_state=ExecutionState.INCLUDED, nonce_state=__import__('phantomx.durable_nonce', fromlist=['NonceStatus']).NonceStatus.INCLUDED, intent=self.intent)
+        result = self.store.apply_recovery(decision=decision, chain_state=ChainObservationState.INCLUDED.value, tx_hash=self.tx_hash, replacement_tx_hash=None, transaction_state=ExecutionState.INCLUDED, nonce_state=NonceStatus.INCLUDED, intent=self.intent)
         self.assertEqual(result.transaction.state, ExecutionState.INCLUDED)
-        self.assertEqual(result.nonce.status.value, "INCLUDED")
+        self.assertEqual(result.nonce.status, NonceStatus.INCLUDED)
         self.assertEqual(self.store.pending_journal(), [])
         restarted = SQLiteExecutionStore(self.path)
         self.assertEqual(restarted.get_transaction(self.record.record_hash()).state, ExecutionState.INCLUDED)
-        self.assertEqual(restarted.get_nonce(self.sender, 42).status.value, "INCLUDED")
+        self.assertEqual(restarted.get_nonce(self.sender, 42).status, NonceStatus.INCLUDED)
 
     def test_recovery_idempotency_does_not_double_apply(self):
-        self._seed_signed()
-        db = self.store._connect()
-        db.execute("BEGIN IMMEDIATE")
-        db.execute("UPDATE nonce_records SET status=? WHERE sender=? AND nonce=?", ("SUBMITTED", self.sender, 42))
-        db.execute("UPDATE transaction_records SET state=? WHERE record_hash=?", (ExecutionState.PENDING.value, self.record.record_hash()))
-        db.execute("COMMIT")
-        db.close()
+        self._move_to_pending()
         decision = RecoveryDecision(self.record.record_hash(), RecoveryAction.RECONCILE_INCLUDED, "canonical successful receipt")
-        kwargs = dict(decision=decision, chain_state=ChainObservationState.INCLUDED.value, tx_hash=self.tx_hash, replacement_tx_hash=None, transaction_state=ExecutionState.INCLUDED, nonce_state=__import__('phantomx.durable_nonce', fromlist=['NonceStatus']).NonceStatus.INCLUDED, intent=self.intent)
+        kwargs = dict(decision=decision, chain_state=ChainObservationState.INCLUDED.value, tx_hash=self.tx_hash, replacement_tx_hash=None, transaction_state=ExecutionState.INCLUDED, nonce_state=NonceStatus.INCLUDED, intent=self.intent)
         first = self.store.apply_recovery(**kwargs)
         second = self.store.apply_recovery(**kwargs)
         self.assertEqual(first.journal_sequence, second.journal_sequence)
-        self.assertEqual(len(self.store.pending_journal()), 0)
+        self.assertEqual(self.store.pending_journal(), [])
 
     def test_recovery_rejects_intent_mutation_without_state_change(self):
-        self._seed_signed()
+        self._move_to_pending()
         decision = RecoveryDecision(self.record.record_hash(), RecoveryAction.RECONCILE_INCLUDED, "canonical successful receipt")
         with self.assertRaises(ValueError):
-            self.store.apply_recovery(decision=decision, chain_state=ChainObservationState.INCLUDED.value, tx_hash=self.tx_hash, replacement_tx_hash=None, transaction_state=ExecutionState.INCLUDED, nonce_state=__import__('phantomx.durable_nonce', fromlist=['NonceStatus']).NonceStatus.INCLUDED, intent=replace(self.intent, loan_amount=999999))
-        self.assertEqual(self.store.get_transaction(self.record.record_hash()).state, ExecutionState.SIGNED)
-        self.assertEqual(self.store.get_nonce(self.sender, 42).status.value, "SIGNED")
+            self.store.apply_recovery(decision=decision, chain_state=ChainObservationState.INCLUDED.value, tx_hash=self.tx_hash, replacement_tx_hash=None, transaction_state=ExecutionState.INCLUDED, nonce_state=NonceStatus.INCLUDED, intent=replace(self.intent, loan_amount=999999))
+        self.assertEqual(self.store.get_transaction(self.record.record_hash()).state, ExecutionState.PENDING)
+        self.assertEqual(self.store.get_nonce(self.sender, 42).status, NonceStatus.SUBMITTED)
+        self.assertEqual(self.store.pending_journal(), [])
+
+    def test_recovery_rejects_invalid_second_state_without_journal(self):
+        self._move_to_pending()
+        decision = RecoveryDecision(self.record.record_hash(), RecoveryAction.RECONCILE_INCLUDED, "invalid state test")
+        with self.assertRaises(ValueError):
+            self.store.apply_recovery(decision=decision, chain_state=ChainObservationState.INCLUDED.value, tx_hash=self.tx_hash, replacement_tx_hash=None, transaction_state=ExecutionState.PROFIT_CONFIRMED, nonce_state=NonceStatus.INCLUDED, intent=self.intent)
+        self.assertEqual(self.store.get_transaction(self.record.record_hash()).state, ExecutionState.PENDING)
+        self.assertEqual(self.store.get_nonce(self.sender, 42).status, NonceStatus.SUBMITTED)
         self.assertEqual(self.store.pending_journal(), [])
 
 
