@@ -2,47 +2,51 @@
 
 **Date:** 2026-09-14
 **Branch:** `phase-19-e2e-harness`
-**Latest implementation commit:** `ab54e22b83fd8dd3db564799eac47ed11f94df38`
+**Latest implementation commit:** `e513cc65da5e7afcea9f6a57497930ef224713db`
 **Phase:** 19
 **Live execution:** LOCKED
 
 ## This checkpoint
 
-The nonce-to-authorization binding block is implemented.
+The nonce layer has advanced from an in-memory policy/state model to a persistent SQLite adapter with atomic writer transactions and process-concurrency coverage.
 
 ### Added
-- `phantomx/nonce_binding.py`
-- `tests/phase19/test_nonce_binding.py`
+- `phantomx/sqlite_nonce_store.py`
+- `tests/phase19/test_sqlite_nonce_store.py`
+- `.github/workflows/phase19-tests.yml`
 
-### Binding invariants
-A nonce reservation is accepted only when all of the following match:
+### Durable/concurrency invariants implemented
+- persistent sender-specific nonce cursors
+- unique `(sender, nonce)` reservation identity
+- globally unique reservation IDs
+- atomic reservation allocation under `BEGIN IMMEDIATE`
+- observed chain pending nonce can advance the cursor but never roll it back
+- state transitions are persisted atomically
+- submitted/included/replaced states require transaction hashes
+- replacement state requires `replacement_of`
+- invalid transitions roll back without mutating the record
+- state survives process restart through the database file
+- concurrent local processes are serialized by SQLite writer transactions
+- WAL + `synchronous=FULL` are configured for the local durable store
 
-- reservation sender == execution intent sender
-- reservation nonce == execution intent nonce
-- authorization sender == reservation sender
-- authorization nonce == reservation nonce
-- authorization intent hash == current execution intent hash
-
-The resulting `BoundNonce` records reservation ID, sender, nonce and intent hash as one immutable binding object.
-
-### Adversarial coverage
-- exact reservation accepted
-- different intent nonce rejected
-- different sender rejected
-- authorization nonce mutation rejected
-- authorization sender mutation rejected
-- authorization intent-hash mutation rejected
-- reservation identity preserved in the binding result
+SQLite WAL is intentionally a **single-host** persistence boundary. It must not be placed on a network filesystem or treated as a multi-host database service. A future multi-host deployment must use a suitable transactional server database while preserving the same nonce invariants.
 
 ## Evidence boundary
 
-These are deterministic policy/test models. No Polygon RPC, private-key signing, transaction broadcast, or live capital is enabled.
+The implementation and adversarial tests are committed, but **actual CI execution evidence is still open** at this checkpoint. No test-pass claim is made until GitHub Actions produces a successful run artifact/status.
 
-Actual test execution evidence remains an open gate. Do not claim the suite passed until an actual run artifact/CI result is available.
+No Polygon RPC, private-key signing, transaction broadcast, or live capital is enabled.
 
-## Next atomic task
+## Remaining nonce P0 work
 
-Harden the nonce layer for production semantics: durable atomic reservation, concurrency/race handling, pending-nonce reconciliation, crash/restart recovery, replacement transactions, and transaction-record binding. Only after that should signer/transaction-builder integration begin.
+1. actual GitHub Actions execution evidence
+2. chain pending-nonce reconciliation integration against Polygon RPC
+3. crash/restart recovery policy for in-flight signed/submitted records
+4. replacement transaction fee-policy integration
+5. dropped/reorg observation integration
+6. transaction-record binding
+
+Only after these gates are proven should signer/transaction-builder integration begin.
 
 ## Governance
 
