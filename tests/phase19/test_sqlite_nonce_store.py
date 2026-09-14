@@ -70,6 +70,15 @@ class SQLiteNonceStoreTests(unittest.TestCase):
             store.transition(SENDER, 9, NonceStatus.SUBMITTED, tx_hash="0xold")
             with self.assertRaises(DurableNonceInvariantError):
                 store.transition(SENDER, 9, NonceStatus.REPLACED, tx_hash="0xnew")
+            with self.assertRaises(DurableNonceInvariantError):
+                store.transition(
+                    SENDER,
+                    9,
+                    NonceStatus.REPLACED,
+                    tx_hash="0xnew",
+                    replacement_of="0xnot-the-active-hash",
+                )
+            self.assertEqual(store.get(SENDER, 9).tx_hash, "0xold")
             replaced = store.transition(
                 SENDER,
                 9,
