@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
-from typing import Iterable
 
 from .economic_proof import EconomicProof
 from .economics import STRICT_MIN_NET_PROFIT_USD
@@ -237,13 +236,21 @@ def govern_execution(
         return block("economic proof identity changed after preflight")
     if preflight.simulation_proof_hash.lower() != intent.simulation_proof_hash.lower():
         return block("simulation proof identity changed after preflight")
-    if policy.approved_executors and intent.executor.lower() not in policy.approved_executors:
+    if not policy.approved_executors:
+        return block("executor allowlist is not configured")
+    if not policy.approved_senders:
+        return block("sender allowlist is not configured")
+    if not policy.allowed_loan_assets:
+        return block("loan asset allowlist is not configured")
+    if not policy.allowed_route_hashes:
+        return block("route allowlist is not configured")
+    if intent.executor.lower() not in policy.approved_executors:
         return block("executor is not allowlisted")
-    if policy.approved_senders and intent.sender.lower() not in policy.approved_senders:
+    if intent.sender.lower() not in policy.approved_senders:
         return block("sender is not allowlisted")
-    if policy.allowed_loan_assets and intent.loan_asset.lower() not in policy.allowed_loan_assets:
+    if intent.loan_asset.lower() not in policy.allowed_loan_assets:
         return block("loan asset is not allowlisted")
-    if policy.allowed_route_hashes and intent.route_hash.lower() not in policy.allowed_route_hashes:
+    if intent.route_hash.lower() not in policy.allowed_route_hashes:
         return block("route is not allowlisted")
 
     return GovernorDecision(
