@@ -94,6 +94,8 @@ def assemble_execution(
         raise ExecutionAssemblyError("deadline must be positive")
     if nonce < 0:
         raise ExecutionAssemblyError("nonce cannot be negative")
+    if minimum_surplus <= 0:
+        raise ExecutionAssemblyError("minimum surplus must be positive")
 
     first = simulation.legs[0]
     second = simulation.legs[1]
@@ -129,6 +131,7 @@ def assemble_execution(
         nonce=nonce,
         deadline=deadline,
         minimum_net_profit_usd=str(economic_proof.minimum_net_profit_usd),
+        minimum_surplus_token_amount=minimum_surplus,
     )
 
     bound_call = build_executor_transaction(
@@ -159,6 +162,8 @@ def assemble_execution(
         raise ExecutionAssemblyError("final intent simulation proof does not match simulation")
     if intent.loan_asset.lower() != first.token_in.lower() or intent.loan_amount != simulation.initial_amount:
         raise ExecutionAssemblyError("final intent loan binding does not match route")
+    if intent.minimum_surplus_token_amount != minimum_surplus:
+        raise ExecutionAssemblyError("final intent minimum surplus does not match executor settlement floor")
 
     authorization = Authorization(
         intent_hash=intent.intent_hash(),
