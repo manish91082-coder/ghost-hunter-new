@@ -2,52 +2,34 @@
 
 **Date:** 2026-09-14
 **Branch:** `phase-19-e2e-harness`
-**Latest implementation commit:** `fceea4fa6f7c34f055e6b233b5ae85cf88047b0c`
-**Latest verified CI:** run `34832734965` on `fceea4fa6f7c34f055e6b233b5ae85cf88047b0c` → SUCCESS
+**Latest implementation commit:** `531355579d071cffe417c22e8330e194079c4a18`
+**Latest CI state:** repair committed after run `34835034399` failed on one stale chain-observer test; new verification is pending
 **Phase:** 19
 **Live execution:** LOCKED
 
 ## This checkpoint
 
-Phase 19 now has a durable SQLite TransactionRecord persistence boundary. A signed-state record can be persisted with its intent hash, authorization fingerprint, nonce reservation, chain/sender/executor, exact calldata hash, gas envelope, transaction hash, lifecycle state and explicit replacement linkage. The store uses SQLite `BEGIN IMMEDIATE`, WAL and `synchronous=FULL`, matching the single-host crash-safety boundary of the durable nonce store.
+Phase 19 now has a durable recovery journal for crash/restart decision evidence. Recovery decisions can be persisted idempotently and marked applied across process restarts. The journal remains policy/evidence-only and cannot sign, submit, release nonces, or broadcast.
 
 ### Added / hardened
-- `phantomx/sqlite_transaction_store.py`
-- `tests/phase19/test_sqlite_transaction_store.py`
-- `phantomx/transaction_record.py` now accepts an explicit `now` parameter for deadline validation
-- `TransactionRecord.record_hash()` is now a stable identity hash; `state_hash()` captures identity plus mutable lifecycle state
+- `phantomx/recovery_journal.py`
+- `tests/phase19/test_recovery_journal.py`
+- `phantomx/chain_observer.py` now maps incomplete receipt block evidence to `UNKNOWN` instead of guessing
+- `tests/phase19/test_chain_observer.py` explicitly asserts the fail-closed `UNKNOWN` contract
 
-### Durable TransactionRecord invariants
-- exact ExecutionIntent hash required
-- sender, nonce and reservation identity must match the bound nonce
-- new durable records start only at `SIGNED`
-- transaction hashes are unique and validated as complete 32-byte identifiers
-- stored record identity is recomputed on load
-- lifecycle transitions are atomic and invalid transitions leave state unchanged
-- terminal states cannot restart
-- restart reloads the exact record and lifecycle state
-- replacements preserve sender and nonce and require exact `replacement_of` linkage to an existing replaceable transaction
-- replacement source must be `SIGNED`, `PRIVATE_SUBMITTED` or `PENDING`
-- no signer, RPC observer, broadcaster or relay authority exists in this store
+### Recovery journal invariants
+- recovery decision identity is durable
+- duplicate decision append is idempotent
+- applied markers survive restart
+- replacement transaction hash evidence is preserved
+- unknown journal sequence cannot be marked applied
+- SQLite `BEGIN IMMEDIATE`, WAL and `synchronous=FULL`
+- no signing, RPC, nonce release or broadcast authority
 
-### Adversarial / recovery coverage
-- create + restart persistence
-- duplicate transaction hash rejection
-- intent mutation rejection
-- nonce mutation rejection
-- lifecycle progression across repeated restarts
-- invalid transition non-mutation
-- terminal-state restart rejection
-- exact replacement linkage
-- wrong replacement source rejection
-- crash-like restart preserving an incomplete signed record
-- stable identity hash versus state hash
+### CI failure and forensic correction
+Run `34835034399` executed **151 tests** and produced **150 passes + 1 error**. The error was `test_receipt_requires_block_identity`: the test expected `UNKNOWN`, while `chain_observer.py` raised `ChainObservationError` for incomplete block identity. The failure was retained as evidence and corrected by restoring the explicit `UNKNOWN` test contract and updating the observer accordingly.
 
-## CI evidence
-
-GitHub Actions run `34832734965` executed the complete Phase-19 unittest suite successfully for commit `fceea4fa6f7c34f055e6b233b5ae85cf88047b0c`. The preceding run `34832642716` failed on an identity/state-hash design defect; that failure was diagnosed from CI logs, patched, and superseded by the green run. No failed run was hidden or overwritten.
-
-The verified green run covered **110 tests**.
+The corrected implementation is committed at `531355579d071cffe417c22e8330e194079c4a18`. No green claim is made for this new commit until GitHub reruns the suite.
 
 ## Evidence boundary
 
@@ -57,11 +39,11 @@ No live Polygon RPC execution, private-key signing, transaction broadcast, priva
 
 ## Remaining P0 work
 
-1. deterministic replacement fee-policy bounds and replacement authorization
-2. durable chain observation for dropped/replaced/reorged transactions
-3. atomic startup crash/restart reconciliation across nonce + transaction records
+1. verify corrected recovery-journal/chain-observer suite
+2. atomic startup crash/restart reconciliation across nonce + transaction records + journal
+3. deterministic replacement fee-policy authorization already implemented, but must remain CI-green
 4. approved Polygon RPC integration with provider/quorum policy
-5. production signer/transaction-builder integration only after the above gates
+5. production signer/transaction-builder integration only after recovery gates
 6. exact EVM preflight immediately before signing
 7. private-only relay with no public fallback
 8. receipt settlement reconciliation and realized net PnL proof
