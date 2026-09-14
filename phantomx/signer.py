@@ -29,6 +29,24 @@ class TransactionSigner(Protocol):
         """Return the serialized signed transaction bytes."""
 
 
+def _rlp_uint(value: int) -> bytes:
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        raise SignerError("transaction integer fields must be non-negative integers")
+    return b"" if value == 0 else value.to_bytes((value.bit_length() + 7) // 8, "big")
+
+
+def _hex_address(value: str, field: str) -> bytes:
+    if not isinstance(value, str) or not value.startswith("0x") or len(value) != 42:
+        raise SignerError(f"{field} must be a 20-byte 0x address")
+    try:
+        raw = bytes.fromhex(value[2:])
+    except ValueError as exc:
+        raise SignerError(f"{field} is not valid hexadecimal") from exc
+    if len(raw) != 20 or raw == b"\x00" * 20:
+        raise SignerError(f"{field} must be a non-zero 20-byte address")
+    return raw
+
+
 @dataclass(frozen=True)
 class SignedTransaction:
     """Immutable signed artifact bound to the exact governed envelope."""
@@ -52,7 +70,7 @@ class SignedTransaction:
 
 @dataclass(frozen=True)
 class EthereumEip1559Signer:
-    """Minimal network-free EIP-1559 signer with an explicit Ethereum address."""
+    """Minimal network-free EIP-1559 signer with explicit Ethereum identity."""
 
     private_key: str
 
@@ -67,8 +85,7 @@ class EthereumEip1559Signer:
 
     @property
     def address(self) -> str:
-        key = keys.PrivateKey(bytes.fromhex(self.private_key[2:]))
-        return key.public_key.to_checksum_address().lower()
+        return keys.PrivateKey(bytes.fromhex(self.private_key[2:])).public_key.to_checksum_address().lower()
 
     def sign(self, envelope: TransactionEnvelope) -> bytes:
         if envelope.chain_id <= 0:
@@ -79,22 +96,22 @@ class EthereumEip1559Signer:
             raise SignerError("transaction gas limit must be positive")
         if envelope.max_fee_per_gas < envelope.max_priority_fee_per_gas or envelope.max_priority_fee_per_gas < 0:
             raise SignerError("invalid EIP-1559 gas envelope")
-
+        to = _hex_address(envelope.executor, "executor")
         unsigned = [
-            envelope.chain_id,
-            envelope.nonce,
-            envelope.max_priority_fee_per_gas,
-            envelope.max_fee_per_gas,
-            envelope.gas_limit,
-            bytes.fromhex(envelope.executor[2:]),
-            0,
+            _rlp_uint(envelope.chain_id),
+            _rlp_uint(envelope.nonce),
+            _rlp_uint(envelope.max_priority_fee_per_gas),
+            _rlp_uint(envelope.max_fee_per_gas),
+            _rlp_uint(envelope.gas_limit),
+            to,
+            b"",  # value = zero
             envelope.calldata,
-            [],
+            [],  # access list
         ]
         signing_payload = b"\x02" + rlp.encode(unsigned)
         digest = bytes.fromhex(keccak256_hex(signing_payload)[2:])
         signature = keys.PrivateKey(bytes.fromhex(self.private_key[2:])).sign_msg_hash(digest)
-        signed = unsigned + [signature.v, signature.r, signature.s]
+        signed = unsigned + [_rlp_uint(signature.v), _rlp_uint(signature.r), _rlp_uint(signature.s)]
         return b"\x02" + rlp.encode(signed)
 
 
@@ -110,10 +127,12 @@ def recover_eip1559_sender(raw_transaction: bytes) -> str:
         raise SignerError("signed EIP-1559 transaction must contain exactly twelve fields")
 
     chain_id, nonce, max_priority, max_fee, gas_limit, to, value, data, access_list, y_parity, r, s = fields
-    if len(chain_id) == 0 or len(y_parity) != 1 or y_parity[0] not in (0, 1):
+    if not chain_id or len(y_parity) != 1 or y_parity[0] not in (0, 1):
         raise SignerError("invalid EIP-1559 signature framing")
     if len(to) not in (0, 20) or len(r) == 0 or len(s) == 0:
         raise SignerError("invalid EIP-1559 transaction field encoding")
+    if len(access_list) < 0:  # defensive type guard, lists always satisfy this
+        raise SignerError("invalid access list")
 
     unsigned = [chain_id, nonce, max_priority, max_fee, gas_limit, to, value, data, access_list]
     digest = bytes.fromhex(keccak256_hex(b"\x02" + rlp.encode(unsigned))[2:])
