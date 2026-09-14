@@ -1,0 +1,98 @@
+"""Private submission adapter for the durable Phase-19 execution record."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from .durable_nonce import DurableNonceInvariantError, NonceStatus
+from .execution import ExecutionState
+from .execution_coordinator import PreparedExecution
+from .private_submit import PrivateRelay, PrivateSubmission, submit_governed_transaction
+from .sqlite_execution_store import SQLiteExecutionStore
+
+
+class ExecutionSubmissionError(RuntimeError):
+    """Raised when private submission or durable persistence fails."""
+
+
+@dataclass(frozen=True)
+class SubmittedExecution:
+    prepared: PreparedExecution
+    submission: PrivateSubmission
+    transaction_state: ExecutionState
+    nonce_state: NonceStatus
+
+
+def submit_prepared_execution(
+    *,
+    store: SQLiteExecutionStore,
+    prepared: PreparedExecution,
+    relay: PrivateRelay,
+    now: int,
+) -> SubmittedExecution:
+    """Submit one immutable signed artifact privately, then persist SUBMITTED.
+
+    Network submission happens before the local state transition. A crash in
+    that narrow window is intentionally recoverable: the durable record stays
+    SIGNED/SIGNED and the chain observer must determine whether the tx exists.
+    No public fallback is permitted.
+    """
+    try:
+        submission = submit_governed_transaction(
+            relay=relay,
+            signed_transaction=prepared.signed_transaction,
+            governor=prepared.governor,
+            intent=prepared.assembly.intent,
+            authorization=prepared.assembly.authorization,
+            envelope=prepared.assembly.envelope,
+            now=now,
+        )
+    except Exception as exc:
+        if isinstance(exc, ExecutionSubmissionError):
+            raise
+        raise ExecutionSubmissionError(str(exc)) from exc
+
+    try:
+        with store._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute(
+                "SELECT intent_hash,state,tx_hash,sender,nonce FROM transaction_records WHERE record_hash=?",
+                (prepared.transaction_record.record_hash(),),
+            ).fetchone()
+            if row is None:
+                raise ExecutionSubmissionError("durable transaction record disappeared before submission persistence")
+            if row[0].lower() != prepared.assembly.intent_hash.lower() or row[2].lower() != submission.transaction_hash.lower():
+                raise ExecutionSubmissionError("durable transaction identity changed before submission persistence")
+            if ExecutionState(row[1]) is not ExecutionState.SIGNED:
+                raise ExecutionSubmissionError("durable transaction is not in SIGNED state")
+
+            nrow = db.execute(
+                "SELECT intent_hash,status,tx_hash FROM nonce_records WHERE sender=? AND nonce=?",
+                (row[3], int(row[4])),
+            ).fetchone()
+            if nrow is None:
+                raise ExecutionSubmissionError("durable nonce record disappeared before submission persistence")
+            if nrow[0].lower() != prepared.assembly.intent_hash.lower() or nrow[1] != NonceStatus.SIGNED.value:
+                raise ExecutionSubmissionError("durable nonce identity/state changed before submission persistence")
+            if nrow[2] is not None and nrow[2].lower() != submission.transaction_hash.lower():
+                raise ExecutionSubmissionError("durable nonce transaction hash conflicts with submitted hash")
+
+            db.execute(
+                "UPDATE transaction_records SET state=? WHERE record_hash=? AND state=?",
+                (ExecutionState.PRIVATE_SUBMITTED.value, prepared.transaction_record.record_hash(), ExecutionState.SIGNED.value),
+            )
+            db.execute(
+                "UPDATE nonce_records SET status=?, tx_hash=? WHERE sender=? AND nonce=? AND status=?",
+                (NonceStatus.SUBMITTED.value, submission.transaction_hash.lower(), row[3], int(row[4]), NonceStatus.SIGNED.value),
+            )
+            db.execute("COMMIT")
+    except Exception as exc:
+        raise ExecutionSubmissionError(
+            "private relay accepted the transaction but durable SUBMITTED persistence failed; hold and reconcile on-chain"
+        ) from exc
+
+    return SubmittedExecution(
+        prepared=prepared,
+        submission=submission,
+        transaction_state=ExecutionState.PRIVATE_SUBMITTED,
+        nonce_state=NonceStatus.SUBMITTED,
+    )
