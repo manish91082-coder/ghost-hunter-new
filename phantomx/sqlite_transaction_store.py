@@ -11,7 +11,6 @@ to one transactional service before production.
 
 from __future__ import annotations
 
-import json
 import re
 import sqlite3
 from pathlib import Path
@@ -116,9 +115,13 @@ class SQLiteTransactionStore:
         intent: ExecutionIntent,
         bound_nonce: BoundNonce,
     ) -> TransactionRecord:
-        """Persist a signed record only when its intent/nonce binding is exact."""
+        """Persist a signed record only when its intent/nonce binding is exact.
+
+        Full Authorization/Envelope objects remain mandatory at record
+        construction time. This persistence layer never attempts to rebuild
+        them from hashes, which prevents a false sense of cryptographic proof.
+        """
         self._validate_record(record)
-        record.validate_binding(intent, _authorization_for_hash_only(record.authorization_hash), _envelope_for_record(record), bound_nonce) if False else None
         if record.intent_hash.lower() != intent.intent_hash().lower():
             raise ValueError("transaction record intent mismatch")
         if record.sender.lower() != bound_nonce.sender.lower() or record.nonce != bound_nonce.nonce:
@@ -133,7 +136,7 @@ class SQLiteTransactionStore:
             try:
                 connection.execute("BEGIN IMMEDIATE")
                 existing = connection.execute(
-                    "SELECT record_hash FROM transaction_records WHERE tx_hash = ?", (record.tx_hash,)
+                    "SELECT record_hash FROM transaction_records WHERE tx_hash = ?", (record.tx_hash.lower(),)
                 ).fetchone()
                 if existing is not None:
                     raise ValueError("transaction hash already recorded")
@@ -142,7 +145,8 @@ class SQLiteTransactionStore:
                     "chain_id,sender,executor,nonce,calldata_hash,gas_limit,max_fee_per_gas,max_priority_fee_per_gas,"
                     "tx_hash,state,replacement_of) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (
-                        record_hash, payload["intent_hash"], payload["authorization_hash"], payload["reservation_id"],
+                        record_hash,
+                        payload["intent_hash"], payload["authorization_hash"], payload["reservation_id"],
                         payload["chain_id"], payload["sender"], payload["executor"], payload["nonce"],
                         payload["calldata_hash"], payload["gas_limit"], payload["max_fee_per_gas"],
                         payload["max_priority_fee_per_gas"], payload["tx_hash"], payload["state"], payload["replacement_of"],
@@ -217,13 +221,19 @@ class SQLiteTransactionStore:
         bound_nonce: BoundNonce,
         replaces_tx_hash: str,
     ) -> TransactionRecord:
-        """Create a new signed record for the same nonce with explicit replacement linkage."""
-        if replacement.replacement_of != replaces_tx_hash.lower():
+        """Create a new signed record for the same nonce with explicit linkage."""
+        self._validate_record(replacement)
+        replaces_tx_hash = replaces_tx_hash.lower()
+        if replacement.replacement_of != replaces_tx_hash:
             raise ValueError("replacement_of must identify the transaction being replaced")
         if replacement.sender.lower() != bound_nonce.sender.lower() or replacement.nonce != bound_nonce.nonce:
             raise ValueError("replacement nonce binding mismatch")
+        if replacement.reservation_id != bound_nonce.reservation_id:
+            raise ValueError("replacement reservation mismatch")
         if replacement.intent_hash.lower() != intent.intent_hash().lower():
             raise ValueError("replacement intent mismatch")
+        if replacement.state is not ExecutionState.SIGNED:
+            raise ValueError("replacement record must start SIGNED")
         previous = self.get_by_tx_hash(replaces_tx_hash)
         if previous.sender.lower() != replacement.sender.lower() or previous.nonce != replacement.nonce:
             raise ValueError("replacement must preserve sender and nonce")
@@ -239,13 +249,3 @@ class SQLiteTransactionStore:
                 "FROM transaction_records ORDER BY rowid"
             ).fetchall()
         return [self._row_to_record(row) for row in rows]
-
-
-# These sentinels are deliberately unreachable in create(). They document that
-# persistence never reconstructs an Authorization or Envelope from hashes.
-def _authorization_for_hash_only(_: str):
-    raise RuntimeError("authorization reconstruction from hash is forbidden")
-
-
-def _envelope_for_record(_: TransactionRecord):
-    raise RuntimeError("envelope reconstruction from record is forbidden")
