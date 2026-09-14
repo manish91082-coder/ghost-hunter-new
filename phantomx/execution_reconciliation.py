@@ -144,32 +144,6 @@ def _evidence_payload(
     }
 
 
-def _make_settlement_record(
-    *,
-    record_hash: str,
-    receipt: ReceiptRecord,
-    block_hash: str,
-    canonical_block_hash: str,
-    final_settlement: Decimal,
-    flash_repayment: Decimal,
-    costs: CostBreakdown,
-    reconciliation: Reconciliation,
-    evidence_hash: str,
-) -> DurableSettlementRecord:
-    return DurableSettlementRecord(
-        record_hash=record_hash,
-        tx_hash=receipt.tx_hash,
-        receipt=receipt,
-        block_hash=block_hash,
-        canonical_block_hash=canonical_block_hash,
-        final_settlement=final_settlement,
-        flash_repayment=flash_repayment,
-        costs=costs,
-        realized_net_profit_usd=reconciliation.settlement.realized_net_profit,
-        profit_confirmed=reconciliation.profit_confirmed,
-    )
-
-
 def _load_settlement(store: SQLiteExecutionStore, transaction_record_hash: str) -> DurableSettlementRecord:
     with store._connect() as db:
         row = db.execute(
@@ -258,8 +232,6 @@ def reconcile_included_execution(
                 raise ExecutionReconciliationError("unknown durable transaction for execution intent")
             if row[2].lower() != receipt.tx_hash.lower():
                 raise ExecutionReconciliationError("receipt does not match durable transaction")
-            if ExecutionState(row[3]) is not ExecutionState.INCLUDED:
-                raise ExecutionReconciliationError(f"transaction must be INCLUDED before settlement, got {row[3]}")
 
             record_hash = str(row[0])
             payload = _evidence_payload(
@@ -287,6 +259,8 @@ def reconcile_included_execution(
                     raise ExecutionReconciliationError("conflicting settlement evidence already exists")
                 db.execute("COMMIT")
             else:
+                if ExecutionState(row[3]) is not ExecutionState.INCLUDED:
+                    raise ExecutionReconciliationError(f"transaction must be INCLUDED before settlement, got {row[3]}")
                 db.execute(
                     "INSERT INTO settlement_records(record_hash,transaction_record_hash,tx_hash,status,gas_used,effective_gas_price,block_number,block_hash,canonical_block_hash,final_settlement,flash_repayment,flash_loan_fee,dex_fees,price_impact,gas,relay,other,realized_net_profit_usd,profit_confirmed,evidence_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (
@@ -314,6 +288,8 @@ def reconcile_included_execution(
                 )
                 terminal = ExecutionState.PROFIT_CONFIRMED if reconciliation.profit_confirmed else ExecutionState.PROFIT_FAILED
                 db.execute("UPDATE transaction_records SET state=? WHERE record_hash=? AND state=?", (terminal.value, record_hash.lower(), ExecutionState.INCLUDED.value))
+                if db.total_changes < 1:
+                    raise ExecutionReconciliationError("transaction terminal-state update was not applied")
                 db.execute("COMMIT")
         except Exception:
             if db.in_transaction:
