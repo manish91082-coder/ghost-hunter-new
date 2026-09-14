@@ -1,0 +1,173 @@
+import unittest
+
+from phantomx.execution import ExecutionIntent
+from phantomx.executor_calldata import (
+    EXECUTE_SIGNATURE,
+    ExecutorCalldataError,
+    build_executor_transaction,
+    executor_selector,
+    executor_topology_hash,
+)
+from phantomx.hashing import keccak256_hex
+
+
+class ExecutorCalldataBindingTests(unittest.TestCase):
+    def setUp(self):
+        self.asset = "0x1111111111111111111111111111111111111111"
+        self.mid = "0x2222222222222222222222222222222222222222"
+        self.executor = "0x3333333333333333333333333333333333333333"
+        self.sender = "0x4444444444444444444444444444444444444444"
+        self.aave = "0x5555555555555555555555555555555555555555"
+        self.quick = "0x6666666666666666666666666666666666666666"
+        self.uni = "0x7777777777777777777777777777777777777777"
+        self.route_hash = "0x" + "aa" * 32
+        self.economic_hash = "0x" + "bb" * 32
+        self.simulation_hash = "0x" + "cc" * 32
+        self.intent = ExecutionIntent(
+            chain_id=137,
+            executor=self.executor,
+            sender=self.sender,
+            loan_asset=self.asset,
+            loan_amount=100_000_000,
+            route_hash=self.route_hash,
+            calldata_hash="0x" + "00" * 32,
+            economic_proof_hash=self.economic_hash,
+            simulation_proof_hash=self.simulation_hash,
+            nonce=7,
+            deadline=2_000_000,
+        )
+
+    def _build(self):
+        return build_executor_transaction(
+            self.intent,
+            token_mid=self.mid,
+            first_on_quickswap=True,
+            uniswap_fee=3000,
+            amount_out_min_first=90_000_000,
+            amount_out_min_second=95_000_000,
+            minimum_surplus=5,
+            aave_pool=self.aave,
+            quickswap_router=self.quick,
+            uniswap_v3_router=self.uni,
+            gas_limit=800_000,
+            max_fee_per_gas=1_000_000_000,
+            max_priority_fee_per_gas=100_000_000,
+        )
+
+    def test_commitment_hash_excludes_calldata_hash(self):
+        original = self.intent.execution_commitment_hash()
+        mutated = self.intent.with_field(calldata_hash="0x" + "dd" * 32).execution_commitment_hash()
+        self.assertEqual(original, mutated)
+        self.assertNotEqual(self.intent.intent_hash(), self.intent.with_field(calldata_hash="0x" + "dd" * 32).intent_hash())
+
+    def test_calldata_binding_completes_without_hash_cycle(self):
+        bound = self._build()
+        self.assertEqual(bound.bound_intent.calldata_hash, bound.calldata_hash)
+        self.assertEqual(bound.envelope.calldata_hash, bound.calldata_hash)
+        self.assertEqual(bound.bound_intent.execution_commitment_hash(), bound.intent_commitment_hash)
+        self.assertNotEqual(bound.bound_intent.intent_hash(), self.intent.intent_hash())
+        self.assertEqual(bound.envelope.executor.lower(), self.executor.lower())
+        self.assertEqual(bound.envelope.sender.lower(), self.sender.lower())
+        self.assertEqual(bound.envelope.nonce, self.intent.nonce)
+
+    def test_static_abi_layout_is_exactly_twelve_words_after_selector(self):
+        bound = self._build()
+        self.assertEqual(bound.calldata[:4], executor_selector())
+        self.assertEqual(len(bound.calldata), 4 + 12 * 32)
+        body = bound.calldata[4:]
+        self.assertEqual(body[12:32], bytes.fromhex(self.asset[2:]))
+        self.assertEqual(int.from_bytes(body[64:96], "big"), 1)
+        self.assertEqual(int.from_bytes(body[96:128], "big"), 3000)
+        self.assertEqual(int.from_bytes(body[128:160], "big"), 90_000_000)
+        self.assertEqual(int.from_bytes(body[160:192], "big"), 95_000_000)
+        self.assertEqual(int.from_bytes(body[192:224], "big"), 5)
+        self.assertEqual(int.from_bytes(body[224:256], "big"), self.intent.deadline)
+        self.assertEqual(body[256:288], bytes.fromhex(self.route_hash[2:]))
+        self.assertEqual(body[288:320], bytes.fromhex(bound.topology_hash[2:]))
+        self.assertEqual(body[320:352], bytes.fromhex(bound.intent_commitment_hash[2:]))
+        self.assertEqual(int.from_bytes(body[352:384], "big"), self.intent.loan_amount)
+
+    def test_topology_hash_changes_when_executable_route_changes(self):
+        first = executor_topology_hash(
+            asset=self.asset,
+            token_mid=self.mid,
+            first_on_quickswap=True,
+            uniswap_fee=3000,
+            aave_pool=self.aave,
+            quickswap_router=self.quick,
+            uniswap_v3_router=self.uni,
+        )
+        second = executor_topology_hash(
+            asset=self.asset,
+            token_mid=self.mid,
+            first_on_quickswap=False,
+            uniswap_fee=3000,
+            aave_pool=self.aave,
+            quickswap_router=self.quick,
+            uniswap_v3_router=self.uni,
+        )
+        third = executor_topology_hash(
+            asset=self.asset,
+            token_mid=self.mid,
+            first_on_quickswap=True,
+            uniswap_fee=500,
+            aave_pool=self.aave,
+            quickswap_router=self.quick,
+            uniswap_v3_router=self.uni,
+        )
+        self.assertEqual(len(first), 66)
+        self.assertNotEqual(first, second)
+        self.assertNotEqual(first, third)
+
+    def test_selector_is_ethereum_keccak_of_exact_signature(self):
+        self.assertEqual(executor_selector().hex(), keccak256_hex(EXECUTE_SIGNATURE.encode("ascii"))[2:10])
+
+    def test_zero_executor_address_fails_closed(self):
+        with self.assertRaises(ExecutorCalldataError):
+            build_executor_transaction(
+                self.intent.with_field(executor="0x" + "00" * 20),
+                token_mid=self.mid,
+                first_on_quickswap=True,
+                uniswap_fee=3000,
+                amount_out_min_first=1,
+                amount_out_min_second=1,
+                minimum_surplus=1,
+                aave_pool=self.aave,
+                quickswap_router=self.quick,
+                uniswap_v3_router=self.uni,
+                gas_limit=1,
+                max_fee_per_gas=2,
+                max_priority_fee_per_gas=1,
+            )
+
+    def test_zero_hash_and_invalid_fee_fail_closed(self):
+        with self.assertRaises(ExecutorCalldataError):
+            build_executor_transaction(
+                self.intent.with_field(route_hash="0x" + "00" * 32),
+                token_mid=self.mid,
+                first_on_quickswap=True,
+                uniswap_fee=3000,
+                amount_out_min_first=1,
+                amount_out_min_second=1,
+                minimum_surplus=1,
+                aave_pool=self.aave,
+                quickswap_router=self.quick,
+                uniswap_v3_router=self.uni,
+                gas_limit=1,
+                max_fee_per_gas=2,
+                max_priority_fee_per_gas=1,
+            )
+        with self.assertRaises(ExecutorCalldataError):
+            executor_topology_hash(
+                asset=self.asset,
+                token_mid=self.mid,
+                first_on_quickswap=True,
+                uniswap_fee=0x1000000,
+                aave_pool=self.aave,
+                quickswap_router=self.quick,
+                uniswap_v3_router=self.uni,
+            )
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

@@ -58,11 +58,34 @@ class ExecutionIntent:
             "minimum_net_profit_usd": self.minimum_net_profit_usd,
         }
 
+    def commitment_canonical(self) -> dict[str, Any]:
+        """Canonical intent commitment excluding calldata_hash to avoid a hash cycle."""
+        return {
+            "chain_id": self.chain_id,
+            "executor": self.executor.lower(),
+            "sender": self.sender.lower(),
+            "loan_asset": self.loan_asset.lower(),
+            "loan_amount": self.loan_amount,
+            "route_hash": self.route_hash.lower(),
+            "economic_proof_hash": self.economic_proof_hash.lower(),
+            "simulation_proof_hash": self.simulation_proof_hash.lower(),
+            "nonce": self.nonce,
+            "deadline": self.deadline,
+            "minimum_net_profit_usd": self.minimum_net_profit_usd,
+        }
+
     def canonical_bytes(self) -> bytes:
         return json.dumps(self.canonical(), sort_keys=True, separators=(",", ":")).encode("utf-8")
 
+    def commitment_bytes(self) -> bytes:
+        return json.dumps(self.commitment_canonical(), sort_keys=True, separators=(",", ":")).encode("utf-8")
+
     def intent_hash(self) -> str:
         return keccak256_hex(self.canonical_bytes())
+
+    def execution_commitment_hash(self) -> str:
+        """Stable on-chain execution identity that excludes calldata_hash."""
+        return keccak256_hex(self.commitment_bytes())
 
     def test_only_sha256_fingerprint(self) -> str:
         return "0x" + hashlib.sha256(self.canonical_bytes()).hexdigest()
