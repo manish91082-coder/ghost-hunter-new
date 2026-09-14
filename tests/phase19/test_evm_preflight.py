@@ -1,12 +1,12 @@
 import unittest
 from dataclasses import replace
-from decimal import Decimal
 
 from phantomx.economic_proof import build_economic_proof
 from phantomx.economics import CostBreakdown
 from phantomx.evm_preflight import EVMPreflightError, preflight_execution, simulation_hash
 from phantomx.execution import Authorization, ExecutionIntent, TransactionEnvelope
 from phantomx.hashing import keccak256_hex
+from phantomx.quote_engine import ExactQuote
 from phantomx.quote_snapshot import QuoteSnapshot
 from phantomx.route_simulator import simulate_two_leg
 
@@ -16,7 +16,6 @@ ROUTER_A = "0x" + "cc" * 20
 ROUTER_B = "0x" + "dd" * 20
 EXECUTOR = "0x" + "ee" * 20
 SENDER = "0x" + "ff" * 20
-ROUTE = "0x" + "11" * 32
 VALUATION = "0x" + "44" * 32
 
 
@@ -25,38 +24,20 @@ class EVMPreflightTests(unittest.TestCase):
         self.block = 5000
         self.now = 1_700_000_000
         self.calldata = bytes.fromhex("12345678" + "00" * 32)
-        leg_one = QuoteSnapshot(
-            schema_version=1,
+        leg_one = QuoteSnapshot.from_exact_quote(
+            ExactQuote("QuickSwapV2", TOKEN_A, TOKEN_B, 100, 110, self.block, 3),
             chain_id=137,
-            block_number=self.block,
             observed_at_unix=self.now,
-            dex="QuickSwapV2",
             pool_or_router=ROUTER_A,
-            token_in=TOKEN_A,
-            token_out=TOKEN_B,
-            amount_in=100,
-            amount_out=110,
-            fee_raw=3,
             gas_estimate=100_000,
-            quote_hash="0x" + "00" * 32,
         )
-        leg_one = replace(leg_one, quote_hash=leg_one.compute_hash())
-        leg_two = QuoteSnapshot(
-            schema_version=1,
+        leg_two = QuoteSnapshot.from_exact_quote(
+            ExactQuote("UniswapV3", TOKEN_B, TOKEN_A, 110, 101, self.block, 3000),
             chain_id=137,
-            block_number=self.block,
             observed_at_unix=self.now,
-            dex="UniswapV3",
             pool_or_router=ROUTER_B,
-            token_in=TOKEN_B,
-            token_out=TOKEN_A,
-            amount_in=110,
-            amount_out=101,
-            fee_raw=3000,
             gas_estimate=120_000,
-            quote_hash="0x" + "00" * 32,
         )
-        leg_two = replace(leg_two, quote_hash=leg_two.compute_hash())
         self.simulation = simulate_two_leg(leg_one, leg_two)
         self.proof = build_economic_proof(
             route_hash=self.simulation.route_hash,
@@ -162,11 +143,9 @@ class EVMPreflightTests(unittest.TestCase):
             valuation_hash="0x" + "77" * 32,
             final_settlement_usd="101.00",
             loan_principal_usd="100.00",
-            costs=CostBreakdown(
-                flash_loan_fee="0.05", dex_fees="0.05", price_impact="0.05",
-                gas="0.05", relay="0.02", other="0.01",
-            ),
-            max_gas_usd="0.05", max_relay_usd="0.02",
+            costs=self.proof.costs,
+            max_gas_usd=self.proof.max_gas_usd,
+            max_relay_usd=self.proof.max_relay_usd,
         )
         with self.assertRaises(EVMPreflightError):
             self.run_preflight(economic_proof=mutated)
