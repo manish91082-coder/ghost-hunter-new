@@ -1,4 +1,10 @@
-"""Dependency-free execution integrity primitives for Phase 19 tests."""
+"""Dependency-free execution integrity primitives for Phase 19 tests.
+
+The digest helper in this module is a TEST-ONLY deterministic fingerprint.
+It deliberately uses Python SHA-256 so Phase 19 remains dependency-free. It is
+NOT the production Ethereum Keccak-256 implementation. Production hashing is
+scheduled for the canonical hashing module in the execution integration phase.
+"""
 
 from __future__ import annotations
 
@@ -57,7 +63,7 @@ class ExecutionIntent:
         return "0x" + hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     def with_field(self, **changes: Any) -> "ExecutionIntent":
-        """Testing helper: mutation creates a distinct intent/hash."""
+        """Testing helper: mutation creates a distinct intent/fingerprint."""
         return replace(self, **changes)
 
 
