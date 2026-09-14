@@ -74,13 +74,26 @@ class UniswapV3Tests(unittest.TestCase):
             UniswapV3ExactQuoter(ErrorRpc(quote=amount_result(1)), FACTORY, QUOTER).quote(
                 100, A, B, 500, BlockSnapshot(137, 1))
 
+    def test_quoter_v1_selector_and_abi_shape_are_exact(self):
+        data = _encode_quote_exact_input_single(A, B, 500, 123)
+        raw = bytes.fromhex(data[2:])
+        self.assertEqual(raw[:4], bytes.fromhex("f7729d43"))
+        self.assertEqual(len(raw), 4 + 5 * 32)
+        self.assertEqual(raw[4:36], _address_word(A))
+        self.assertEqual(raw[36:68], _address_word(B))
+        self.assertEqual(int.from_bytes(raw[68:100], "big"), 500)
+        self.assertEqual(int.from_bytes(raw[100:132], "big"), 123)
+        self.assertEqual(int.from_bytes(raw[132:164], "big"), 0)
+
+    def test_swap_router_selector_is_not_used_for_quoter(self):
+        data = _encode_quote_exact_input_single(A, B, 500, 123)
+        self.assertFalse(data.startswith("0x414bf389"))
+        self.assertTrue(data.startswith("0xf7729d43"))
+
     def test_fee_is_explicit_and_encoded_as_uint24(self):
         data = _encode_get_pool(A, B, 3000)
         raw = bytes.fromhex(data[2:])
         self.assertEqual(int.from_bytes(raw[68:100], "big"), 3000)
-        qdata = _encode_quote_exact_input_single(A, B, 500, 123)
-        qraw = bytes.fromhex(qdata[2:])
-        self.assertEqual(int.from_bytes(qraw[68:100], "big"), 500)
 
     def test_same_token_rejected(self):
         with self.assertRaises(UniswapV3Error):
@@ -94,6 +107,10 @@ class UniswapV3Tests(unittest.TestCase):
             100, A, B, 10000, BlockSnapshot(137, 1))
         self.assertEqual(out.amount_out, value)
         self.assertEqual(out.fee_raw, 10000)
+
+
+# Local helper is imported only for exact ABI-vector assertions above.
+from phantomx.uniswap_v3 import _address_word
 
 
 if __name__ == "__main__":
