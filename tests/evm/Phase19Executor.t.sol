@@ -6,7 +6,7 @@ import {MockERC20} from "../../contracts/test/MockERC20.sol";
 import {MockAavePool} from "../../contracts/test/MockAavePool.sol";
 import {MockQuickSwapRouter, MockUniswapV3Router} from "../../contracts/test/MockRouters.sol";
 
-interface Vm { function warp(uint256) external; function expectRevert() external; function expectRevert(bytes4) external; }
+interface Vm { function warp(uint256) external; function chainId(uint256) external; function expectRevert() external; function expectRevert(bytes4) external; }
 
 contract ExecutorAttacker {
     function attempt(Phase19Executor executor, Phase19Executor.ExecutionParams calldata p, uint256 amount) external { executor.execute(p, amount); }
@@ -19,6 +19,7 @@ contract Phase19ExecutorTest {
     bytes32 internal constant QUOTE_ROUTE_HASH = keccak256("canonical-quote-route");
 
     function setUp() public {
+        vm.chainId(137);
         asset = new MockERC20("Asset", "AST", 18); mid = new MockERC20("Middle", "MID", 18); pool = new MockAavePool(PREMIUM_BPS);
         quick = new MockQuickSwapRouter(110, 100, address(mid)); uni = new MockUniswapV3Router(106, 110, address(asset));
         executor = new Phase19Executor(address(pool), address(quick), address(uni));
