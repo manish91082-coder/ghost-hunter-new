@@ -70,6 +70,7 @@ def _validate_executor_calldata(
     intent: ExecutionIntent,
     envelope: TransactionEnvelope,
     simulation: RouteSimulation,
+    expected_route_commitment: str | None = None,
 ) -> None:
     """Verify executor calldata semantics, not merely its outer calldata hash."""
     decoded = decode_executor_calldata(envelope.calldata)
@@ -89,6 +90,11 @@ def _validate_executor_calldata(
         raise EVMPreflightError("executor calldata commitment does not match intent")
     if decoded.route_commitment == "0x" + "00" * 32:
         raise EVMPreflightError("executor calldata route commitment is empty")
+    if expected_route_commitment is not None:
+        if not isinstance(expected_route_commitment, str) or len(expected_route_commitment) != 66 or not expected_route_commitment.startswith("0x"):
+            raise EVMPreflightError("expected route commitment must be a 32-byte 0x hash")
+        if decoded.route_commitment.lower() != expected_route_commitment.lower():
+            raise EVMPreflightError("executor calldata route commitment changed before preflight")
     if intent.minimum_surplus_token_amount <= 0:
         raise EVMPreflightError("intent minimum surplus settlement floor must be positive")
     if decoded.minimum_surplus != intent.minimum_surplus_token_amount:
@@ -126,6 +132,7 @@ def preflight_execution(
     economic_proof: EconomicProof,
     now: int,
     expected_chain_id: int = 137,
+    expected_route_commitment: str | None = None,
 ) -> EVMPreflightResult:
     """Fail closed unless every execution-critical identity remains unchanged."""
     try:
@@ -167,7 +174,12 @@ def preflight_execution(
         if simulation.final_amount <= 0:
             raise EVMPreflightError("final route settlement must be positive")
 
-        _validate_executor_calldata(intent=intent, envelope=envelope, simulation=simulation)
+        _validate_executor_calldata(
+            intent=intent,
+            envelope=envelope,
+            simulation=simulation,
+            expected_route_commitment=expected_route_commitment,
+        )
 
         if envelope.gas_limit <= 0:
             raise EVMPreflightError("gas limit must be positive")
