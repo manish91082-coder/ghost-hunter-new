@@ -1,9 +1,10 @@
 """Read-only, block-pinned Uniswap V3 exact quote adapter.
 
 This module is intentionally independent of legacy PhantomX execution code.
-It resolves a concrete V3 pool for an explicit fee tier, then asks the V3
-Quoter for the exact output at a pinned block. No spot-price reconstruction,
-reserve approximation, signing, submission, or relay capability exists.
+It resolves a concrete V3 pool for an explicit fee tier, then asks the deployed
+Uniswap V3 Quoter V1 for exact output at a pinned block. No spot-price
+reconstruction, reserve approximation, signing, submission, or relay
+capability exists.
 """
 from __future__ import annotations
 
@@ -14,7 +15,8 @@ from .quote_engine import ExactQuote, QuoteEngineError
 
 POLYGON_CHAIN_ID = 137
 GET_POOL_SELECTOR = "1698ee82"  # factory.getPool(address,address,uint24)
-QUOTE_EXACT_INPUT_SINGLE_SELECTOR = "414bf389"  # QuoterV2-compatible single-hop shape
+# keccak256("quoteExactInputSingle(address,address,uint24,uint256,uint160)")[:4]
+QUOTE_EXACT_INPUT_SINGLE_SELECTOR = "f7729d43"
 
 
 class RpcTransport(Protocol):
@@ -56,7 +58,8 @@ def _encode_get_pool(token_a: str, token_b: str, fee: int) -> str:
 
 
 def _encode_quote_exact_input_single(token_in: str, token_out: str, fee: int, amount_in: int) -> str:
-    # Quoter.quoteExactInputSingle(address,address,uint24,uint256,uint160)
+    # Uniswap V3 Quoter V1:
+    # quoteExactInputSingle(address,address,uint24,uint256,uint160)
     return "0x" + (bytes.fromhex(QUOTE_EXACT_INPUT_SINGLE_SELECTOR)
         + _address_word(token_in)
         + _address_word(token_out)
@@ -109,7 +112,7 @@ def _parse_quantity(value: Any, name: str) -> int:
 
 
 class UniswapV3ExactQuoter:
-    """Exact single-hop Uniswap V3 quoting over an injected read-only RPC."""
+    """Exact single-hop Uniswap V3 Quoter V1 over injected read-only RPC."""
 
     def __init__(self, rpc: RpcTransport, factory_address: str, quoter_address: str,
                  chain_id: int = POLYGON_CHAIN_ID) -> None:
