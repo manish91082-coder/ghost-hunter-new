@@ -55,7 +55,7 @@ def observe(evidence: ChainEvidence) -> ObservationDecision:
     sender's pending nonce to have advanced beyond the transaction nonce.
     A reorg requires a previously known block identity to disappear from the
     canonical chain. Receipt status is authoritative for included success vs
-    revert.
+    revert. Missing block metadata produces UNKNOWN rather than guessing.
     """
     if evidence.tx_nonce < 0:
         raise ChainObservationError("negative transaction nonce")
@@ -66,7 +66,7 @@ def observe(evidence: ChainEvidence) -> ObservationDecision:
         if not evidence.tx_present:
             raise ChainObservationError("receipt cannot be present while transaction evidence is absent")
         if evidence.block_hash is None or evidence.block_number is None:
-            raise ChainObservationError("included receipt requires block identity")
+            return ObservationDecision(ChainObservationState.UNKNOWN, evidence.tx_hash, None, "receipt exists but block identity is incomplete")
         if evidence.receipt_status == 0:
             return ObservationDecision(ChainObservationState.REVERTED, evidence.tx_hash, None, "receipt status is reverted")
         if evidence.canonical_block_hash is None:
