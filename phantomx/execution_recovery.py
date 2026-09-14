@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-from .durable_nonce import DurableNonceRecord, NonceStatus
+from .durable_nonce import NonceStatus
 from .execution import ExecutionState
 from .sqlite_execution_store import SQLiteExecutionStore
 
@@ -31,8 +31,10 @@ class RecoveryAudit:
 def audit_store(store: SQLiteExecutionStore) -> RecoveryAudit:
     """Audit cross-table invariants after process restart.
 
-    Any mismatch is an explicit anomaly. The caller must freeze execution until
-    a deterministic recovery decision is produced from fresh chain evidence.
+    SIGNED is a legitimate pre-submission state: its durable transaction row
+    already carries the transaction hash, while the nonce row may intentionally
+    remain hash-free until submission. SUBMITTED/INCLUDED require the nonce row
+    to carry the active transaction hash.
     """
     anomalies: list[str] = []
     with store._connect() as db:
@@ -70,8 +72,8 @@ def audit_store(store: SQLiteExecutionStore) -> RecoveryAudit:
                 anomalies.append(f"transaction {record_hash}: lifecycle mismatch {state}/{nrow[2]}")
 
         for sender, nonce, reservation_id, intent_hash, status, tx_hash, replacement_of in nonce_rows:
-            if status in {NonceStatus.SIGNED.value, NonceStatus.SUBMITTED.value, NonceStatus.INCLUDED.value} and not tx_hash:
-                anomalies.append(f"nonce {sender}:{nonce}: active state without tx hash")
+            if status in {NonceStatus.SUBMITTED.value, NonceStatus.INCLUDED.value} and not tx_hash:
+                anomalies.append(f"nonce {sender}:{nonce}: active submitted state without tx hash")
             if replacement_of and not tx_hash:
                 anomalies.append(f"nonce {sender}:{nonce}: replacement linkage without active tx hash")
             tx = db.execute(
