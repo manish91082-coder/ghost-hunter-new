@@ -148,6 +148,7 @@ def prepare_signed_execution(
             economic_proof=assembly.economic_proof,
             now=now,
             expected_route_commitment=assembly.bound_call.route_commitment,
+            executor_authority=executor_authority,
         )
 
         governor = govern_execution(
