@@ -17,6 +17,7 @@ class ExecutorCalldataBindingTests(unittest.TestCase):
         self.asset = "0x1111111111111111111111111111111111111111"
         self.mid = "0x2222222222222222222222222222222222222222"
         self.executor = "0x3333333333333333333333333333333333333333"
+        self.executor_alt = "0x9999999999999999999999999999999999999999"
         self.sender = "0x4444444444444444444444444444444444444444"
         self.aave = "0x5555555555555555555555555555555555555555"
         self.quick = "0x6666666666666666666666666666666666666666"
@@ -61,7 +62,7 @@ class ExecutorCalldataBindingTests(unittest.TestCase):
         self.assertEqual(int.from_bytes(body[352:384], "big"), self.intent.loan_amount)
 
     def test_route_commitment_changes_when_quote_or_topology_changes(self):
-        topology = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, uniswap_fee=3000, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni)
+        topology = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, uniswap_fee=3000, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni, executor=self.executor)
         first = executor_route_commitment(route_hash=self.route_hash, topology_hash=topology)
         route_mutated = executor_route_commitment(route_hash="0x" + "ab" * 32, topology_hash=topology)
         topology_mutated = executor_route_commitment(route_hash=self.route_hash, topology_hash="0x" + "cd" * 32)
@@ -69,12 +70,16 @@ class ExecutorCalldataBindingTests(unittest.TestCase):
         self.assertNotEqual(first, topology_mutated)
 
     def test_topology_hash_changes_when_executable_route_changes(self):
-        first = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, uniswap_fee=3000, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni)
-        second = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=False, uniswap_fee=3000, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni)
-        third = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, uniswap_fee=500, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni)
+        first = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, uniswap_fee=3000, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni, executor=self.executor)
+        second = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=False, uniswap_fee=3000, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni, executor=self.executor)
+        third = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, uniswap_fee=500, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni, executor=self.executor)
+        executor_mutated = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, uniswap_fee=3000, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni, executor=self.executor_alt)
+        chain_mutated = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, uniswap_fee=3000, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni, executor=self.executor, chain_id=1)
         self.assertEqual(len(first), 66)
         self.assertNotEqual(first, second)
         self.assertNotEqual(first, third)
+        self.assertNotEqual(first, executor_mutated)
+        self.assertNotEqual(first, chain_mutated)
 
     def test_selector_is_ethereum_keccak_of_exact_signature(self):
         self.assertEqual(executor_selector().hex(), keccak256_hex(EXECUTE_SIGNATURE.encode("ascii"))[2:10])
@@ -87,7 +92,9 @@ class ExecutorCalldataBindingTests(unittest.TestCase):
         with self.assertRaises(ExecutorCalldataError):
             build_executor_transaction(self.intent.with_field(route_hash="0x" + "00" * 32), token_mid=self.mid, first_on_quickswap=True, uniswap_fee=3000, amount_out_min_first=1, amount_out_min_second=1, minimum_surplus=1, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni, gas_limit=1, max_fee_per_gas=2, max_priority_fee_per_gas=1)
         with self.assertRaises(ExecutorCalldataError):
-            executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, uniswap_fee=0x1000000, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni)
+            executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, uniswap_fee=0x1000000, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni, executor=self.executor)
+        with self.assertRaises(ExecutorCalldataError):
+            executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, uniswap_fee=3000, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni, executor=self.executor, chain_id=0)
 
 
 if __name__ == "__main__":
