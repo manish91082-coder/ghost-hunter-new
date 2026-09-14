@@ -1,0 +1,256 @@
+"""Unified single-host durable execution store for Phase 19.
+
+This is the missing atomic boundary between nonce state, transaction identity,
+and recovery evidence. All three live in one SQLite database so coupled state
+changes can commit or roll back together. No RPC, signing, relay, or broadcast
+authority is provided.
+
+The store is intentionally single-host. If execution becomes multi-host, move
+this schema and transaction protocol to one transactional service rather than
+reintroducing independent databases.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+import sqlite3
+
+from .durable_nonce import DurableNonceInvariantError, DurableNonceRecord, NonceStatus
+from .execution import ExecutionIntent, ExecutionState
+from .nonce_binding import BoundNonce
+from .recovery_coordinator import RecoveryAction, RecoveryDecision
+from .transaction_record import TransactionRecord
+
+
+_NONCE_TRANSITIONS = {
+    NonceStatus.RESERVED: {NonceStatus.SIGNED, NonceStatus.RELEASED},
+    NonceStatus.SIGNED: {NonceStatus.SUBMITTED, NonceStatus.RELEASED},
+    NonceStatus.SUBMITTED: {NonceStatus.INCLUDED, NonceStatus.REPLACED, NonceStatus.DROPPED, NonceStatus.REORGED},
+    NonceStatus.INCLUDED: {NonceStatus.REORGED},
+    NonceStatus.REPLACED: {NonceStatus.SUBMITTED, NonceStatus.INCLUDED, NonceStatus.DROPPED},
+    NonceStatus.DROPPED: {NonceStatus.RELEASED},
+    NonceStatus.REORGED: {NonceStatus.SUBMITTED, NonceStatus.DROPPED},
+    NonceStatus.RELEASED: set(),
+}
+
+_TX_TRANSITIONS = {
+    ExecutionState.SIGNED: {ExecutionState.PRIVATE_SUBMITTED, ExecutionState.PROFIT_FAILED},
+    ExecutionState.PRIVATE_SUBMITTED: {ExecutionState.PENDING, ExecutionState.PROFIT_FAILED},
+    ExecutionState.PENDING: {ExecutionState.INCLUDED, ExecutionState.PROFIT_FAILED},
+    ExecutionState.INCLUDED: {ExecutionState.RECONCILED, ExecutionState.PROFIT_FAILED},
+    ExecutionState.RECONCILED: {ExecutionState.PROFIT_CONFIRMED, ExecutionState.PROFIT_FAILED},
+    ExecutionState.PROFIT_CONFIRMED: set(),
+    ExecutionState.PROFIT_FAILED: set(),
+}
+
+
+@dataclass(frozen=True)
+class RecoveryApplication:
+    journal_sequence: int
+    transaction: TransactionRecord
+    nonce: DurableNonceRecord
+
+
+class SQLiteExecutionStore:
+    """One SQLite transaction boundary for nonce + transaction + journal state."""
+
+    def __init__(self, path: str | Path, *, timeout_seconds: float = 30.0) -> None:
+        self.path = str(path)
+        if timeout_seconds <= 0:
+            raise ValueError("timeout_seconds must be positive")
+        self.timeout_seconds = timeout_seconds
+        if self.path != ":memory:":
+            Path(self.path).parent.mkdir(parents=True, exist_ok=True)
+        self._initialize()
+
+    def _connect(self) -> sqlite3.Connection:
+        db = sqlite3.connect(self.path, timeout=self.timeout_seconds, isolation_level=None)
+        db.execute(f"PRAGMA busy_timeout={int(self.timeout_seconds * 1000)}")
+        db.execute("PRAGMA foreign_keys=ON")
+        db.execute("PRAGMA journal_mode=WAL")
+        db.execute("PRAGMA synchronous=FULL")
+        return db
+
+    def _initialize(self) -> None:
+        with self._connect() as db:
+            db.executescript("""
+                CREATE TABLE IF NOT EXISTS nonce_cursors (
+                    sender TEXT PRIMARY KEY,
+                    next_nonce INTEGER NOT NULL CHECK(next_nonce >= 0)
+                );
+                CREATE TABLE IF NOT EXISTS nonce_records (
+                    sender TEXT NOT NULL,
+                    nonce INTEGER NOT NULL CHECK(nonce >= 0),
+                    reservation_id TEXT NOT NULL UNIQUE,
+                    intent_hash TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    tx_hash TEXT,
+                    replacement_of TEXT,
+                    PRIMARY KEY(sender, nonce),
+                    FOREIGN KEY(sender) REFERENCES nonce_cursors(sender)
+                );
+                CREATE TABLE IF NOT EXISTS transaction_records (
+                    record_hash TEXT PRIMARY KEY,
+                    intent_hash TEXT NOT NULL,
+                    authorization_hash TEXT NOT NULL,
+                    reservation_id TEXT NOT NULL,
+                    chain_id INTEGER NOT NULL CHECK(chain_id > 0),
+                    sender TEXT NOT NULL,
+                    executor TEXT NOT NULL,
+                    nonce INTEGER NOT NULL CHECK(nonce >= 0),
+                    calldata_hash TEXT NOT NULL,
+                    gas_limit INTEGER NOT NULL CHECK(gas_limit > 0),
+                    max_fee_per_gas INTEGER NOT NULL CHECK(max_fee_per_gas >= 0),
+                    max_priority_fee_per_gas INTEGER NOT NULL CHECK(max_priority_fee_per_gas >= 0),
+                    tx_hash TEXT NOT NULL UNIQUE,
+                    state TEXT NOT NULL,
+                    replacement_of TEXT,
+                    FOREIGN KEY(replacement_of) REFERENCES transaction_records(tx_hash)
+                );
+                CREATE TABLE IF NOT EXISTS recovery_journal (
+                    sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                    record_hash TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    chain_state TEXT NOT NULL,
+                    tx_hash TEXT NOT NULL,
+                    replacement_tx_hash TEXT,
+                    reason TEXT NOT NULL,
+                    applied INTEGER NOT NULL DEFAULT 0 CHECK(applied IN(0,1)),
+                    UNIQUE(record_hash, tx_hash, action)
+                );
+                CREATE INDEX IF NOT EXISTS idx_tx_nonce ON transaction_records(sender, nonce);
+                CREATE INDEX IF NOT EXISTS idx_nonce_tx ON nonce_records(tx_hash);
+            """)
+
+    @staticmethod
+    def _sender(sender: str) -> str:
+        sender = sender.strip().lower()
+        if not sender:
+            raise DurableNonceInvariantError("sender is required")
+        return sender
+
+    def reserve_nonce(self, sender: str, reservation_id: str, intent_hash: str, *, chain_pending_nonce: int | None = None) -> DurableNonceRecord:
+        sender = self._sender(sender)
+        if not reservation_id or not intent_hash:
+            raise DurableNonceInvariantError("reservation_id and intent_hash are required")
+        if chain_pending_nonce is not None and chain_pending_nonce < 0:
+            raise DurableNonceInvariantError("chain pending nonce must be non-negative")
+        with self._connect() as db:
+            try:
+                db.execute("BEGIN IMMEDIATE")
+                row = db.execute("SELECT next_nonce FROM nonce_cursors WHERE sender=?", (sender,)).fetchone()
+                nonce = (chain_pending_nonce or 0) if row is None else int(row[0])
+                if chain_pending_nonce is not None:
+                    nonce = max(nonce, chain_pending_nonce)
+                if row is None:
+                    db.execute("INSERT INTO nonce_cursors(sender,next_nonce) VALUES(?,?)", (sender, nonce + 1))
+                elif nonce != int(row[0]):
+                    db.execute("UPDATE nonce_cursors SET next_nonce=? WHERE sender=?", (nonce + 1, sender))
+                else:
+                    db.execute("UPDATE nonce_cursors SET next_nonce=? WHERE sender=?", (nonce + 1, sender))
+                db.execute("INSERT INTO nonce_records(sender,nonce,reservation_id,intent_hash,status) VALUES(?,?,?,?,?)",
+                           (sender, nonce, reservation_id, intent_hash, NonceStatus.RESERVED.value))
+                db.execute("COMMIT")
+            except sqlite3.IntegrityError as exc:
+                if db.in_transaction:
+                    db.execute("ROLLBACK")
+                raise DurableNonceInvariantError("reservation or nonce already exists") from exc
+            except Exception:
+                if db.in_transaction:
+                    db.execute("ROLLBACK")
+                raise
+        return self.get_nonce(sender, nonce)
+
+    def get_nonce(self, sender: str, nonce: int) -> DurableNonceRecord:
+        sender = self._sender(sender)
+        with self._connect() as db:
+            row = db.execute("SELECT sender,nonce,reservation_id,intent_hash,status,tx_hash,replacement_of FROM nonce_records WHERE sender=? AND nonce=?", (sender, nonce)).fetchone()
+        if row is None:
+            raise KeyError("unknown nonce reservation")
+        return DurableNonceRecord(sender=row[0], nonce=int(row[1]), reservation_id=row[2], intent_hash=row[3], status=NonceStatus(row[4]), tx_hash=row[5], replacement_of=row[6])
+
+    def create_signed_transaction(self, record: TransactionRecord, *, intent: ExecutionIntent, bound_nonce: BoundNonce) -> TransactionRecord:
+        if record.state is not ExecutionState.SIGNED:
+            raise ValueError("new transaction must start SIGNED")
+        if record.intent_hash.lower() != intent.intent_hash().lower():
+            raise ValueError("transaction intent mismatch")
+        if (record.sender.lower(), record.nonce, record.reservation_id) != (bound_nonce.sender.lower(), bound_nonce.nonce, bound_nonce.reservation_id):
+            raise ValueError("transaction nonce binding mismatch")
+        if record.record_hash().lower() != record.record_hash().lower():
+            raise ValueError("unreachable identity check")
+        payload = record.canonical()
+        with self._connect() as db:
+            try:
+                db.execute("BEGIN IMMEDIATE")
+                nonce_row = db.execute("SELECT status,intent_hash,reservation_id,tx_hash FROM nonce_records WHERE sender=? AND nonce=?", (record.sender.lower(), record.nonce)).fetchone()
+                if nonce_row is None or nonce_row[1].lower() != intent.intent_hash().lower() or nonce_row[2] != bound_nonce.reservation_id:
+                    raise ValueError("durable nonce reservation does not match transaction")
+                if nonce_row[0] is not NonceStatus.RESERVED.value:
+                    raise ValueError("nonce reservation is not RESERVED")
+                db.execute("UPDATE nonce_records SET status=? WHERE sender=? AND nonce=? AND status=?", (NonceStatus.SIGNED.value, record.sender.lower(), record.nonce, NonceStatus.RESERVED.value))
+                db.execute("INSERT INTO transaction_records(record_hash,intent_hash,authorization_hash,reservation_id,chain_id,sender,executor,nonce,calldata_hash,gas_limit,max_fee_per_gas,max_priority_fee_per_gas,tx_hash,state,replacement_of) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                           (record.record_hash(), payload["intent_hash"], payload["authorization_hash"], payload["reservation_id"], payload["chain_id"], payload["sender"], payload["executor"], payload["nonce"], payload["calldata_hash"], payload["gas_limit"], payload["max_fee_per_gas"], payload["max_priority_fee_per_gas"], payload["tx_hash"], payload["state"], payload["replacement_of"]))
+                db.execute("COMMIT")
+            except Exception:
+                if db.in_transaction:
+                    db.execute("ROLLBACK")
+                raise
+        return self.get_transaction(record.record_hash())
+
+    def get_transaction(self, record_hash: str) -> TransactionRecord:
+        with self._connect() as db:
+            row = db.execute("SELECT record_hash,intent_hash,authorization_hash,reservation_id,chain_id,sender,executor,nonce,calldata_hash,gas_limit,max_fee_per_gas,max_priority_fee_per_gas,tx_hash,state,replacement_of FROM transaction_records WHERE record_hash=?", (record_hash.lower(),)).fetchone()
+        if row is None:
+            raise KeyError("unknown transaction record")
+        record = TransactionRecord(intent_hash=row[1], authorization_hash=row[2], reservation_id=row[3], chain_id=int(row[4]), sender=row[5], executor=row[6], nonce=int(row[7]), calldata_hash=row[8], gas_limit=int(row[9]), max_fee_per_gas=int(row[10]), max_priority_fee_per_gas=int(row[11]), tx_hash=row[12], state=ExecutionState(row[13]), replacement_of=row[14])
+        if record.record_hash().lower() != record_hash.lower():
+            raise ValueError("stored transaction identity mismatch")
+        return record
+
+    def apply_recovery(self, *, decision: RecoveryDecision, chain_state: str, tx_hash: str, replacement_tx_hash: str | None, transaction_state: ExecutionState, nonce_state: NonceStatus, intent: ExecutionIntent) -> RecoveryApplication:
+        """Atomically journal evidence and apply both lifecycle states.
+
+        Duplicate decision identity is idempotent: an already-applied journal
+        entry returns the existing durable state without applying it twice.
+        """
+        tx_hash = tx_hash.lower()
+        with self._connect() as db:
+            try:
+                db.execute("BEGIN IMMEDIATE")
+                existing = db.execute("SELECT sequence,record_hash,action,applied FROM recovery_journal WHERE record_hash=? AND tx_hash=? AND action=?", (decision.record_hash.lower(), tx_hash, decision.action.value)).fetchone()
+                if existing is not None:
+                    record = self.get_transaction(decision.record_hash)
+                    nonce = self.get_nonce(record.sender, record.nonce)
+                    db.execute("COMMIT")
+                    return RecoveryApplication(existing[0], record, nonce)
+                row = db.execute("SELECT intent_hash,sender,nonce,state,tx_hash FROM transaction_records WHERE record_hash=?", (decision.record_hash.lower(),)).fetchone()
+                if row is None:
+                    raise KeyError("unknown transaction record")
+                if row[0].lower() != intent.intent_hash().lower() or row[4].lower() != tx_hash:
+                    raise ValueError("recovery transaction binding mismatch")
+                current_tx = ExecutionState(row[3])
+                if transaction_state not in _TX_TRANSITIONS[current_tx]:
+                    raise ValueError(f"invalid transaction transition: {current_tx} -> {transaction_state}")
+                nonce_row = db.execute("SELECT status,reservation_id,intent_hash,tx_hash FROM nonce_records WHERE sender=? AND nonce=?", (row[1], int(row[2]))).fetchone()
+                if nonce_row is None or nonce_row[2].lower() != intent.intent_hash().lower():
+                    raise ValueError("recovery nonce binding mismatch")
+                current_nonce = NonceStatus(nonce_row[0])
+                if nonce_state not in _NONCE_TRANSITIONS[current_nonce]:
+                    raise ValueError(f"invalid nonce transition: {current_nonce} -> {nonce_state}")
+                db.execute("INSERT INTO recovery_journal(record_hash,action,chain_state,tx_hash,replacement_tx_hash,reason) VALUES(?,?,?,?,?,?)", (decision.record_hash.lower(), decision.action.value, chain_state, tx_hash, replacement_tx_hash.lower() if replacement_tx_hash else None, decision.reason))
+                sequence = int(db.execute("SELECT last_insert_rowid()").fetchone()[0])
+                db.execute("UPDATE transaction_records SET state=? WHERE record_hash=? AND state=?", (transaction_state.value, decision.record_hash.lower(), current_tx.value))
+                db.execute("UPDATE nonce_records SET status=? WHERE sender=? AND nonce=? AND status=?", (nonce_state.value, row[1], int(row[2]), current_nonce.value))
+                db.execute("UPDATE recovery_journal SET applied=1 WHERE sequence=?", (sequence,))
+                db.execute("COMMIT")
+            except Exception:
+                if db.in_transaction:
+                    db.execute("ROLLBACK")
+                raise
+        return RecoveryApplication(sequence, self.get_transaction(decision.record_hash), self.get_nonce(row[1], int(row[2])))
+
+    def pending_journal(self) -> list[tuple[int, str, str]]:
+        with self._connect() as db:
+            rows = db.execute("SELECT sequence,record_hash,action FROM recovery_journal WHERE applied=0 ORDER BY sequence").fetchall()
+        return [(int(r[0]), str(r[1]), str(r[2])) for r in rows]
