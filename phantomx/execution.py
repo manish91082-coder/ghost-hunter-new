@@ -3,8 +3,7 @@
 Production-facing hash methods use Ethereum Keccak-256 through
 ``phantomx.hashing`` and fail closed when no compatible backend exists.
 The legacy SHA-256 fingerprint remains available only as an explicitly named
-TEST-ONLY helper so old dependency-free tests cannot accidentally become a
-production authorization primitive.
+TEST-ONLY helper.
 """
 
 from __future__ import annotations
@@ -43,6 +42,8 @@ class ExecutionIntent:
     loan_amount: int
     route_hash: str
     calldata_hash: str
+    economic_proof_hash: str
+    simulation_proof_hash: str
     nonce: int
     deadline: int
     minimum_net_profit_usd: str = "0.20"
@@ -56,6 +57,8 @@ class ExecutionIntent:
             "loan_amount": self.loan_amount,
             "route_hash": self.route_hash.lower(),
             "calldata_hash": self.calldata_hash.lower(),
+            "economic_proof_hash": self.economic_proof_hash.lower(),
+            "simulation_proof_hash": self.simulation_proof_hash.lower(),
             "nonce": self.nonce,
             "deadline": self.deadline,
             "minimum_net_profit_usd": self.minimum_net_profit_usd,
@@ -65,11 +68,9 @@ class ExecutionIntent:
         return json.dumps(self.canonical(), sort_keys=True, separators=(",", ":")).encode("utf-8")
 
     def intent_hash(self) -> str:
-        """Canonical Ethereum Keccak-256 intent digest."""
         return keccak256_hex(self.canonical_bytes())
 
     def test_only_sha256_fingerprint(self) -> str:
-        """Legacy dependency-free fingerprint; never use for authorization."""
         return "0x" + hashlib.sha256(self.canonical_bytes()).hexdigest()
 
     def with_field(self, **changes: Any) -> "ExecutionIntent":
@@ -80,6 +81,8 @@ class ExecutionIntent:
 class Authorization:
     intent_hash: str
     calldata_hash: str
+    economic_proof_hash: str
+    simulation_proof_hash: str
     chain_id: int
     executor: str
     sender: str
@@ -91,6 +94,8 @@ class Authorization:
             now <= self.deadline
             and self.intent_hash.lower() == intent.intent_hash().lower()
             and self.calldata_hash.lower() == intent.calldata_hash.lower()
+            and self.economic_proof_hash.lower() == intent.economic_proof_hash.lower()
+            and self.simulation_proof_hash.lower() == intent.simulation_proof_hash.lower()
             and self.chain_id == intent.chain_id
             and self.executor.lower() == intent.executor.lower()
             and self.sender.lower() == intent.sender.lower()
