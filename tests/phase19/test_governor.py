@@ -173,7 +173,7 @@ class GovernorTests(unittest.TestCase):
         )
         blocked = self.run_governor(executor_authority=mutated)
         self.assertFalse(blocked.approved)
-        self.assertIn("authority evidence is invalid", blocked.reason)
+        self.assertIn("preflight authority evidence binding changed", blocked.reason)
         self.assertNotEqual(blocked.executor_authority_hash, self.authority.evidence_hash)
 
     def test_authority_observation_before_proven_block_is_blocked(self):
@@ -187,7 +187,7 @@ class GovernorTests(unittest.TestCase):
         )
         blocked = self.run_governor(executor_authority=stale)
         self.assertFalse(blocked.approved)
-        self.assertIn("authority evidence is invalid", blocked.reason)
+        self.assertIn("preflight authority evidence binding changed", blocked.reason)
 
     def test_preflight_authority_binding_cannot_be_missing_or_mutated(self):
         missing = replace(self.preflight, authority_evidence_hash="")
