@@ -161,7 +161,7 @@ class ExecutionSubmissionTests(unittest.TestCase):
 
     def test_later_observation_with_same_runtime_identity_is_accepted(self):
         prepared = self._prepare()
-        later = replace(self.authority, observed_block=self.authority.observed_block + 2)
+        later = replace(self.authority, observed_block=self.authority.observed_block + 2, evidence_hash="")
         relay = FakeRelay()
         submitted = self._submit(prepared, relay=relay, authority=later)
         self.assertEqual(relay.calls, 1)
@@ -169,7 +169,7 @@ class ExecutionSubmissionTests(unittest.TestCase):
 
     def test_runtime_code_drift_is_rejected_before_network_and_durable_transition(self):
         prepared = self._prepare()
-        mutated = replace(self.authority, observed_block=self.authority.observed_block + 1, runtime_code_hash="0x" + "66" * 32)
+        mutated = replace(self.authority, observed_block=self.authority.observed_block + 1, runtime_code_hash="0x" + "66" * 32, evidence_hash="")
         relay = FakeRelay()
         with self.assertRaisesRegex(ExecutionSubmissionError, "runtime identity differs"):
             self._submit(prepared, relay=relay, authority=mutated)
@@ -179,7 +179,7 @@ class ExecutionSubmissionTests(unittest.TestCase):
 
     def test_owner_drift_is_rejected_before_network_and_durable_transition(self):
         prepared = self._prepare()
-        mutated = replace(self.authority, observed_block=self.authority.observed_block + 1, owner="0x" + "22" * 20)
+        mutated = replace(self.authority, observed_block=self.authority.observed_block + 1, owner="0x" + "22" * 20, evidence_hash="")
         relay = FakeRelay()
         with self.assertRaises(ExecutionSubmissionError):
             self._submit(prepared, relay=relay, authority=mutated)
@@ -188,7 +188,7 @@ class ExecutionSubmissionTests(unittest.TestCase):
 
     def test_older_submission_observation_is_rejected_before_network(self):
         prepared = self._prepare()
-        stale = replace(self.authority, observed_block=self.authority.observed_block - 2)
+        stale = replace(self.authority, observed_block=self.authority.observed_block - 2, evidence_hash="")
         relay = FakeRelay()
         with self.assertRaises(ExecutionSubmissionError):
             self._submit(prepared, relay=relay, authority=stale)
