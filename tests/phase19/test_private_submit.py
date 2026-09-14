@@ -8,7 +8,6 @@ from phantomx.hashing import keccak256_hex
 from phantomx.private_submit import PrivateSubmitError, submit_governed_transaction
 from phantomx.signer import EthereumEip1559Signer, SignedTransaction
 
-
 TOKEN = "0x" + "aa" * 20
 EXECUTOR = "0x" + "bb" * 20
 SENDER = EthereumEip1559Signer("0x" + "01" * 32).address
@@ -114,28 +113,28 @@ class PrivateSubmitBoundaryTests(unittest.TestCase):
 
     def test_later_block_same_runtime_identity_is_accepted(self):
         relay = FakeRelay()
-        later = replace(self.authority, observed_block=5002)
+        later = replace(self.authority, observed_block=5002, evidence_hash="")
         result = self.submit(relay, executor_authority=later)
         self.assertEqual(relay.calls, 1)
         self.assertEqual(result.executor_runtime_binding_hash, runtime_code_binding_hash(self.authority))
 
     def test_runtime_code_mutation_is_rejected_before_network_io(self):
         relay = FakeRelay()
-        mutated = replace(self.authority, observed_block=5001, runtime_code_hash="0x" + "66" * 32)
+        mutated = replace(self.authority, observed_block=5001, runtime_code_hash="0x" + "66" * 32, evidence_hash="")
         with self.assertRaisesRegex(PrivateSubmitError, "runtime identity differs"):
             self.submit(relay, executor_authority=mutated)
         self.assertEqual(relay.calls, 0)
 
     def test_owner_mutation_is_rejected_before_network_io(self):
         relay = FakeRelay()
-        mutated = replace(self.authority, observed_block=5001, owner="0x" + "22" * 20)
+        mutated = replace(self.authority, observed_block=5001, owner="0x" + "22" * 20, evidence_hash="")
         with self.assertRaisesRegex(PrivateSubmitError, "executor authority is invalid"):
             self.submit(relay, executor_authority=mutated)
         self.assertEqual(relay.calls, 0)
 
     def test_older_submission_observation_is_rejected_before_network_io(self):
         relay = FakeRelay()
-        stale = replace(self.authority, observed_block=4999)
+        stale = replace(self.authority, observed_block=4999, evidence_hash="")
         with self.assertRaisesRegex(PrivateSubmitError, "runtime identity differs|predates"):
             self.submit(relay, executor_authority=stale)
         self.assertEqual(relay.calls, 0)
