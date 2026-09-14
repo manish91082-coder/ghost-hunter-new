@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .durable_nonce import DurableNonceInvariantError, NonceStatus
+from .durable_nonce import NonceStatus
 from .execution import ExecutionState
 from .execution_coordinator import PreparedExecution
+from .executor_authority import ExecutorAuthorityEvidence, ExecutorAuthorityError, runtime_code_binding_hash
 from .private_submit import PrivateRelay, PrivateSubmission, submit_governed_transaction
 from .sqlite_execution_store import SQLiteExecutionStore
 
@@ -28,15 +29,20 @@ def submit_prepared_execution(
     prepared: PreparedExecution,
     relay: PrivateRelay,
     now: int,
+    submission_authority: ExecutorAuthorityEvidence,
 ) -> SubmittedExecution:
     """Submit one immutable signed artifact privately, then persist SUBMITTED.
 
-    Network submission happens before the local state transition. A crash in
-    that narrow window is intentionally recoverable: the durable record stays
-    SIGNED/SIGNED and the chain observer must determine whether the tx exists.
-    No public fallback is permitted.
+    A fresh authority observation is required at submission. The observation may
+    be newer than signing-time evidence, but its stable executor owner/runtime
+    identity must equal the identity committed into the signed artifact. This
+    closes the signing-to-submission deployment drift window.
     """
     try:
+        if submission_authority.observed_block < prepared.authority.observed_block:
+            raise ExecutionSubmissionError("submission authority evidence predates signing authority evidence")
+        if runtime_code_binding_hash(submission_authority).lower() != prepared.signed_transaction.executor_runtime_binding_hash.lower():
+            raise ExecutionSubmissionError("submission executor runtime identity differs from signed artifact")
         submission = submit_governed_transaction(
             relay=relay,
             signed_transaction=prepared.signed_transaction,
@@ -44,6 +50,7 @@ def submit_prepared_execution(
             intent=prepared.assembly.intent,
             authorization=prepared.assembly.authorization,
             envelope=prepared.assembly.envelope,
+            executor_authority=submission_authority,
             now=now,
         )
     except Exception as exc:
