@@ -12,6 +12,12 @@ interface Vm {
     function expectRevert(bytes4) external;
 }
 
+contract ExecutorAttacker {
+    function attempt(Phase19Executor executor, Phase19Executor.ExecutionParams calldata p, uint256 amount) external {
+        executor.execute(p, amount);
+    }
+}
+
 contract Phase19ExecutorTest {
     Vm internal constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
@@ -60,6 +66,35 @@ contract Phase19ExecutorTest {
         require(asset.balanceOf(address(executor)) == beforeBalance + 5 ether, "surplus");
         require(executor.consumedIntent(p.intentHash), "intent not consumed");
         require(!executor.activeExecution(), "execution still active");
+        require(asset.allowance(address(executor), address(quick)) == 0, "quick approval not reset");
+        require(asset.allowance(address(executor), address(uni)) == 0, "uni approval not reset");
+    }
+
+    function test_execute_reverse_route_real_callback_swap_repay_and_settlement() public {
+        uni = new MockUniswapV3Router(110, 100, address(mid));
+        quick = new MockQuickSwapRouter(106, 110, address(asset));
+        mid.mint(address(uni), 1_000_000 ether);
+        asset.mint(address(quick), 1_000_000 ether);
+        executor = new Phase19Executor(address(pool), address(quick), address(uni));
+
+        Phase19Executor.ExecutionParams memory p = _params(bytes32(uint256(8)));
+        p.firstOnQuickSwap = false;
+        p.amountOutMinFirst = 110 ether;
+        p.amountOutMinSecond = 106 ether;
+        p.routeHash = executor.routeHash(address(asset), address(mid), false, 3000);
+        executor.execute(p, LOAN);
+        require(asset.balanceOf(address(executor)) == 5 ether, "reverse surplus");
+        require(executor.consumedIntent(p.intentHash), "reverse intent not consumed");
+    }
+
+    function test_only_owner_is_enforced() public {
+        ExecutorAttacker attacker = new ExecutorAttacker();
+        Phase19Executor.ExecutionParams memory p = _params(bytes32(uint256(9)));
+        (bool ok,) = address(attacker).call(
+            abi.encodeWithSelector(ExecutorAttacker.attempt.selector, executor, p, LOAN)
+        );
+        require(!ok, "non-owner executed");
+        require(!executor.activeExecution(), "unauthorized execution activated");
     }
 
     function test_callback_spoof_is_rejected() public {
@@ -114,5 +149,13 @@ contract Phase19ExecutorTest {
         executor.execute(p, LOAN);
         require(asset.balanceOf(address(executor)) == 0, "rollback failed");
         require(!executor.consumedIntent(p.intentHash), "intent consumed on revert");
+    }
+
+    function test_expired_deadline_is_rejected_before_flash_loan() public {
+        Phase19Executor.ExecutionParams memory p = _params(bytes32(uint256(10)));
+        p.deadline = 999_999;
+        vm.expectRevert(Phase19Executor.InvalidDeadline.selector);
+        executor.execute(p, LOAN);
+        require(!executor.activeExecution(), "expired execution activated");
     }
 }
