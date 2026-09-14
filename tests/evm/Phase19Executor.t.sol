@@ -31,6 +31,7 @@ contract Phase19ExecutorTest {
     uint256 internal constant LOAN = 100 ether;
     uint256 internal constant PREMIUM_BPS = 100;
     uint256 internal constant MIN_SURPLUS = 4 ether;
+    bytes32 internal constant QUOTE_ROUTE_HASH = keccak256("canonical-quote-route");
 
     function setUp() public {
         asset = new MockERC20("Asset", "AST", 18);
@@ -55,7 +56,8 @@ contract Phase19ExecutorTest {
         p.amountOutMinSecond = 106 ether;
         p.minimumSurplus = MIN_SURPLUS;
         p.deadline = 1_000_600;
-        p.routeHash = executor.routeHash(address(asset), address(mid), true, 3000);
+        p.routeHash = QUOTE_ROUTE_HASH;
+        p.topologyHash = executor.routeTopologyHash(address(asset), address(mid), true, 3000);
         p.intentHash = intent;
     }
 
@@ -81,7 +83,7 @@ contract Phase19ExecutorTest {
         p.firstOnQuickSwap = false;
         p.amountOutMinFirst = 110 ether;
         p.amountOutMinSecond = 106 ether;
-        p.routeHash = executor.routeHash(address(asset), address(mid), false, 3000);
+        p.topologyHash = executor.routeTopologyHash(address(asset), address(mid), false, 3000);
         executor.execute(p, LOAN);
         require(asset.balanceOf(address(executor)) == 5 ether, "reverse surplus");
         require(executor.consumedIntent(p.intentHash), "reverse intent not consumed");
@@ -111,9 +113,23 @@ contract Phase19ExecutorTest {
         executor.execute(p, LOAN);
     }
 
-    function test_route_mutation_is_rejected() public {
+    function test_route_topology_mutation_is_rejected() public {
         Phase19Executor.ExecutionParams memory p = _params(bytes32(uint256(4)));
         p.tokenMid = address(asset);
+        vm.expectRevert(Phase19Executor.InvalidRoute.selector);
+        executor.execute(p, LOAN);
+    }
+
+    function test_quote_route_hash_is_distinct_but_required() public {
+        Phase19Executor.ExecutionParams memory p = _params(bytes32(uint256(11)));
+        p.routeHash = bytes32(0);
+        vm.expectRevert(Phase19Executor.InvalidRoute.selector);
+        executor.execute(p, LOAN);
+    }
+
+    function test_topology_hash_mutation_is_rejected() public {
+        Phase19Executor.ExecutionParams memory p = _params(bytes32(uint256(12)));
+        p.topologyHash = bytes32(uint256(999));
         vm.expectRevert(Phase19Executor.InvalidRoute.selector);
         executor.execute(p, LOAN);
     }
@@ -137,7 +153,7 @@ contract Phase19ExecutorTest {
         p.minimumSurplus = 1 ether;
         p.amountOutMinFirst = 100 ether;
         p.amountOutMinSecond = 101 ether;
-        p.routeHash = executor.routeHash(address(asset), address(mid), true, 3000);
+        p.topologyHash = executor.routeTopologyHash(address(asset), address(mid), true, 3000);
         vm.expectRevert(Phase19Executor.MinimumSurplusFailed.selector);
         executor.execute(p, LOAN);
     }

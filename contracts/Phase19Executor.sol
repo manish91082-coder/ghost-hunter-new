@@ -44,9 +44,9 @@ interface IUniswapV3RouterPhase19 {
 
 /// @notice Minimal Phase-19 execution sink for the first two-leg Aave V3 strategy.
 /// @dev Off-chain Governor/Signer/PrivateSubmit remain authoritative for authorization.
-///      This contract independently enforces caller, Aave callback, route commitment,
-///      per-leg minimums, deadline, repayment, replay protection, and a token-denominated
-///      minimum surplus. It deliberately never attempts USD valuation on-chain.
+///      The off-chain routeHash commits the ordered quote evidence. topologyHash commits
+///      the on-chain executable topology independently. This deliberately never attempts
+///      USD valuation on-chain.
 contract Phase19Executor {
     error Unauthorized();
     error InvalidAddress();
@@ -94,13 +94,15 @@ contract Phase19Executor {
         uint256 minimumSurplus;
         uint256 deadline;
         bytes32 routeHash;
+        bytes32 topologyHash;
         bytes32 intentHash;
     }
 
     event ExecutionSettled(
         bytes32 indexed intentHash,
         bytes32 indexed routeHash,
-        address indexed asset,
+        bytes32 indexed topologyHash,
+        address asset,
         uint256 loanAmount,
         uint256 premium,
         uint256 finalBalance,
@@ -129,7 +131,7 @@ contract Phase19Executor {
         _status = NOT_ENTERED;
     }
 
-    function routeHash(
+    function routeTopologyHash(
         address asset,
         address tokenMid,
         bool firstOnQuickSwap,
@@ -153,8 +155,11 @@ contract Phase19Executor {
         if (amount == 0) revert InvalidAmount();
         if (p.deadline < block.timestamp) revert InvalidDeadline();
         if (p.amountOutMinFirst == 0 || p.amountOutMinSecond == 0) revert InvalidAmount();
-        if (p.routeHash != routeHash(p.asset, p.tokenMid, p.firstOnQuickSwap, p.uniswapFee)) revert InvalidRoute();
-        if (p.intentHash == bytes32(0) || consumedIntent[p.intentHash]) revert InvalidRoute();
+        if (p.routeHash == bytes32(0) || p.intentHash == bytes32(0)) revert InvalidRoute();
+        if (p.topologyHash != routeTopologyHash(p.asset, p.tokenMid, p.firstOnQuickSwap, p.uniswapFee)) {
+            revert InvalidRoute();
+        }
+        if (consumedIntent[p.intentHash]) revert InvalidRoute();
         if (p.minimumSurplus == 0) revert InvalidAmount();
 
         activeExecution = true;
@@ -185,9 +190,9 @@ contract Phase19Executor {
         if (asset != p.asset) revert InvalidAsset();
         if (amount == 0) revert InvalidLoanAmount();
         if (p.deadline < block.timestamp) revert InvalidDeadline();
-        if (p.tokenMid == address(0) || p.intentHash == bytes32(0)) revert InvalidRoute();
+        if (p.tokenMid == address(0) || p.routeHash == bytes32(0) || p.intentHash == bytes32(0)) revert InvalidRoute();
         if (p.intentHash != activeIntentHash) revert ActiveExecutionMismatch();
-        if (p.routeHash != routeHash(p.asset, p.tokenMid, p.firstOnQuickSwap, p.uniswapFee)) revert InvalidRoute();
+        if (p.topologyHash != routeTopologyHash(p.asset, p.tokenMid, p.firstOnQuickSwap, p.uniswapFee)) revert InvalidRoute();
         if (consumedIntent[p.intentHash]) revert IntentAlreadyConsumed();
 
         if (IERC20Phase19(asset).balanceOf(address(this)) < amount) revert InvalidLoanAmount();
@@ -217,6 +222,7 @@ contract Phase19Executor {
         emit ExecutionSettled(
             p.intentHash,
             p.routeHash,
+            p.topologyHash,
             asset,
             amount,
             premium,

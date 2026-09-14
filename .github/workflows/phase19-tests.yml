@@ -43,5 +43,22 @@ jobs:
           done
           echo "All configured Polygon fork endpoints failed"
           exit 1
+      - name: Run Polygon fork execution probe
+        run: |
+          set -euo pipefail
+          endpoints=(
+            "https://polygon-bor-rpc.publicnode.com"
+            "https://polygon-rpc.com"
+          )
+          for endpoint in "${endpoints[@]}"; do
+            echo "Attempting Polygon fork execution probe endpoint: ${endpoint}"
+            if forge test --root . --fork-url "${endpoint}" --match-path tests/evm/PolygonForkExecutionProbe.t.sol -vv; then
+              echo "Polygon fork execution probe passed using ${endpoint}"
+              exit 0
+            fi
+            echo "Polygon fork execution probe endpoint failed: ${endpoint}"
+          done
+          echo "All configured Polygon fork execution probe endpoints failed"
+          exit 1
       - name: Run Phase-19 unittest suite
         run: python -m unittest discover -s tests/phase19 -v
