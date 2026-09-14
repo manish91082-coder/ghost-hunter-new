@@ -2,7 +2,7 @@ import unittest
 from dataclasses import replace
 from decimal import Decimal
 
-from phantomx.economic_proof import build_economic_proof
+from phantomx.economic_proof import EconomicProof, build_economic_proof
 from phantomx.economics import CostBreakdown
 from phantomx.evm_preflight import preflight_execution, simulation_hash
 from phantomx.execution import Authorization, ExecutionIntent, ExecutionState, TransactionEnvelope
@@ -168,19 +168,20 @@ class GovernorTests(unittest.TestCase):
         self.assertFalse(self.run_governor(policy=replace(self.policy, max_relay_usd="0.019")).approved)
 
     def test_economic_floor_is_strict_and_ai_cannot_override_it(self):
-        lower = build_economic_proof(
+        below_floor = EconomicProof(
+            schema_version=1,
             route_hash=self.simulation.route_hash,
             quote_hashes=tuple(leg.quote_hash for leg in self.simulation.legs),
             valuation_hash=VALUATION,
             final_settlement_usd="100.25",
             loan_principal_usd="100.00",
-            costs=CostBreakdown(),
+            costs=CostBreakdown(other="0.06"),
             max_gas_usd="1.00",
             max_relay_usd="1.00",
             minimum_net_profit_usd="0.20",
         )
-        self.assertTrue(lower.economically_valid)
-        self.assertFalse(self.run_governor(economic_proof=lower, ai_rank="999999").approved)
+        self.assertFalse(below_floor.economically_valid)
+        self.assertFalse(self.run_governor(economic_proof=below_floor, ai_rank="999999").approved)
 
     def test_allowlists_block_unknown_executor_sender_asset_and_route(self):
         self.assertFalse(self.run_governor(policy=replace(self.policy, approved_executors=(TOKEN_A,))).approved)
