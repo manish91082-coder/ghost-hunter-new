@@ -49,7 +49,7 @@ class LoanOptimizerTests(unittest.TestCase):
 
     def test_candidates_at_or_below_floor_are_not_eligible(self):
         def evaluate_floor(amount):
-            settlement = Decimal(amount) + Decimal("0.21")
+            settlement = Decimal(amount) + Decimal("0.22")
             return LoanEvaluation(
                 amount,
                 137,
@@ -88,14 +88,14 @@ class LoanOptimizerTests(unittest.TestCase):
 
     def test_mismatched_return_amount_is_rejected(self):
         def bad(amount):
-            return LoanEvaluation(amount + 1, 137, 5000, proof_for(amount + 1, str(amount + 1.0)))
+            return LoanEvaluation(amount + 1, 137, 5000, proof_for(amount + 1, str(Decimal(amount + 1) + Decimal("1.0"))))
 
         with self.assertRaises(LoanOptimizationError):
             optimize_exact_candidates((100,), bad)
 
     def test_mixed_market_blocks_are_rejected(self):
         def bad(amount):
-            return LoanEvaluation(amount, 137, 5000 + amount, proof_for(amount, str(amount + 1.0)))
+            return LoanEvaluation(amount, 137, 5000 + amount, proof_for(amount, str(Decimal(amount) + Decimal("1.0"))))
 
         with self.assertRaises(LoanOptimizationError):
             optimize_exact_candidates((100, 200), bad)
