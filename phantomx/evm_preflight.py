@@ -89,6 +89,10 @@ def _validate_executor_calldata(
         raise EVMPreflightError("executor calldata commitment does not match intent")
     if decoded.route_commitment == "0x" + "00" * 32:
         raise EVMPreflightError("executor calldata route commitment is empty")
+    if intent.minimum_surplus_token_amount <= 0:
+        raise EVMPreflightError("intent minimum surplus settlement floor must be positive")
+    if decoded.minimum_surplus != intent.minimum_surplus_token_amount:
+        raise EVMPreflightError("executor calldata minimum surplus does not match intent")
 
     first_is_quick = "quickswap" in first_leg.dex.lower()
     first_is_uni = "uniswap" in first_leg.dex.lower()
