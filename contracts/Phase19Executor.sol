@@ -78,7 +78,6 @@ contract Phase19Executor {
 
     mapping(bytes32 => bool) public consumedIntent;
 
-    // Set before calling Aave and consumed by exactly one synchronous callback.
     bool public activeExecution;
     bytes32 public activeIntentHash;
     address public activeAsset;
@@ -148,17 +147,13 @@ contract Phase19Executor {
         ));
     }
 
-    /// @notice Starts one Aave V3 flash-loan execution.
-    /// @dev The signed transaction must bind the complete calldata including params.
     function execute(ExecutionParams calldata p, uint256 amount) external onlyOwner {
         if (activeExecution) revert Reentrancy();
         if (p.asset == address(0) || p.tokenMid == address(0)) revert InvalidAddress();
         if (amount == 0) revert InvalidAmount();
         if (p.deadline < block.timestamp) revert InvalidDeadline();
         if (p.amountOutMinFirst == 0 || p.amountOutMinSecond == 0) revert InvalidAmount();
-        if (p.routeHash != routeHash(p.asset, p.tokenMid, p.firstOnQuickSwap, p.uniswapFee)) {
-            revert InvalidRoute();
-        }
+        if (p.routeHash != routeHash(p.asset, p.tokenMid, p.firstOnQuickSwap, p.uniswapFee)) revert InvalidRoute();
         if (p.intentHash == bytes32(0) || consumedIntent[p.intentHash]) revert InvalidRoute();
         if (p.minimumSurplus == 0) revert InvalidAmount();
 
@@ -171,13 +166,9 @@ contract Phase19Executor {
         bytes memory encoded = abi.encode(p, amount);
         IAaveV3PoolPhase19(aavePool).flashLoanSimple(address(this), p.asset, amount, encoded, 0);
 
-        // Aave returns only after executeOperation has completed successfully.
-        // Any revert rolls back this state as part of the transaction.
         if (activeExecution) revert NoActiveExecution();
     }
 
-    /// @notice Aave V3 callback. Only the configured pool and this contract's own
-    ///         flash-loan initiation may reach this function.
     function executeOperation(
         address asset,
         uint256 amount,
@@ -196,9 +187,7 @@ contract Phase19Executor {
         if (p.deadline < block.timestamp) revert InvalidDeadline();
         if (p.tokenMid == address(0) || p.intentHash == bytes32(0)) revert InvalidRoute();
         if (p.intentHash != activeIntentHash) revert ActiveExecutionMismatch();
-        if (p.routeHash != routeHash(p.asset, p.tokenMid, p.firstOnQuickSwap, p.uniswapFee)) {
-            revert InvalidRoute();
-        }
+        if (p.routeHash != routeHash(p.asset, p.tokenMid, p.firstOnQuickSwap, p.uniswapFee)) revert InvalidRoute();
         if (consumedIntent[p.intentHash]) revert IntentAlreadyConsumed();
 
         if (IERC20Phase19(asset).balanceOf(address(this)) < amount) revert InvalidLoanAmount();
@@ -212,9 +201,10 @@ contract Phase19Executor {
         }
 
         uint256 balanceAfter = IERC20Phase19(asset).balanceOf(address(this));
+        uint256 balanceBefore = activeBalanceBefore;
         uint256 repayment = amount + premium;
-        if (balanceAfter < activeBalanceBefore + repayment) revert RepaymentFailed();
-        if (balanceAfter < activeBalanceBefore + repayment + p.minimumSurplus) revert MinimumSurplusFailed();
+        if (balanceAfter < balanceBefore + repayment) revert RepaymentFailed();
+        if (balanceAfter < balanceBefore + repayment + p.minimumSurplus) revert MinimumSurplusFailed();
 
         if (!IERC20Phase19(asset).approve(aavePool, repayment)) revert ApprovalFailed();
         consumedIntent[p.intentHash] = true;
@@ -231,7 +221,7 @@ contract Phase19Executor {
             amount,
             premium,
             balanceAfter,
-            balanceAfter - activeBalanceBefore
+            balanceAfter - balanceBefore - repayment
         );
         return true;
     }
