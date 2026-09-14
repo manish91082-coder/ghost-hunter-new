@@ -14,6 +14,7 @@ SENDER = "0x" + "cc" * 20
 ROUTE = "0x" + "11" * 32
 ECONOMIC = "0x" + "22" * 32
 SIMULATION = "0x" + "33" * 32
+AUTHORITY = "0x" + "44" * 32
 CALldata = b"phase19-calldata"
 RAW = b"signed:" + CALldata
 
@@ -73,7 +74,8 @@ class PrivateSubmitBoundaryTests(unittest.TestCase):
             approved=True, reason="all governor policy gates passed", chain_id=137,
             block_number=5000, intent_hash=self.intent.intent_hash(), route_hash=ROUTE,
             economic_proof_hash=ECONOMIC, simulation_proof_hash=SIMULATION,
-            calldata_hash=self.envelope.calldata_hash, ai_rank="0.9",
+            calldata_hash=self.envelope.calldata_hash, executor_authority_hash=AUTHORITY,
+            ai_rank="0.9",
         )
         self.signed = SignedTransaction(
             intent_hash=self.intent.intent_hash(), governor_decision_hash=self.governor.decision_hash,
@@ -122,7 +124,9 @@ class PrivateSubmitBoundaryTests(unittest.TestCase):
             block_number=self.governor.block_number, intent_hash=self.governor.intent_hash,
             route_hash=self.governor.route_hash, economic_proof_hash=self.governor.economic_proof_hash,
             simulation_proof_hash=self.governor.simulation_proof_hash,
-            calldata_hash=self.governor.calldata_hash, ai_rank=self.governor.ai_rank,
+            calldata_hash=self.governor.calldata_hash,
+            executor_authority_hash=self.governor.executor_authority_hash,
+            ai_rank=self.governor.ai_rank,
         )
         with self.assertRaises(PrivateSubmitError):
             self.submit(relay, governor=blocked)
@@ -130,7 +134,7 @@ class PrivateSubmitBoundaryTests(unittest.TestCase):
 
     def test_signed_intent_mutation_is_rejected(self):
         relay = FakeRelay()
-        mutated = replace(self.signed, intent_hash="0x" + "44" * 32)
+        mutated = replace(self.signed, intent_hash="0x" + "66" * 32)
         with self.assertRaises(PrivateSubmitError):
             self.submit(relay, signed_transaction=mutated)
         self.assertEqual(relay.calls, 0)
