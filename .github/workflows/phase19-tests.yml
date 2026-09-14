@@ -30,8 +30,9 @@ jobs:
         run: |
           set -euo pipefail
           endpoints=(
+            "https://polygon.drpc.org/"
+            "https://public.1rpc.io/matic"
             "https://polygon-bor-rpc.publicnode.com"
-            "https://polygon-rpc.com"
           )
           for endpoint in "${endpoints[@]}"; do
             echo "Attempting Polygon fork endpoint: ${endpoint}"
@@ -47,8 +48,9 @@ jobs:
         run: |
           set -euo pipefail
           endpoints=(
+            "https://polygon.drpc.org/"
+            "https://public.1rpc.io/matic"
             "https://polygon-bor-rpc.publicnode.com"
-            "https://polygon-rpc.com"
           )
           for endpoint in "${endpoints[@]}"; do
             echo "Attempting Polygon fork execution probe endpoint: ${endpoint}"
