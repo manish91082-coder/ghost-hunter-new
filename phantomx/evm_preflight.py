@@ -2,8 +2,8 @@
 
 This layer does not sign or submit transactions. It proves that the exact
 transaction envelope still matches the already-proven route, simulation,
-economic proof, authorization, and executable calldata semantics immediately
-before the signer boundary.
+economic proof, authorization, deployed executor authority, and executable
+calldata semantics immediately before the signer boundary.
 """
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from decimal import Decimal
 
 from .economic_proof import EconomicProof, EconomicProofError
 from .execution import Authorization, ExecutionIntent, TransactionEnvelope
+from .executor_authority import ExecutorAuthorityError, ExecutorAuthorityEvidence, verify_executor_authority
 from .executor_calldata import ExecutorCalldataError, decode_executor_calldata
 from .hashing import keccak256_hex
 from .route_simulator import RouteSimulation, RouteSimulationError
@@ -48,6 +49,7 @@ class EVMPreflightResult:
     economic_proof_hash: str
     simulation_proof_hash: str
     calldata_hash: str
+    authority_evidence_hash: str = ""
     passed: bool = True
 
     def __post_init__(self) -> None:
@@ -63,6 +65,14 @@ class EVMPreflightResult:
             value = getattr(self, name)
             if not isinstance(value, str) or len(value) != 66 or not value.startswith("0x"):
                 raise EVMPreflightError(f"{name} must be a 32-byte 0x hash")
+        if self.authority_evidence_hash:
+            if len(self.authority_evidence_hash) != 66 or not self.authority_evidence_hash.startswith("0x"):
+                raise EVMPreflightError("authority_evidence_hash must be a 32-byte 0x hash")
+            try:
+                int(self.authority_evidence_hash[2:], 16)
+            except ValueError as exc:
+                raise EVMPreflightError("authority_evidence_hash must be hexadecimal") from exc
+            object.__setattr__(self, "authority_evidence_hash", self.authority_evidence_hash.lower())
 
 
 def _validate_executor_calldata(
@@ -133,6 +143,7 @@ def preflight_execution(
     now: int,
     expected_chain_id: int = 137,
     expected_route_commitment: str | None = None,
+    executor_authority: ExecutorAuthorityEvidence | None = None,
 ) -> EVMPreflightResult:
     """Fail closed unless every execution-critical identity remains unchanged."""
     try:
@@ -174,6 +185,20 @@ def preflight_execution(
         if simulation.final_amount <= 0:
             raise EVMPreflightError("final route settlement must be positive")
 
+        authority_hash = ""
+        if executor_authority is not None:
+            try:
+                verify_executor_authority(
+                    executor_authority,
+                    chain_id=intent.chain_id,
+                    executor=intent.executor,
+                    sender=intent.sender,
+                    minimum_observed_block=simulation.block_number,
+                )
+            except ExecutorAuthorityError as exc:
+                raise EVMPreflightError(str(exc)) from exc
+            authority_hash = executor_authority.evidence_hash
+
         _validate_executor_calldata(
             intent=intent,
             envelope=envelope,
@@ -203,6 +228,7 @@ def preflight_execution(
             economic_proof_hash=intent.economic_proof_hash,
             simulation_proof_hash=intent.simulation_proof_hash,
             calldata_hash=envelope.calldata_hash,
+            authority_evidence_hash=authority_hash,
         )
     except (ExecutorCalldataError, EconomicProofError, RouteSimulationError) as exc:
         raise EVMPreflightError(str(exc)) from exc
