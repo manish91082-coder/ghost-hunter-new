@@ -2,20 +2,33 @@
 
 **Date:** 2026-09-14
 **Branch:** `phase-19-e2e-harness`
-**Latest implementation commit:** `71399d691fd13675fa4f14136b4eb92812465768`
+**Latest implementation commit:** `e98cb2ecb5bd0ea1efe3bf5574caf931a0473715`
 **Phase:** 19
 **Live execution:** LOCKED
 
 ## This checkpoint
 
-The nonce layer now includes persistent local storage plus a chain-aware recovery boundary. The new chain layer validates Polygon-compatible Ethereum JSON-RPC pending-nonce observations, supports explicit provider quorum, advances local state monotonically, and refuses ambiguous observations. The recovery layer distinguishes pending, inclusion, revert, not-found, drop proof, and reorg proof instead of guessing from transaction absence.
+The nonce layer includes persistent local storage plus a chain-aware recovery boundary. The chain layer validates Polygon-compatible Ethereum JSON-RPC pending-nonce observations, supports explicit provider quorum, advances local state monotonically, and refuses ambiguous observations. The recovery layer distinguishes pending, inclusion, revert, not-found, drop proof, and reorg proof instead of guessing from transaction absence.
 
 ### Added / hardened
 - `phantomx/polygon_nonce.py`
 - `phantomx/recovery.py`
 - `tests/phase19/test_polygon_nonce.py`
 - `tests/phase19/test_recovery.py`
+- `requirements-phase19.txt`
+- `.github/workflows/phase19-tests.yml`
 - `PHASE19_CHAIN_RECOVERY_STATUS.md`
+
+### CI forensic finding and repair
+GitHub Actions run `34829714048` exposed a real environment defect: the runner did not have the Ethereum Keccak backend installed, causing 38 errors. The run also exposed stale tests that had not been updated after the `ExecutionIntent` and `Authorization` schemas changed. The failures were not suppressed.
+
+Repairs committed:
+- declare/install `pycryptodome` for Ethereum Keccak-256;
+- update stale `ExecutionIntent` test fixtures;
+- update stale keyword-only settlement calls;
+- update stale `Authorization` fixtures with gas/fee fields.
+
+Run `34829828141` verified the dependency repair and reduced the suite to the remaining transaction-binding fixture errors. Those fixtures were then corrected in commit `e98cb2ecb5bd0ea1efe3bf5574caf931a0473715`. A successful run for that latest commit is still pending verification.
 
 ### Chain nonce invariants implemented
 - `eth_getTransactionCount(sender, "pending")` is treated as a read-only chain-state observation
@@ -35,13 +48,13 @@ The nonce layer now includes persistent local storage plus a chain-aware recover
 
 ## Evidence boundary
 
-The implementation and tests are committed, but **actual CI execution evidence is still open**. GitHub Actions has not yet exposed a workflow run for the Phase-19 branch commits, so no test-pass claim is made.
+CI is now demonstrably executing the suite. However, **latest-head green evidence is still open** because the newest commit must complete its own workflow run. Implementation commits are not treated as test proof.
 
-No live Polygon RPC call, private-key signing, transaction broadcast, private relay submission, or live capital execution was performed by this increment.
+No live Polygon RPC call, private-key signing, transaction broadcast, private relay submission, or live capital execution was performed.
 
 ## Remaining nonce/recovery P0 work
 
-1. actual GitHub Actions execution evidence
+1. verify a green GitHub Actions run for the latest head
 2. wire the read-only nonce adapter to approved Polygon RPC endpoints and enforce production provider/quorum policy
 3. startup crash/restart reconciliation for `RESERVED → SIGNED → SUBMITTED` records
 4. deterministic replacement fee-policy bounds and replacement authorization
