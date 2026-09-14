@@ -57,9 +57,8 @@ contract Phase19ExecutorTest {
         uint256 beforeBalance = asset.balanceOf(address(executor));
         executor.execute(p, LOAN);
 
-        // 100 -> 110 -> 106, then 101 repayment, leaving 5 token surplus.
+        // 100 -> 110 -> 106, then 101 repayment, leaving 5 ether surplus.
         require(asset.balanceOf(address(executor)) == beforeBalance + 5 ether, "surplus");
-        require(pool != address(0), "pool fixture");
         require(executor.consumedIntent(p.intentHash), "intent not consumed");
         require(!executor.activeExecution(), "execution still active");
     }
@@ -93,17 +92,18 @@ contract Phase19ExecutorTest {
     }
 
     function test_existing_balance_cannot_subsidize_minimum_surplus() public {
-        asset.mint(address(executor), 100 ether);
-        Phase19Executor.ExecutionParams memory p = _params(bytes32(uint256(6)));
-        p.minimumSurplus = 1 ether;
         quick = new MockQuickSwapRouter(100, 100, address(mid));
         uni = new MockUniswapV3Router(101, 100, address(asset));
         executor = new Phase19Executor(address(pool), address(quick), address(uni));
         mid.mint(address(quick), 1_000_000 ether);
         asset.mint(address(uni), 1_000_000 ether);
-        p.routeHash = executor.routeHash(address(asset), address(mid), true, 3000);
+        asset.mint(address(executor), 100 ether);
+
+        Phase19Executor.ExecutionParams memory p = _params(bytes32(uint256(6)));
+        p.minimumSurplus = 1 ether;
         p.amountOutMinFirst = 100 ether;
         p.amountOutMinSecond = 101 ether;
+        p.routeHash = executor.routeHash(address(asset), address(mid), true, 3000);
         vm.expectRevert(Phase19Executor.MinimumSurplusFailed.selector);
         executor.execute(p, LOAN);
     }
