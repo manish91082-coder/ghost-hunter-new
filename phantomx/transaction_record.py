@@ -1,4 +1,4 @@
-"""Immutable transaction record binding for Phase 19."""
+"""Immutable TransactionRecord binding for Phase 19."""
 
 from __future__ import annotations
 
@@ -48,7 +48,19 @@ class TransactionRecord:
             "replacement_of": self.replacement_of.lower() if self.replacement_of else None,
         }
 
+    def identity_canonical(self) -> dict[str, object]:
+        """Immutable transaction identity, deliberately excluding mutable lifecycle state."""
+        payload = self.canonical()
+        payload.pop("state")
+        return payload
+
     def record_hash(self) -> str:
+        """Stable forensic identity hash for this transaction record."""
+        payload = json.dumps(self.identity_canonical(), sort_keys=True, separators=(",", ":")).encode()
+        return keccak256_hex(payload)
+
+    def state_hash(self) -> str:
+        """Hash of identity plus current lifecycle state for audit snapshots."""
         payload = json.dumps(self.canonical(), sort_keys=True, separators=(",", ":")).encode()
         return keccak256_hex(payload)
 
