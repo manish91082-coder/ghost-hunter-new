@@ -28,17 +28,17 @@ class FakeRpc:
 
 
 class QuickSwapSnapshotBindingTests(unittest.TestCase):
-    def test_snapshot_binds_router_block_amounts_and_hash(self):
+    def test_snapshot_binds_router_block_timestamp_amounts_and_hash(self):
         rpc = FakeRpc()
         snapshot = QuickSwapV2ExactQuoter(rpc, ROUTER).quote_snapshot(
             10**18,
             [TOKEN_A, TOKEN_B],
-            BlockSnapshot(137, 0x1234),
-            observed_at_unix=1_757_000_000,
+            BlockSnapshot(137, 0x1234, 1_757_000_000),
             gas_estimate=180_000,
         )
         self.assertEqual(snapshot.chain_id, 137)
         self.assertEqual(snapshot.block_number, 0x1234)
+        self.assertEqual(snapshot.observed_at_unix, 1_757_000_000)
         self.assertEqual(snapshot.pool_or_router, ROUTER)
         self.assertEqual(snapshot.amount_in, 10**18)
         self.assertEqual(snapshot.amount_out, 997 * 10**15)
