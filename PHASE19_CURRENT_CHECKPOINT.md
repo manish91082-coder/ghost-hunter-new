@@ -2,52 +2,46 @@
 
 **Date:** 2026-09-14
 **Branch:** `phase-19-e2e-harness`
-**Latest implementation commit:** `531355579d071cffe417c22e8330e194079c4a18`
-**Latest CI state:** repair committed after run `34835034399` failed on one stale chain-observer test; new verification is pending
+**Latest implementation commit:** `2272669137233c5ef1027dc52390894e95d0d340`
+**Latest verified CI:** run `34835305554` on prior commit `5049d3f52d8f808aae6e10e9f5b07cd4b3afdb87` → SUCCESS; verification of this new commit is pending
 **Phase:** 19
 **Live execution:** LOCKED
 
 ## This checkpoint
 
-Phase 19 now has a durable recovery journal for crash/restart decision evidence. Recovery decisions can be persisted idempotently and marked applied across process restarts. The journal remains policy/evidence-only and cannot sign, submit, release nonces, or broadcast.
+Phase 19 has now added the missing unified persistence boundary: nonce records, transaction records, and recovery journal are stored in one SQLite database so coupled execution-state changes can commit or roll back together. This closes the previous cross-store atomicity gap at the single-host persistence layer.
 
 ### Added / hardened
-- `phantomx/recovery_journal.py`
-- `tests/phase19/test_recovery_journal.py`
-- `phantomx/chain_observer.py` now maps incomplete receipt block evidence to `UNKNOWN` instead of guessing
-- `tests/phase19/test_chain_observer.py` explicitly asserts the fail-closed `UNKNOWN` contract
+- `phantomx/sqlite_execution_store.py`
+- `tests/phase19/test_sqlite_execution_store.py`
+- unified SQLite schema for nonce cursor/reservation, transaction identity/lifecycle, and recovery journal
+- `BEGIN IMMEDIATE`, WAL and `synchronous=FULL`
+- signed transaction creation atomically advances nonce state from `RESERVED` to `SIGNED` and persists the transaction record
+- recovery application atomically journals chain evidence, advances transaction lifecycle, advances nonce lifecycle, and marks the journal entry applied
+- duplicate recovery decisions are idempotent
+- intent, sender, nonce, reservation and transaction-hash binding is checked before mutation
+- invalid coupled transitions roll back without partial state mutation
 
-### Recovery journal invariants
-- recovery decision identity is durable
-- duplicate decision append is idempotent
-- applied markers survive restart
-- replacement transaction hash evidence is preserved
-- unknown journal sequence cannot be marked applied
-- SQLite `BEGIN IMMEDIATE`, WAL and `synchronous=FULL`
-- no signing, RPC, nonce release or broadcast authority
+### Evidence boundary
 
-### CI failure and forensic correction
-Run `34835034399` executed **151 tests** and produced **150 passes + 1 error**. The error was `test_receipt_requires_block_identity`: the test expected `UNKNOWN`, while `chain_observer.py` raised `ChainObservationError` for incomplete block identity. The failure was retained as evidence and corrected by restoring the explicit `UNKNOWN` test contract and updating the observer accordingly.
+The implementation and tests are deterministic persistence evidence only. The unified store has no RPC, signer, relay, broadcast, or live-capital authority.
 
-The corrected implementation is committed at `531355579d071cffe417c22e8330e194079c4a18`. No green claim is made for this new commit until GitHub reruns the suite.
-
-## Evidence boundary
-
-This is deterministic/unit-level and local persistence evidence. It is not Polygon fork proof or production execution proof.
+The existing latest green CI proof is run `34835305554` for commit `5049d3f52d8f808aae6e10e9f5b07cd4b3afdb87`. The current unified-store commits must receive their own green CI run before this checkpoint is considered verified.
 
 No live Polygon RPC execution, private-key signing, transaction broadcast, private relay submission, or live capital execution was performed.
 
 ## Remaining P0 work
 
-1. verify corrected recovery-journal/chain-observer suite
-2. atomic startup crash/restart reconciliation across nonce + transaction records + journal
-3. deterministic replacement fee-policy authorization already implemented, but must remain CI-green
-4. approved Polygon RPC integration with provider/quorum policy
-5. production signer/transaction-builder integration only after recovery gates
-6. exact EVM preflight immediately before signing
-7. private-only relay with no public fallback
-8. receipt settlement reconciliation and realized net PnL proof
-9. Polygon fork/E2E adversarial proof
+1. verify unified execution-store regression suite in GitHub Actions
+2. harden startup crash/restart reconciliation and migration from the three earlier stores
+3. approved Polygon RPC integration with provider/quorum policy
+4. exact market quotes + sequential route economics + loan optimization
+5. production Solidity executor with strict `net > $0.20` settlement invariant
+6. exact EVM preflight / SimulationProof immediately before signing
+7. production signer + transaction builder + nonce authorization integration
+8. private-only relay with no public fallback
+9. receipt settlement reconciliation and realized net PnL proof
+10. Polygon fork/E2E/adversarial proof and shadow validation
 
 **Live execution remains LOCKED.**
 
