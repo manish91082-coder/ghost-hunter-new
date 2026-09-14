@@ -2,50 +2,51 @@
 
 **Date:** 2026-09-14
 **Branch:** `phase-19-e2e-harness`
-**Latest implementation commit:** `4c80e656b7eeba30b0cb1cdec4f293fea200c584`
+**Latest implementation commit:** `71399d691fd13675fa4f14136b4eb92812465768`
 **Phase:** 19
 **Live execution:** LOCKED
 
 ## This checkpoint
 
-The nonce layer now includes a persistent SQLite adapter with atomic writer transactions, restart persistence, local multi-process concurrency coverage, and strict replacement-transaction binding.
+The nonce layer now includes persistent local storage plus a chain-aware recovery boundary. The new chain layer validates Polygon-compatible Ethereum JSON-RPC pending-nonce observations, supports explicit provider quorum, advances local state monotonically, and refuses ambiguous observations. The recovery layer distinguishes pending, inclusion, revert, not-found, drop proof, and reorg proof instead of guessing from transaction absence.
 
 ### Added / hardened
-- `phantomx/sqlite_nonce_store.py`
-- `tests/phase19/test_sqlite_nonce_store.py`
-- `.github/workflows/phase19-tests.yml`
+- `phantomx/polygon_nonce.py`
+- `phantomx/recovery.py`
+- `tests/phase19/test_polygon_nonce.py`
+- `tests/phase19/test_recovery.py`
+- `PHASE19_CHAIN_RECOVERY_STATUS.md`
 
-### Durable/concurrency invariants implemented
-- persistent sender-specific nonce cursors
-- unique `(sender, nonce)` reservation identity
-- globally unique reservation IDs
-- atomic reservation allocation under `BEGIN IMMEDIATE`
-- observed chain pending nonce can advance the cursor but never roll it back
-- state transitions are persisted atomically
-- submitted/included/replaced states require transaction hashes
-- replacement state requires `replacement_of`
-- `replacement_of` must match the currently active transaction hash
-- invalid transitions roll back without mutating the record
-- state survives process restart through the database file
-- concurrent local processes are serialized by SQLite writer transactions
-- WAL + `synchronous=FULL` are configured for the local durable store
+### Chain nonce invariants implemented
+- `eth_getTransactionCount(sender, "pending")` is treated as a read-only chain-state observation
+- malformed RPC responses and RPC errors fail closed
+- local nonce reconciliation uses `max(local_next_nonce, chain_pending_nonce)` and never rolls back
+- optional quorum requires distinct provider identities and unique consensus
+- no signing, broadcasting, or relay behavior exists in the adapter
 
-SQLite WAL is intentionally a **single-host** persistence boundary. It must not be placed on a network filesystem or treated as a multi-host database service. A future multi-host deployment must use a suitable transactional server database while preserving the same nonce invariants.
+### In-flight recovery invariants implemented
+- transaction observations carry explicit state and nonce
+- active transaction hash must match before recovery mutation
+- successful/reverted inclusion requires block and receipt evidence plus gas fields
+- `NOT_FOUND` never alone proves a dropped transaction
+- drop proof requires chain pending nonce to have advanced beyond the transaction nonce
+- reorg proof requires a changed canonical block identity and disappeared receipt
+- recovery produces explicit durable-state decisions; it does not silently submit replacements
 
 ## Evidence boundary
 
-The implementation and adversarial tests are committed, but **actual CI execution evidence is still open**. GitHub Actions has not yet exposed a workflow run for the Phase-19 branch commits, so no test-pass claim is made.
+The implementation and tests are committed, but **actual CI execution evidence is still open**. GitHub Actions has not yet exposed a workflow run for the Phase-19 branch commits, so no test-pass claim is made.
 
-No Polygon RPC, private-key signing, transaction broadcast, or live capital is enabled.
+No live Polygon RPC call, private-key signing, transaction broadcast, private relay submission, or live capital execution was performed by this increment.
 
-## Remaining nonce P0 work
+## Remaining nonce/recovery P0 work
 
 1. actual GitHub Actions execution evidence
-2. chain pending-nonce reconciliation integration against Polygon RPC
-3. crash/restart recovery policy for in-flight signed/submitted records
-4. replacement transaction fee-policy integration
-5. dropped/reorg observation integration
-6. TransactionRecord binding
+2. wire the read-only nonce adapter to approved Polygon RPC endpoints and enforce production provider/quorum policy
+3. startup crash/restart reconciliation for `RESERVED → SIGNED → SUBMITTED` records
+4. deterministic replacement fee-policy bounds and replacement authorization
+5. chain observation for dropped/replaced/reorged transactions with durable evidence
+6. bind `TransactionRecord` to `ExecutionIntent`, `Authorization`, calldata hash, nonce, and transaction hash
 
 Only after these gates are proven should signer/transaction-builder integration begin.
 
