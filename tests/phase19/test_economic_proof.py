@@ -63,8 +63,14 @@ class EconomicProofTests(unittest.TestCase):
             "relay",
             "other",
         ):
-            reduced = self.costs(**{field: getattr(self.costs(), field) + Decimal("0.01")})
-            proof = self.build(costs=reduced)
+            increased = getattr(self.costs(), field) + Decimal("0.01")
+            reduced = self.costs(**{field: increased})
+            budgets = {}
+            if field == "gas":
+                budgets["max_gas_usd"] = increased
+            if field == "relay":
+                budgets["max_relay_usd"] = increased
+            proof = self.build(costs=reduced, **budgets)
             self.assertEqual(
                 proof.worst_case_net_profit_usd,
                 base.worst_case_net_profit_usd - Decimal("0.01"),
