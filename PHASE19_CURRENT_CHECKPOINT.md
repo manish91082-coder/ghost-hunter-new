@@ -2,66 +2,70 @@
 
 **Date:** 2026-09-14
 **Branch:** `phase-19-e2e-harness`
-**Latest implementation commit before this checkpoint:** `be87ba8fd656a32f4d7943126cc081f48df6da11`
-**Latest verified CI run:** `34831892429` on `be87ba8fd656a32f4d7943126cc081f48df6da11` → SUCCESS
+**Latest implementation commit:** `fceea4fa6f7c34f055e6b233b5ae85cf88047b0c`
+**Latest verified CI:** run `34832734965` on `fceea4fa6f7c34f055e6b233b5ae85cf88047b0c` → SUCCESS
 **Phase:** 19
 **Live execution:** LOCKED
 
 ## This checkpoint
 
-The Phase-19 execution identity now has an immutable TransactionRecord boundary. A signed-state record binds the ExecutionIntent, Authorization fingerprint, nonce reservation, chain/sender/executor, exact calldata hash, gas envelope, and transaction hash. Material mutations are rejected and record identity is hashable for forensic evidence.
+Phase 19 now has a durable SQLite TransactionRecord persistence boundary. A signed-state record can be persisted with its intent hash, authorization fingerprint, nonce reservation, chain/sender/executor, exact calldata hash, gas envelope, transaction hash, lifecycle state and explicit replacement linkage. The store uses SQLite `BEGIN IMMEDIATE`, WAL and `synchronous=FULL`, matching the single-host crash-safety boundary of the durable nonce store.
 
 ### Added / hardened
-- `phantomx/transaction_record.py`
-- `tests/phase19/test_transaction_record.py`
-- existing `phantomx/transaction_binding.py` remains the exact envelope verifier
-- existing nonce and chain-recovery layers remain unchanged and locked to their evidence rules
+- `phantomx/sqlite_transaction_store.py`
+- `tests/phase19/test_sqlite_transaction_store.py`
+- `phantomx/transaction_record.py` now accepts an explicit `now` parameter for deadline validation
+- `TransactionRecord.record_hash()` is now a stable identity hash; `state_hash()` captures identity plus mutable lifecycle state
 
-### TransactionRecord invariants implemented
-- intent hash must equal the canonical ExecutionIntent hash
-- authorization is represented by a deterministic authorization fingerprint
-- reservation ID must match the bound nonce reservation
-- chain ID, sender, executor and nonce must agree across intent, envelope and reservation
-- calldata hash must agree across intent and envelope
-- gas limit and EIP-1559 fee fields must agree with the authorized envelope
-- transaction hash must be a complete 32-byte hex transaction identifier
-- record is frozen/immutable; changes require construction of a new record
-- record hash changes when material record state changes
-- no signer, broadcaster, relay or replacement authority exists in this module
+### Durable TransactionRecord invariants
+- exact ExecutionIntent hash required
+- sender, nonce and reservation identity must match the bound nonce
+- new durable records start only at `SIGNED`
+- transaction hashes are unique and validated as complete 32-byte identifiers
+- stored record identity is recomputed on load
+- lifecycle transitions are atomic and invalid transitions leave state unchanged
+- terminal states cannot restart
+- restart reloads the exact record and lifecycle state
+- replacements preserve sender and nonce and require exact `replacement_of` linkage to an existing replaceable transaction
+- replacement source must be `SIGNED`, `PRIVATE_SUBMITTED` or `PENDING`
+- no signer, RPC observer, broadcaster or relay authority exists in this store
 
-### Adversarial coverage
-- exact record acceptance
-- calldata mutation
-- nonce mutation
-- gas mutation
-- authorization mutation
-- intent mutation
-- nonce-reservation mutation
-- malformed transaction hash
-- record identity mutation
-- frozen-record enforcement
+### Adversarial / recovery coverage
+- create + restart persistence
+- duplicate transaction hash rejection
+- intent mutation rejection
+- nonce mutation rejection
+- lifecycle progression across repeated restarts
+- invalid transition non-mutation
+- terminal-state restart rejection
+- exact replacement linkage
+- wrong replacement source rejection
+- crash-like restart preserving an incomplete signed record
+- stable identity hash versus state hash
 
-### CI evidence
-GitHub Actions run `34831892429` executed the Phase-19 unittest suite successfully for commit `be87ba8fd656a32f4d7943126cc081f48df6da11`. The preceding repaired run `34829892489` was also successful. Earlier failed runs remain preserved as forensic history and are not overwritten by later green runs.
+## CI evidence
+
+GitHub Actions run `34832734965` executed the complete Phase-19 unittest suite successfully for commit `fceea4fa6f7c34f055e6b233b5ae85cf88047b0c`. The preceding run `34832642716` failed on an identity/state-hash design defect; that failure was diagnosed from CI logs, patched, and superseded by the green run. No failed run was hidden or overwritten.
+
+The verified green run covered **110 tests**.
 
 ## Evidence boundary
 
-CI now provides verified automated evidence for the TransactionRecord increment. This is still deterministic/unit-level evidence, not Polygon fork proof or production execution proof.
+This is deterministic/unit-level and local persistence evidence. It is not Polygon fork proof or production execution proof.
 
 No live Polygon RPC execution, private-key signing, transaction broadcast, private relay submission, or live capital execution was performed.
 
 ## Remaining P0 work
 
-1. persist and bind TransactionRecord through the durable transaction lifecycle, including restart recovery
-2. deterministic replacement fee-policy bounds and replacement authorization
-3. durable chain observation for dropped/replaced/reorged transactions
-4. startup crash/restart reconciliation across nonce + transaction records
-5. approved Polygon RPC integration with provider/quorum policy
-6. production signer/transaction-builder integration only after the above gates
-7. exact EVM preflight immediately before signing
-8. private-only relay with no public fallback
-9. receipt settlement reconciliation and realized net PnL proof
-10. Polygon fork/E2E adversarial proof
+1. deterministic replacement fee-policy bounds and replacement authorization
+2. durable chain observation for dropped/replaced/reorged transactions
+3. atomic startup crash/restart reconciliation across nonce + transaction records
+4. approved Polygon RPC integration with provider/quorum policy
+5. production signer/transaction-builder integration only after the above gates
+6. exact EVM preflight immediately before signing
+7. private-only relay with no public fallback
+8. receipt settlement reconciliation and realized net PnL proof
+9. Polygon fork/E2E adversarial proof
 
 **Live execution remains LOCKED.**
 
