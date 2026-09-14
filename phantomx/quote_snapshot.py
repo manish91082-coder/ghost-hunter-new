@@ -19,6 +19,12 @@ class QuoteSnapshotError(QuoteEngineError):
     """Raised when quote evidence is incomplete or internally inconsistent."""
 
 
+def _canonical_bytes(fields: dict[str, object]) -> bytes:
+    return json.dumps(
+        fields, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+
+
 @dataclass(frozen=True)
 class QuoteSnapshot:
     schema_version: int
@@ -70,9 +76,7 @@ class QuoteSnapshot:
         }
 
     def canonical_bytes(self) -> bytes:
-        return json.dumps(
-            self.canonical_dict(), sort_keys=True, separators=(",", ":"), ensure_ascii=False
-        ).encode("utf-8")
+        return _canonical_bytes(self.canonical_dict())
 
     def compute_hash(self) -> str:
         return keccak256_hex(self.canonical_bytes())
@@ -89,23 +93,19 @@ class QuoteSnapshot:
     ) -> "QuoteSnapshot":
         if not pool_or_router:
             raise QuoteSnapshotError("pool_or_router is required")
-        fields = dict(
-            schema_version=1,
-            chain_id=chain_id,
-            block_number=quote.block_number,
-            observed_at_unix=observed_at_unix,
-            dex=quote.venue,
-            pool_or_router=pool_or_router,
-            token_in=quote.token_in,
-            token_out=quote.token_out,
-            amount_in=quote.amount_in,
-            amount_out=quote.amount_out,
-            fee_raw=quote.fee_raw,
-            gas_estimate=gas_estimate,
-        )
-        provisional = object.__new__(cls)
-        for key, value in fields.items():
-            object.__setattr__(provisional, key, value)
-        object.__setattr__(provisional, "quote_hash", provisional.compute_hash())
-        cls.__post_init__(provisional)
-        return provisional
+        fields: dict[str, object] = {
+            "schema_version": 1,
+            "chain_id": chain_id,
+            "block_number": quote.block_number,
+            "observed_at_unix": observed_at_unix,
+            "dex": quote.venue,
+            "pool_or_router": pool_or_router,
+            "token_in": quote.token_in,
+            "token_out": quote.token_out,
+            "amount_in": quote.amount_in,
+            "amount_out": quote.amount_out,
+            "fee_raw": quote.fee_raw,
+            "gas_estimate": gas_estimate,
+        }
+        quote_hash = keccak256_hex(_canonical_bytes(fields))
+        return cls(**fields, quote_hash=quote_hash)
