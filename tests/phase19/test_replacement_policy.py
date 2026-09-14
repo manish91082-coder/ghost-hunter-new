@@ -7,26 +7,10 @@ from phantomx.replacement_policy import ReplacementAuthorization, ReplacementFee
 
 class ReplacementPolicyTests(unittest.TestCase):
     def setUp(self):
-        self.policy = ReplacementFeePolicy(
-            min_bump_bps=11000,
-            max_fee_multiplier_bps=12500,
-            max_absolute_fee_per_gas=150,
-            max_priority_fee_per_gas=50,
-        )
+        self.policy = ReplacementFeePolicy(min_bump_bps=11000, max_fee_multiplier_bps=12500, max_absolute_fee_per_gas=150, max_priority_fee_per_gas=50)
 
     def auth(self, **changes):
-        values = dict(
-            original_tx_hash="0x" + "11" * 32,
-            replacement_tx_hash="0x" + "22" * 32,
-            intent_hash="0x" + "33" * 32,
-            authorization_hash="0x" + "44" * 32,
-            nonce=42,
-            old_max_fee_per_gas=100,
-            old_max_priority_fee_per_gas=20,
-            new_max_fee_per_gas=115,
-            new_max_priority_fee_per_gas=23,
-            policy_hash="0x" + "55" * 32,
-        )
+        values = dict(original_tx_hash="0x" + "11" * 32, replacement_tx_hash="0x" + "22" * 32, intent_hash="0x" + "33" * 32, authorization_hash="0x" + "44" * 32, nonce=42, old_max_fee_per_gas=100, old_max_priority_fee_per_gas=20, new_max_fee_per_gas=115, new_max_priority_fee_per_gas=23, policy_hash="0x" + "55" * 32)
         values.update(changes)
         return ReplacementAuthorization(**values)
 
@@ -54,7 +38,7 @@ class ReplacementPolicyTests(unittest.TestCase):
 
     def test_max_fee_must_cover_priority_fee(self):
         with self.assertRaises(ReplacementPolicyError):
-            self.auth(new_max_fee_per_gas=115, new_max_priority_fee_per_gas=116).validate(policy=self.policy)
+            self.auth(new_max_fee_per_gas=22, new_max_priority_fee_per_gas=23).validate(policy=self.policy)
 
     def test_original_envelope_must_be_valid(self):
         with self.assertRaises(ReplacementPolicyError):
