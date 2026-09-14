@@ -76,7 +76,7 @@ def parse_rpc_nonce_response(response: Mapping[str, Any], *, sender: str, provid
     return ChainNonceObservation(sender=sender.lower(), pending_nonce=pending, provider=provider)
 
 
-def pending_nonce(transport: Callable[[str, str], Mapping[str, Any]], sender: str, *, provider: str | None = None) -> ChainNonceObservation:
+def pending_nonce(transport: Callable[[str, str, str], Mapping[str, Any]], sender: str, *, provider: str | None = None) -> ChainNonceObservation:
     """Read the chain's pending nonce through an injected read-only transport."""
     if not sender:
         raise PolygonNonceError("sender is required")
@@ -101,17 +101,22 @@ def reconcile(local_next_nonce: int, observation: ChainNonceObservation) -> Nonc
 def quorum_pending_nonce(observations: Sequence[ChainNonceObservation], *, quorum: int) -> ChainNonceObservation:
     """Return a quorum-backed pending nonce observation.
 
-    The same sender and nonce must be reported by at least ``quorum`` providers.
-    A minority/stale provider therefore cannot advance the local nonce state by
-    itself. The caller must supply observations from distinct approved providers.
+    Each observation must identify a distinct provider. The same sender and
+    nonce must be reported by at least ``quorum`` providers. A minority/stale
+    provider therefore cannot advance local nonce state by itself.
     """
     if not observations:
         raise PolygonNonceError("at least one observation is required")
-    if quorum < 1:
-        raise PolygonNonceError("quorum must be positive")
+    if quorum < 1 or quorum > len(observations):
+        raise PolygonNonceError("quorum must be within the observation count")
     senders = {item.sender.lower() for item in observations}
     if len(senders) != 1:
         raise PolygonNonceError("quorum observations must target one sender")
+    providers = [item.provider for item in observations]
+    if any(not provider for provider in providers):
+        raise PolygonNonceError("quorum observations require provider identities")
+    if len(set(providers)) != len(providers):
+        raise PolygonNonceError("quorum observations require distinct providers")
 
     counts: dict[int, int] = {}
     for item in observations:
@@ -124,5 +129,5 @@ def quorum_pending_nonce(observations: Sequence[ChainNonceObservation], *, quoru
     return ChainNonceObservation(
         sender=source.sender,
         pending_nonce=winner,
-        provider="quorum:" + ",".join(sorted({x.provider or "unknown" for x in observations if x.pending_nonce == winner})),
+        provider="quorum:" + ",".join(sorted(x.provider for x in observations if x.pending_nonce == winner and x.provider)),
     )
