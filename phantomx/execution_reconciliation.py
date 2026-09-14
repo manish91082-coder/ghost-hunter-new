@@ -1,8 +1,7 @@
 """Durable realized-settlement reconciliation for Phase 19.
 
-This boundary accepts only a canonical successful receipt plus independently
-measured settlement accounting. It never treats expected PnL as realized PnL.
-The settlement evidence and terminal execution state are committed together.
+Only a canonical successful receipt plus independently measured settlement can
+reach the terminal profit states. Expected PnL is never treated as realized.
 """
 
 from __future__ import annotations
@@ -31,6 +30,8 @@ class DurableSettlementRecord:
     record_hash: str
     tx_hash: str
     receipt: ReceiptRecord
+    block_hash: str
+    canonical_block_hash: str
     final_settlement: Decimal
     flash_repayment: Decimal
     costs: CostBreakdown
@@ -38,32 +39,21 @@ class DurableSettlementRecord:
     profit_confirmed: bool
 
     def canonical(self) -> dict[str, object]:
-        return {
-            "record_hash": self.record_hash.lower(),
-            "tx_hash": self.tx_hash.lower(),
-            "receipt": {
-                "tx_hash": self.receipt.tx_hash.lower(),
-                "status": self.receipt.status,
-                "gas_used": self.receipt.gas_used,
-                "effective_gas_price": self.receipt.effective_gas_price,
-                "block_number": self.receipt.block_number,
-            },
-            "final_settlement": str(self.final_settlement),
-            "flash_repayment": str(self.flash_repayment),
-            "costs": {
-                "flash_loan_fee": str(self.costs.flash_loan_fee),
-                "dex_fees": str(self.costs.dex_fees),
-                "price_impact": str(self.costs.price_impact),
-                "gas": str(self.costs.gas),
-                "relay": str(self.costs.relay),
-                "other": str(self.costs.other),
-            },
-            "realized_net_profit_usd": str(self.realized_net_profit_usd),
-            "profit_confirmed": self.profit_confirmed,
-        }
+        return _evidence_payload(
+            tx_hash=self.tx_hash,
+            receipt=self.receipt,
+            block_hash=self.block_hash,
+            canonical_block_hash=self.canonical_block_hash,
+            final_settlement=self.final_settlement,
+            flash_repayment=self.flash_repayment,
+            costs=self.costs,
+            realized_net_profit_usd=self.realized_net_profit_usd,
+            profit_confirmed=self.profit_confirmed,
+            record_hash=self.record_hash,
+        )
 
     def evidence_hash(self) -> str:
-        payload = self.canonical().copy()
+        payload = self.canonical()
         payload.pop("record_hash")
         return keccak256_hex(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode())
 
@@ -86,6 +76,125 @@ def _decimal(value: Decimal | str | int | float, field: str) -> Decimal:
     return result
 
 
+def _ensure_schema(store: SQLiteExecutionStore) -> None:
+    with store._connect() as db:
+        db.execute(
+            """CREATE TABLE IF NOT EXISTS settlement_records(
+                record_hash TEXT PRIMARY KEY,
+                transaction_record_hash TEXT NOT NULL UNIQUE,
+                tx_hash TEXT NOT NULL,
+                status INTEGER NOT NULL CHECK(status=1),
+                gas_used INTEGER NOT NULL CHECK(gas_used>=0),
+                effective_gas_price INTEGER NOT NULL CHECK(effective_gas_price>=0),
+                block_number INTEGER NOT NULL CHECK(block_number>=0),
+                block_hash TEXT NOT NULL,
+                canonical_block_hash TEXT NOT NULL,
+                final_settlement TEXT NOT NULL,
+                flash_repayment TEXT NOT NULL,
+                flash_loan_fee TEXT NOT NULL,
+                dex_fees TEXT NOT NULL,
+                price_impact TEXT NOT NULL,
+                gas TEXT NOT NULL,
+                relay TEXT NOT NULL,
+                other TEXT NOT NULL,
+                realized_net_profit_usd TEXT NOT NULL,
+                profit_confirmed INTEGER NOT NULL CHECK(profit_confirmed IN(0,1)),
+                evidence_hash TEXT NOT NULL
+            )"""
+        )
+
+
+def _evidence_payload(
+    *,
+    tx_hash: str,
+    receipt: ReceiptRecord,
+    block_hash: str,
+    canonical_block_hash: str,
+    final_settlement: Decimal,
+    flash_repayment: Decimal,
+    costs: CostBreakdown,
+    realized_net_profit_usd: Decimal,
+    profit_confirmed: bool,
+    record_hash: str,
+) -> dict[str, object]:
+    return {
+        "record_hash": record_hash.lower(),
+        "tx_hash": tx_hash.lower(),
+        "receipt": {
+            "tx_hash": receipt.tx_hash.lower(),
+            "status": receipt.status,
+            "gas_used": receipt.gas_used,
+            "effective_gas_price": receipt.effective_gas_price,
+            "block_number": receipt.block_number,
+        },
+        "block_hash": block_hash.lower(),
+        "canonical_block_hash": canonical_block_hash.lower(),
+        "final_settlement": str(final_settlement),
+        "flash_repayment": str(flash_repayment),
+        "costs": {
+            "flash_loan_fee": str(costs.flash_loan_fee),
+            "dex_fees": str(costs.dex_fees),
+            "price_impact": str(costs.price_impact),
+            "gas": str(costs.gas),
+            "relay": str(costs.relay),
+            "other": str(costs.other),
+        },
+        "realized_net_profit_usd": str(realized_net_profit_usd),
+        "profit_confirmed": profit_confirmed,
+    }
+
+
+def _make_settlement_record(
+    *,
+    record_hash: str,
+    receipt: ReceiptRecord,
+    block_hash: str,
+    canonical_block_hash: str,
+    final_settlement: Decimal,
+    flash_repayment: Decimal,
+    costs: CostBreakdown,
+    reconciliation: Reconciliation,
+    evidence_hash: str,
+) -> DurableSettlementRecord:
+    return DurableSettlementRecord(
+        record_hash=record_hash,
+        tx_hash=receipt.tx_hash,
+        receipt=receipt,
+        block_hash=block_hash,
+        canonical_block_hash=canonical_block_hash,
+        final_settlement=final_settlement,
+        flash_repayment=flash_repayment,
+        costs=costs,
+        realized_net_profit_usd=reconciliation.settlement.realized_net_profit,
+        profit_confirmed=reconciliation.profit_confirmed,
+    )
+
+
+def _load_settlement(store: SQLiteExecutionStore, transaction_record_hash: str) -> DurableSettlementRecord:
+    with store._connect() as db:
+        row = db.execute(
+            "SELECT record_hash,tx_hash,status,gas_used,effective_gas_price,block_number,block_hash,canonical_block_hash,final_settlement,flash_repayment,flash_loan_fee,dex_fees,price_impact,gas,relay,other,realized_net_profit_usd,profit_confirmed,evidence_hash FROM settlement_records WHERE transaction_record_hash=?",
+            (transaction_record_hash.lower(),),
+        ).fetchone()
+    if row is None:
+        raise ExecutionReconciliationError("durable settlement record is missing")
+    record = DurableSettlementRecord(
+        record_hash=row[0],
+        tx_hash=row[1],
+        receipt=ReceiptRecord(tx_hash=row[1], status=int(row[2]), gas_used=int(row[3]), effective_gas_price=int(row[4]), block_number=int(row[5])),
+        block_hash=row[6],
+        canonical_block_hash=row[7],
+        final_settlement=Decimal(row[8]),
+        flash_repayment=Decimal(row[9]),
+        costs=CostBreakdown(flash_loan_fee=Decimal(row[10]), dex_fees=Decimal(row[11]), price_impact=Decimal(row[12]), gas=Decimal(row[13]), relay=Decimal(row[14]), other=Decimal(row[15])),
+        realized_net_profit_usd=Decimal(row[16]),
+        profit_confirmed=bool(row[17]),
+    )
+    if record.evidence_hash().lower() != str(row[18]).lower():
+        raise ExecutionReconciliationError("stored settlement evidence hash mismatch")
+    return record
+
+
 def reconcile_included_execution(
     *,
     store: SQLiteExecutionStore,
@@ -96,13 +205,12 @@ def reconcile_included_execution(
     flash_repayment: Decimal | str | int | float,
     costs: CostBreakdown,
 ) -> ReconciledExecution:
-    """Persist realized settlement and terminal profit state atomically.
+    """Atomically persist realized settlement and terminal profit state.
 
-    The transaction must already be durably INCLUDED. The chain observation must
-    prove the exact tx is included in the canonical chain. Gas is charged from
-    receipt gasUsed * effectiveGasPrice after its USD conversion is supplied in
-    ``costs.gas``. Profit confirmation uses the strict > $0.20 invariant.
+    ``costs.gas`` must be the USD conversion of receipt.gasUsed multiplied by
+    receipt.effectiveGasPrice. The strict profit floor remains ``> $0.20``.
     """
+    _ensure_schema(store)
     if observation.state is not ChainObservationState.INCLUDED:
         raise ExecutionReconciliationError("settlement requires canonical INCLUDED observation")
     if not _TX_HASH.fullmatch(observation.tx_hash) or not _TX_HASH.fullmatch(receipt.tx_hash):
@@ -111,11 +219,17 @@ def reconcile_included_execution(
         raise ExecutionReconciliationError("observation and receipt transaction hash mismatch")
     if receipt.status != 1:
         raise ExecutionReconciliationError("realized settlement requires successful receipt")
+    if not observation.block_hash or not observation.canonical_block_hash:
+        raise ExecutionReconciliationError("included settlement requires canonical block identity")
+    if observation.block_hash.lower() != observation.canonical_block_hash.lower():
+        raise ExecutionReconciliationError("settlement block is not canonical")
     if receipt.gas_used < 0 or receipt.effective_gas_price < 0 or receipt.block_number < 0:
         raise ExecutionReconciliationError("invalid receipt accounting fields")
 
     final_settlement_d = _decimal(final_settlement, "final_settlement")
     flash_repayment_d = _decimal(flash_repayment, "flash_repayment")
+    if final_settlement_d < 0 or flash_repayment_d < 0:
+        raise ExecutionReconciliationError("settlement values cannot be negative")
     costs_d = CostBreakdown(
         flash_loan_fee=_decimal(costs.flash_loan_fee, "flash_loan_fee"),
         dex_fees=_decimal(costs.dex_fees, "dex_fees"),
@@ -124,53 +238,44 @@ def reconcile_included_execution(
         relay=_decimal(costs.relay, "relay"),
         other=_decimal(costs.other, "other"),
     )
-    result = reconcile(
+    if min(costs_d.flash_loan_fee, costs_d.dex_fees, costs_d.price_impact, costs_d.gas, costs_d.relay, costs_d.other) < 0:
+        raise ExecutionReconciliationError("cost components cannot be negative")
+
+    reconciliation = reconcile(
         receipt=receipt,
         final_settlement=final_settlement_d,
         flash_repayment=flash_repayment_d,
         costs=costs_d,
     )
-    tx = store.get_transaction(next_hash for next_hash in []) if False else None
-    # The record is identified by the intent hash; transaction lookup below is
-    # deliberately direct so the caller cannot supply an unrelated tx record.
     with store._connect() as db:
         try:
             db.execute("BEGIN IMMEDIATE")
             row = db.execute(
-                "SELECT record_hash,intent_hash,authorization_hash,reservation_id,chain_id,sender,executor,nonce,calldata_hash,gas_limit,max_fee_per_gas,max_priority_fee_per_gas,tx_hash,state,replacement_of FROM transaction_records WHERE intent_hash=?",
+                "SELECT record_hash,intent_hash,tx_hash,state FROM transaction_records WHERE intent_hash=?",
                 (intent.intent_hash().lower(),),
             ).fetchone()
             if row is None:
                 raise ExecutionReconciliationError("unknown durable transaction for execution intent")
-            if row[12].lower() != receipt.tx_hash.lower():
+            if row[2].lower() != receipt.tx_hash.lower():
                 raise ExecutionReconciliationError("receipt does not match durable transaction")
-            current_state = ExecutionState(row[13])
-            if current_state is not ExecutionState.INCLUDED:
-                raise ExecutionReconciliationError(f"transaction must be INCLUDED before settlement, got {current_state.value}")
+            if ExecutionState(row[3]) is not ExecutionState.INCLUDED:
+                raise ExecutionReconciliationError(f"transaction must be INCLUDED before settlement, got {row[3]}")
 
             record_hash = str(row[0])
-            settlement_payload = {
-                "tx_hash": receipt.tx_hash.lower(),
-                "receipt": {
-                    "status": receipt.status,
-                    "gas_used": receipt.gas_used,
-                    "effective_gas_price": receipt.effective_gas_price,
-                    "block_number": receipt.block_number,
-                },
-                "final_settlement": str(final_settlement_d),
-                "flash_repayment": str(flash_repayment_d),
-                "costs": {
-                    "flash_loan_fee": str(costs_d.flash_loan_fee),
-                    "dex_fees": str(costs_d.dex_fees),
-                    "price_impact": str(costs_d.price_impact),
-                    "gas": str(costs_d.gas),
-                    "relay": str(costs_d.relay),
-                    "other": str(costs_d.other),
-                },
-                "realized_net_profit_usd": str(result.settlement.realized_net_profit),
-                "profit_confirmed": result.profit_confirmed,
-            }
-            evidence_hash = keccak256_hex(json.dumps(settlement_payload, sort_keys=True, separators=(",", ":")).encode())
+            payload = _evidence_payload(
+                tx_hash=receipt.tx_hash,
+                receipt=receipt,
+                block_hash=observation.block_hash,
+                canonical_block_hash=observation.canonical_block_hash,
+                final_settlement=final_settlement_d,
+                flash_repayment=flash_repayment_d,
+                costs=costs_d,
+                realized_net_profit_usd=reconciliation.settlement.realized_net_profit,
+                profit_confirmed=reconciliation.profit_confirmed,
+                record_hash="0x" + "00" * 32,
+            )
+            payload.pop("record_hash")
+            evidence_hash = keccak256_hex(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode())
             settlement_record_hash = keccak256_hex(json.dumps({"transaction_record_hash": record_hash.lower(), "evidence_hash": evidence_hash}, sort_keys=True, separators=(",", ":")).encode())
 
             existing = db.execute(
@@ -178,12 +283,12 @@ def reconcile_included_execution(
                 (record_hash.lower(),),
             ).fetchone()
             if existing is not None:
-                if existing[1].lower() != evidence_hash.lower():
+                if str(existing[1]).lower() != evidence_hash.lower():
                     raise ExecutionReconciliationError("conflicting settlement evidence already exists")
                 db.execute("COMMIT")
             else:
                 db.execute(
-                    "INSERT INTO settlement_records(record_hash,transaction_record_hash,tx_hash,status,gas_used,effective_gas_price,block_number,final_settlement,flash_repayment,flash_loan_fee,dex_fees,price_impact,gas,relay,other,realized_net_profit_usd,profit_confirmed,evidence_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    "INSERT INTO settlement_records(record_hash,transaction_record_hash,tx_hash,status,gas_used,effective_gas_price,block_number,block_hash,canonical_block_hash,final_settlement,flash_repayment,flash_loan_fee,dex_fees,price_impact,gas,relay,other,realized_net_profit_usd,profit_confirmed,evidence_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (
                         settlement_record_hash,
                         record_hash.lower(),
@@ -192,6 +297,8 @@ def reconcile_included_execution(
                         receipt.gas_used,
                         receipt.effective_gas_price,
                         receipt.block_number,
+                        observation.block_hash.lower(),
+                        observation.canonical_block_hash.lower(),
                         str(final_settlement_d),
                         str(flash_repayment_d),
                         str(costs_d.flash_loan_fee),
@@ -200,12 +307,13 @@ def reconcile_included_execution(
                         str(costs_d.gas),
                         str(costs_d.relay),
                         str(costs_d.other),
-                        str(result.settlement.realized_net_profit),
-                        1 if result.profit_confirmed else 0,
+                        str(reconciliation.settlement.realized_net_profit),
+                        1 if reconciliation.profit_confirmed else 0,
                         evidence_hash,
                     ),
                 )
-                db.execute("UPDATE transaction_records SET state=? WHERE record_hash=? AND state=?", (ExecutionState.PROFIT_CONFIRMED.value if result.profit_confirmed else ExecutionState.PROFIT_FAILED.value, record_hash.lower(), ExecutionState.INCLUDED.value))
+                terminal = ExecutionState.PROFIT_CONFIRMED if reconciliation.profit_confirmed else ExecutionState.PROFIT_FAILED
+                db.execute("UPDATE transaction_records SET state=? WHERE record_hash=? AND state=?", (terminal.value, record_hash.lower(), ExecutionState.INCLUDED.value))
                 db.execute("COMMIT")
         except Exception:
             if db.in_transaction:
@@ -213,25 +321,10 @@ def reconcile_included_execution(
             raise
 
     stored = store.get_transaction(record_hash)
-    with store._connect() as db:
-        row = db.execute("SELECT record_hash,transaction_record_hash,tx_hash,status,gas_used,effective_gas_price,block_number,final_settlement,flash_repayment,flash_loan_fee,dex_fees,price_impact,gas,relay,other,realized_net_profit_usd,profit_confirmed FROM settlement_records WHERE transaction_record_hash=?", (record_hash.lower(),)).fetchone()
-    if row is None:
-        raise ExecutionReconciliationError("settlement record disappeared after commit")
-    settlement_record = DurableSettlementRecord(
-        record_hash=row[0],
-        tx_hash=row[2],
-        receipt=ReceiptRecord(tx_hash=row[2], status=int(row[3]), gas_used=int(row[4]), effective_gas_price=int(row[5]), block_number=int(row[6])),
-        final_settlement=Decimal(row[7]),
-        flash_repayment=Decimal(row[8]),
-        costs=CostBreakdown(flash_loan_fee=Decimal(row[9]), dex_fees=Decimal(row[10]), price_impact=Decimal(row[11]), gas=Decimal(row[12]), relay=Decimal(row[13]), other=Decimal(row[14])),
-        realized_net_profit_usd=Decimal(row[15]),
-        profit_confirmed=bool(row[16]),
-    )
-    if settlement_record.evidence_hash().lower() != keccak256_hex(json.dumps({"tx_hash": settlement_record.tx_hash.lower(), "receipt": {"status": settlement_record.receipt.status, "gas_used": settlement_record.receipt.gas_used, "effective_gas_price": settlement_record.receipt.effective_gas_price, "block_number": settlement_record.receipt.block_number}, "final_settlement": str(settlement_record.final_settlement), "flash_repayment": str(settlement_record.flash_repayment), "costs": {"flash_loan_fee": str(settlement_record.costs.flash_loan_fee), "dex_fees": str(settlement_record.costs.dex_fees), "price_impact": str(settlement_record.costs.price_impact), "gas": str(settlement_record.costs.gas), "relay": str(settlement_record.costs.relay), "other": str(settlement_record.costs.other)}, "realized_net_profit_usd": str(settlement_record.realized_net_profit_usd), "profit_confirmed": settlement_record.profit_confirmed}, sort_keys=True, separators=(",", ":")).encode()).lower():
-        raise ExecutionReconciliationError("stored settlement evidence hash mismatch")
+    settlement_record = _load_settlement(store, record_hash)
     return ReconciledExecution(
         transaction_record_hash=record_hash,
         settlement_record=settlement_record,
-        reconciliation=result,
+        reconciliation=reconciliation,
         transaction_state=stored.state,
     )
