@@ -44,6 +44,8 @@ class ChainTransactionObservation:
         if self.state in {ChainTxState.INCLUDED_SUCCESS, ChainTxState.INCLUDED_REVERT}:
             if not self.block_hash or not self.receipt_block_hash:
                 raise RecoveryError("included transaction requires block evidence")
+            if self.block_hash.lower() != self.receipt_block_hash.lower():
+                raise RecoveryError("transaction and receipt block hashes disagree")
             if self.gas_used is None or self.gas_used < 0:
                 raise RecoveryError("included transaction requires non-negative gas_used")
             if self.effective_gas_price is None or self.effective_gas_price < 0:
@@ -57,13 +59,7 @@ class RecoveryDecision:
     next_status: NonceStatus | None = None
 
 
-def decide(
-    *,
-    current_status: NonceStatus,
-    active_tx_hash: str | None,
-    observation: ChainTransactionObservation,
-    chain_pending_nonce: int,
-) -> RecoveryDecision:
+def decide(*, current_status: NonceStatus, active_tx_hash: str | None, observation: ChainTransactionObservation, chain_pending_nonce: int) -> RecoveryDecision:
     """Choose a state transition using only explicit chain evidence.
 
     NOT_FOUND is intentionally non-terminal. A transaction can be temporarily
@@ -73,39 +69,27 @@ def decide(
     """
     if chain_pending_nonce < observation.nonce:
         raise RecoveryError("chain pending nonce cannot trail observed transaction nonce")
-
     if active_tx_hash is not None and observation.tx_hash.lower() != active_tx_hash.lower():
         raise RecoveryError("observation hash does not match active transaction")
-
     if observation.state == ChainTxState.UNKNOWN:
         return RecoveryDecision("HOLD", "chain evidence is unknown; do not mutate durable state")
-
     if observation.state == ChainTxState.PENDING:
         return RecoveryDecision("HOLD", "transaction is still pending")
-
     if observation.state == ChainTxState.INCLUDED_SUCCESS:
         if current_status not in {NonceStatus.SUBMITTED, NonceStatus.REPLACED, NonceStatus.REORGED}:
             raise RecoveryError(f"cannot mark {current_status.value} as included")
         return RecoveryDecision("MARK_INCLUDED", "receipt proves successful inclusion", NonceStatus.INCLUDED)
-
     if observation.state == ChainTxState.INCLUDED_REVERT:
         if current_status not in {NonceStatus.SUBMITTED, NonceStatus.REPLACED, NonceStatus.REORGED}:
-            raise RecoveryError(f"cannot mark {current_status.value} as dropped")
+            raise RecoveryError(f"cannot mark {current_status.value} as included")
         return RecoveryDecision("MARK_REVERTED", "receipt proves inclusion with execution revert", NonceStatus.INCLUDED)
-
     if observation.state == ChainTxState.NOT_FOUND:
         return RecoveryDecision("HOLD", "transaction is not observed; absence alone is not drop proof")
-
     raise RecoveryError("unhandled chain transaction state")
 
 
 def prove_dropped(*, active_tx_hash: str, nonce: int, chain_pending_nonce: int, replacement_tx_hash: str | None) -> RecoveryDecision:
-    """Require nonce-consumption evidence before a missing transaction is dropped.
-
-    If a replacement hash is supplied, it must be tracked separately by the
-    caller and later reconciled against its own receipt. This function only
-    establishes that the active nonce has moved past the missing transaction.
-    """
+    """Require nonce-consumption evidence before a missing transaction is dropped."""
     if chain_pending_nonce <= nonce:
         raise RecoveryError("nonce consumption has not been proven")
     if not active_tx_hash.startswith("0x"):
@@ -116,3 +100,16 @@ def prove_dropped(*, active_tx_hash: str, nonce: int, chain_pending_nonce: int, 
     if replacement_tx_hash:
         reason += "; replacement evidence supplied for follow-up reconciliation"
     return RecoveryDecision("MARK_DROPPED", reason, NonceStatus.DROPPED)
+
+
+def prove_reorg(*, previously_included_block_hash: str, canonical_block_hash: str | None, receipt_still_present: bool) -> RecoveryDecision:
+    """Prove reorg from block identity change plus receipt disappearance."""
+    if not previously_included_block_hash.startswith("0x"):
+        raise RecoveryError("previous included block hash is invalid")
+    if canonical_block_hash is None or not canonical_block_hash.startswith("0x"):
+        raise RecoveryError("canonical block hash is required for reorg proof")
+    if receipt_still_present:
+        raise RecoveryError("receipt is still canonical; reorg is not proven")
+    if canonical_block_hash.lower() == previously_included_block_hash.lower():
+        raise RecoveryError("canonical block identity did not change")
+    return RecoveryDecision("MARK_REORGED", "previous inclusion block is no longer canonical and receipt disappeared", NonceStatus.REORGED)
