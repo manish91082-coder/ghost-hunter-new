@@ -8,23 +8,11 @@ interface IERC20Phase19 {
 }
 
 interface IAaveV3PoolPhase19 {
-    function flashLoanSimple(
-        address receiverAddress,
-        address asset,
-        uint256 amount,
-        bytes calldata params,
-        uint16 referralCode
-    ) external;
+    function flashLoanSimple(address receiverAddress, address asset, uint256 amount, bytes calldata params, uint16 referralCode) external;
 }
 
 interface IQuickSwapV2RouterPhase19 {
-    function swapExactTokensForTokens(
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external returns (uint256[] memory amounts);
+    function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] calldata path, address to, uint256 deadline) external returns (uint256[] memory amounts);
 }
 
 interface IUniswapV3RouterPhase19 {
@@ -38,15 +26,13 @@ interface IUniswapV3RouterPhase19 {
         uint256 amountOutMinimum;
         uint160 sqrtPriceLimitX96;
     }
-
     function exactInputSingle(ExactInputSingleParams calldata params) external returns (uint256 amountOut);
 }
 
 /// @notice Minimal Phase-19 execution sink for the first two-leg Aave V3 strategy.
 /// @dev Off-chain Governor/Signer/PrivateSubmit remain authoritative for authorization.
-///      The off-chain routeHash commits the ordered quote evidence. topologyHash commits
-///      the on-chain executable topology independently. This deliberately never attempts
-///      USD valuation on-chain.
+///      The quote-evidence route hash and executable topology are joined into one
+///      routeCommitment, which is recomputed here before any swap is attempted.
 contract Phase19Executor {
     error Unauthorized();
     error InvalidAddress();
@@ -94,14 +80,14 @@ contract Phase19Executor {
         uint256 minimumSurplus;
         uint256 deadline;
         bytes32 routeHash;
-        bytes32 topologyHash;
+        bytes32 routeCommitment;
         bytes32 intentHash;
     }
 
     event ExecutionSettled(
         bytes32 indexed intentHash,
         bytes32 indexed routeHash,
-        bytes32 indexed topologyHash,
+        bytes32 indexed routeCommitment,
         address asset,
         uint256 loanAmount,
         uint256 premium,
@@ -110,9 +96,7 @@ contract Phase19Executor {
     );
 
     constructor(address aavePool_, address quickSwapRouter_, address uniswapV3Router_) {
-        if (aavePool_ == address(0) || quickSwapRouter_ == address(0) || uniswapV3Router_ == address(0)) {
-            revert InvalidAddress();
-        }
+        if (aavePool_ == address(0) || quickSwapRouter_ == address(0) || uniswapV3Router_ == address(0)) revert InvalidAddress();
         owner = msg.sender;
         aavePool = aavePool_;
         quickSwapRouter = quickSwapRouter_;
@@ -131,22 +115,14 @@ contract Phase19Executor {
         _status = NOT_ENTERED;
     }
 
-    function routeTopologyHash(
-        address asset,
-        address tokenMid,
-        bool firstOnQuickSwap,
-        uint24 uniswapFee
-    ) public view returns (bytes32) {
+    function routeTopologyHash(address asset, address tokenMid, bool firstOnQuickSwap, uint24 uniswapFee) public view returns (bytes32) {
         if (asset == address(0) || tokenMid == address(0) || uniswapFee == 0) revert InvalidRoute();
-        return keccak256(abi.encode(
-            asset,
-            tokenMid,
-            firstOnQuickSwap,
-            uniswapFee,
-            aavePool,
-            quickSwapRouter,
-            uniswapV3Router
-        ));
+        return keccak256(abi.encode(asset, tokenMid, firstOnQuickSwap, uniswapFee, aavePool, quickSwapRouter, uniswapV3Router));
+    }
+
+    function routeCommitment(bytes32 routeHash, bytes32 topologyHash) public pure returns (bytes32) {
+        if (routeHash == bytes32(0) || topologyHash == bytes32(0)) revert InvalidRoute();
+        return keccak256(abi.encode(routeHash, topologyHash));
     }
 
     function execute(ExecutionParams calldata p, uint256 amount) external onlyOwner {
@@ -154,13 +130,11 @@ contract Phase19Executor {
         if (p.asset == address(0) || p.tokenMid == address(0)) revert InvalidAddress();
         if (amount == 0) revert InvalidAmount();
         if (p.deadline < block.timestamp) revert InvalidDeadline();
-        if (p.amountOutMinFirst == 0 || p.amountOutMinSecond == 0) revert InvalidAmount();
+        if (p.amountOutMinFirst == 0 || p.amountOutMinSecond == 0 || p.minimumSurplus == 0) revert InvalidAmount();
         if (p.routeHash == bytes32(0) || p.intentHash == bytes32(0)) revert InvalidRoute();
-        if (p.topologyHash != routeTopologyHash(p.asset, p.tokenMid, p.firstOnQuickSwap, p.uniswapFee)) {
-            revert InvalidRoute();
-        }
+        bytes32 topology = routeTopologyHash(p.asset, p.tokenMid, p.firstOnQuickSwap, p.uniswapFee);
+        if (p.routeCommitment != routeCommitment(p.routeHash, topology)) revert InvalidRoute();
         if (consumedIntent[p.intentHash]) revert InvalidRoute();
-        if (p.minimumSurplus == 0) revert InvalidAmount();
 
         activeExecution = true;
         activeIntentHash = p.intentHash;
@@ -174,13 +148,7 @@ contract Phase19Executor {
         if (activeExecution) revert NoActiveExecution();
     }
 
-    function executeOperation(
-        address asset,
-        uint256 amount,
-        uint256 premium,
-        address initiator,
-        bytes calldata encodedParams
-    ) external nonReentrant returns (bool) {
+    function executeOperation(address asset, uint256 amount, uint256 premium, address initiator, bytes calldata encodedParams) external nonReentrant returns (bool) {
         if (msg.sender != aavePool) revert InvalidCaller();
         if (initiator != address(this)) revert InvalidInitiator();
         if (!activeExecution) revert NoActiveExecution();
@@ -192,9 +160,9 @@ contract Phase19Executor {
         if (p.deadline < block.timestamp) revert InvalidDeadline();
         if (p.tokenMid == address(0) || p.routeHash == bytes32(0) || p.intentHash == bytes32(0)) revert InvalidRoute();
         if (p.intentHash != activeIntentHash) revert ActiveExecutionMismatch();
-        if (p.topologyHash != routeTopologyHash(p.asset, p.tokenMid, p.firstOnQuickSwap, p.uniswapFee)) revert InvalidRoute();
+        bytes32 topology = routeTopologyHash(p.asset, p.tokenMid, p.firstOnQuickSwap, p.uniswapFee);
+        if (p.routeCommitment != routeCommitment(p.routeHash, topology)) revert InvalidRoute();
         if (consumedIntent[p.intentHash]) revert IntentAlreadyConsumed();
-
         if (IERC20Phase19(asset).balanceOf(address(this)) < amount) revert InvalidLoanAmount();
 
         if (p.firstOnQuickSwap) {
@@ -219,16 +187,7 @@ contract Phase19Executor {
         activeLoanAmount = 0;
         activeBalanceBefore = 0;
 
-        emit ExecutionSettled(
-            p.intentHash,
-            p.routeHash,
-            p.topologyHash,
-            asset,
-            amount,
-            premium,
-            balanceAfter,
-            balanceAfter - balanceBefore - repayment
-        );
+        emit ExecutionSettled(p.intentHash, p.routeHash, p.routeCommitment, asset, amount, premium, balanceAfter, balanceAfter - balanceBefore - repayment);
         return true;
     }
 
@@ -241,51 +200,30 @@ contract Phase19Executor {
         if (!IERC20Phase19(token).approve(spender, 0)) revert ApprovalFailed();
     }
 
-    function _swapQuickSwap(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn,
-        uint256 amountOutMin,
-        uint256 deadline
-    ) internal returns (uint256 amountOut) {
+    function _swapQuickSwap(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOutMin, uint256 deadline) internal returns (uint256 amountOut) {
         _approveExact(tokenIn, quickSwapRouter, amountIn);
         address[] memory path = new address[](2);
         path[0] = tokenIn;
         path[1] = tokenOut;
-        uint256[] memory amounts = IQuickSwapV2RouterPhase19(quickSwapRouter).swapExactTokensForTokens(
-            amountIn,
-            amountOutMin,
-            path,
-            address(this),
-            deadline
-        );
+        uint256[] memory amounts = IQuickSwapV2RouterPhase19(quickSwapRouter).swapExactTokensForTokens(amountIn, amountOutMin, path, address(this), deadline);
         _resetApproval(tokenIn, quickSwapRouter);
         if (amounts.length < 2 || amounts[amounts.length - 1] < amountOutMin) revert MinimumOutputFailed();
         return amounts[amounts.length - 1];
     }
 
-    function _swapUniswap(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn,
-        uint24 fee,
-        uint256 amountOutMin,
-        uint256 deadline
-    ) internal returns (uint256 amountOut) {
+    function _swapUniswap(address tokenIn, address tokenOut, uint256 amountIn, uint24 fee, uint256 amountOutMin, uint256 deadline) internal returns (uint256 amountOut) {
         if (fee == 0) revert InvalidAmount();
         _approveExact(tokenIn, uniswapV3Router, amountIn);
-        amountOut = IUniswapV3RouterPhase19(uniswapV3Router).exactInputSingle(
-            IUniswapV3RouterPhase19.ExactInputSingleParams({
-                tokenIn: tokenIn,
-                tokenOut: tokenOut,
-                fee: fee,
-                recipient: address(this),
-                deadline: deadline,
-                amountIn: amountIn,
-                amountOutMinimum: amountOutMin,
-                sqrtPriceLimitX96: 0
-            })
-        );
+        amountOut = IUniswapV3RouterPhase19(uniswapV3Router).exactInputSingle(IUniswapV3RouterPhase19.ExactInputSingleParams({
+            tokenIn: tokenIn,
+            tokenOut: tokenOut,
+            fee: fee,
+            recipient: address(this),
+            deadline: deadline,
+            amountIn: amountIn,
+            amountOutMinimum: amountOutMin,
+            sqrtPriceLimitX96: 0
+        }));
         _resetApproval(tokenIn, uniswapV3Router);
         if (amountOut < amountOutMin) revert MinimumOutputFailed();
     }
