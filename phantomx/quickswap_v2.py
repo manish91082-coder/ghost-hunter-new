@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping, Protocol, Sequence
 
 from .quote_engine import ExactQuote, QuoteEngineError
+from .quote_snapshot import QuoteSnapshot
 
 POLYGON_CHAIN_ID = 137
 GET_AMOUNTS_OUT_SELECTOR = "d06ca61f"
@@ -57,8 +58,6 @@ def _encode_get_amounts_out(amount_in: int, path: Sequence[str]) -> str:
     if len(path) < 2:
         raise QuickSwapV2Error("QuickSwap V2 path must contain at least two tokens")
 
-    # ABI: getAmountsOut(uint256,address[])
-    # head = amountIn + offset-to-path; tail = length + padded addresses.
     payload = bytearray.fromhex(GET_AMOUNTS_OUT_SELECTOR)
     payload.extend(amount_in.to_bytes(32, "big"))
     payload.extend((64).to_bytes(32, "big"))
@@ -146,10 +145,7 @@ class QuickSwapV2ExactQuoter:
 
         data = _encode_get_amounts_out(amount_in, path)
         params = [
-            {
-                "to": self.router_address,
-                "data": data,
-            },
+            {"to": self.router_address, "data": data},
             _hex_uint(snapshot.block_number, name="block_number"),
         ]
         result = self._rpc.call("eth_call", params)
@@ -169,9 +165,26 @@ class QuickSwapV2ExactQuoter:
             amount_in=amount_in,
             amount_out=amount_out,
             block_number=snapshot.block_number,
-            # V2 fee is encoded by the router/pair formula, not separately
-            # returned by getAmountsOut(). Do not invent a fee percentage here.
             fee_raw=0,
+        )
+
+    def quote_snapshot(
+        self,
+        amount_in: int,
+        path: Sequence[str],
+        snapshot: BlockSnapshot,
+        *,
+        observed_at_unix: int,
+        gas_estimate: int | None = None,
+    ) -> QuoteSnapshot:
+        """Create the hash-bound evidence object used by later execution stages."""
+        quote = self.quote(amount_in, path, snapshot)
+        return QuoteSnapshot.from_exact_quote(
+            quote,
+            chain_id=self.chain_id,
+            observed_at_unix=observed_at_unix,
+            pool_or_router=self.router_address,
+            gas_estimate=gas_estimate,
         )
 
 
