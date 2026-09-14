@@ -24,5 +24,7 @@ jobs:
           version: stable
       - name: Compile Phase-19 Solidity
         run: forge build --root . --contracts contracts --out out --cache-path .forge-cache
+      - name: Run Phase-19 EVM integration harness
+        run: forge test --root . --match-path tests/evm/Phase19Executor.t.sol -vv
       - name: Run Phase-19 unittest suite
         run: python -m unittest discover -s tests/phase19 -v
