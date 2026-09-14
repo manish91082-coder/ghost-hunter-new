@@ -104,9 +104,9 @@ class EthereumEip1559Signer:
             _rlp_uint(envelope.max_fee_per_gas),
             _rlp_uint(envelope.gas_limit),
             to,
-            b"",  # value = zero
+            b"",
             envelope.calldata,
-            [],  # access list
+            [],
         ]
         signing_payload = b"\x02" + rlp.encode(unsigned)
         digest = bytes.fromhex(keccak256_hex(signing_payload)[2:])
@@ -127,17 +127,23 @@ def recover_eip1559_sender(raw_transaction: bytes) -> str:
         raise SignerError("signed EIP-1559 transaction must contain exactly twelve fields")
 
     chain_id, nonce, max_priority, max_fee, gas_limit, to, value, data, access_list, y_parity, r, s = fields
-    if not chain_id or len(y_parity) != 1 or y_parity[0] not in (0, 1):
+    if not chain_id:
+        raise SignerError("invalid EIP-1559 signature framing")
+    if len(y_parity) == 0:
+        y_value = 0
+    elif len(y_parity) == 1 and y_parity[0] in (0, 1):
+        y_value = y_parity[0]
+    else:
         raise SignerError("invalid EIP-1559 signature framing")
     if len(to) not in (0, 20) or len(r) == 0 or len(s) == 0:
         raise SignerError("invalid EIP-1559 transaction field encoding")
-    if len(access_list) < 0:  # defensive type guard, lists always satisfy this
+    if len(access_list) < 0:
         raise SignerError("invalid access list")
 
     unsigned = [chain_id, nonce, max_priority, max_fee, gas_limit, to, value, data, access_list]
     digest = bytes.fromhex(keccak256_hex(b"\x02" + rlp.encode(unsigned))[2:])
     try:
-        signature = keys.Signature(vrs=(y_parity[0], int.from_bytes(r, "big"), int.from_bytes(s, "big")))
+        signature = keys.Signature(vrs=(y_value, int.from_bytes(r, "big"), int.from_bytes(s, "big")))
         return signature.recover_public_key_from_msg_hash(digest).to_checksum_address().lower()
     except (BadSignature, ValueError, OverflowError) as exc:
         raise SignerError("EIP-1559 sender recovery failed") from exc
