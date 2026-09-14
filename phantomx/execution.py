@@ -44,6 +44,7 @@ class ExecutionIntent:
     nonce: int
     deadline: int
     minimum_net_profit_usd: str = "0.20"
+    minimum_surplus_token_amount: int = 0
 
     def canonical(self) -> dict[str, Any]:
         return {
@@ -59,6 +60,7 @@ class ExecutionIntent:
             "nonce": self.nonce,
             "deadline": self.deadline,
             "minimum_net_profit_usd": self.minimum_net_profit_usd,
+            "minimum_surplus_token_amount": self.minimum_surplus_token_amount,
         }
 
     def commitment_canonical(self) -> dict[str, Any]:
@@ -75,6 +77,7 @@ class ExecutionIntent:
             "nonce": self.nonce,
             "deadline": self.deadline,
             "minimum_net_profit_usd": self.minimum_net_profit_usd,
+            "minimum_surplus_token_amount": self.minimum_surplus_token_amount,
         }
 
     def canonical_bytes(self) -> bytes:
