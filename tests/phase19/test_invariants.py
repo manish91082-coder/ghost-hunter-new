@@ -121,13 +121,13 @@ class ReplayAndNonceTests(unittest.TestCase):
 class ReceiptAccountingTests(unittest.TestCase):
     def test_successful_receipt_does_not_imply_profit(self):
         receipt = ReceiptRecord("0xtx", 1, 100_000, 30_000_000_000, 123)
-        result = reconcile(receipt, Decimal("100.50"), Decimal("100.00"), CostBreakdown(gas=Decimal("0.20"), relay=Decimal("0.11")))
+        result = reconcile(receipt=receipt, final_settlement=Decimal("100.50"), flash_repayment=Decimal("100.00"), costs=CostBreakdown(gas=Decimal("0.20"), relay=Decimal("0.11")))
         self.assertTrue(result.successful)
         self.assertFalse(result.profit_confirmed)
 
     def test_reverted_receipt_cannot_confirm_profit(self):
         receipt = ReceiptRecord("0xtx", 0, 100_000, 30_000_000_000, 123)
-        result = reconcile(receipt, Decimal("101.00"), Decimal("100.00"), CostBreakdown(gas=Decimal("0.01")))
+        result = reconcile(receipt=receipt, final_settlement=Decimal("101.00"), flash_repayment=Decimal("100.00"), costs=CostBreakdown(gas=Decimal("0.01")))
         self.assertFalse(result.successful)
         self.assertFalse(result.profit_confirmed)
 
