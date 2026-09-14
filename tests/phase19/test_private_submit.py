@@ -2,21 +2,21 @@ import unittest
 from dataclasses import replace
 
 from phantomx.execution import Authorization, ExecutionIntent, TransactionEnvelope
+from phantomx.executor_authority import ExecutorAuthorityEvidence, runtime_code_binding_hash
 from phantomx.governor import GovernorDecision
 from phantomx.hashing import keccak256_hex
 from phantomx.private_submit import PrivateSubmitError, submit_governed_transaction
-from phantomx.signer import SignedTransaction
+from phantomx.signer import EthereumEip1559Signer, SignedTransaction
 
 
 TOKEN = "0x" + "aa" * 20
 EXECUTOR = "0x" + "bb" * 20
-SENDER = "0x" + "cc" * 20
+SENDER = EthereumEip1559Signer("0x" + "01" * 32).address
 ROUTE = "0x" + "11" * 32
 ECONOMIC = "0x" + "22" * 32
 SIMULATION = "0x" + "33" * 32
-AUTHORITY = "0x" + "44" * 32
 CALldata = b"phase19-calldata"
-RAW = b"signed:" + CALldata
+RUNTIME_CODE_HASH = "0x" + "55" * 32
 
 
 class FakeRelay:
@@ -26,7 +26,7 @@ class FakeRelay:
     def __init__(self, result=None, error=None):
         self.calls = 0
         self.payloads = []
-        self.result = result or keccak256_hex(RAW)
+        self.result = result or keccak256_hex(b"signed:" + CALldata)
         self.error = error
 
     def submit_raw_transaction(self, raw_transaction):
@@ -52,6 +52,14 @@ class PublicRelay:
 class PrivateSubmitBoundaryTests(unittest.TestCase):
     def setUp(self):
         self.now = 1_700_000_000
+        self.authority = ExecutorAuthorityEvidence(
+            schema_version=1,
+            chain_id=137,
+            executor=EXECUTOR,
+            owner=SENDER,
+            observed_block=5000,
+            runtime_code_hash=RUNTIME_CODE_HASH,
+        )
         self.intent = ExecutionIntent(
             chain_id=137, executor=EXECUTOR, sender=SENDER, loan_asset=TOKEN,
             loan_amount=100, route_hash=ROUTE,
@@ -70,23 +78,27 @@ class PrivateSubmitBoundaryTests(unittest.TestCase):
             deadline=self.intent.deadline, gas_limit=300_000,
             max_fee_per_gas=100, max_priority_fee_per_gas=30,
         )
+        raw = b"signed:" + CALldata
         self.governor = GovernorDecision(
             approved=True, reason="all governor policy gates passed", chain_id=137,
             block_number=5000, intent_hash=self.intent.intent_hash(), route_hash=ROUTE,
             economic_proof_hash=ECONOMIC, simulation_proof_hash=SIMULATION,
-            calldata_hash=self.envelope.calldata_hash, executor_authority_hash=AUTHORITY,
+            calldata_hash=self.envelope.calldata_hash, executor_authority_hash=self.authority.evidence_hash,
             ai_rank="0.9",
         )
         self.signed = SignedTransaction(
-            intent_hash=self.intent.intent_hash(), governor_decision_hash=self.governor.decision_hash,
-            transaction_hash=keccak256_hex(RAW), raw_transaction=RAW,
+            intent_hash=self.intent.intent_hash(),
+            governor_decision_hash=self.governor.decision_hash,
+            executor_runtime_binding_hash=runtime_code_binding_hash(self.authority),
+            transaction_hash=keccak256_hex(raw), raw_transaction=raw,
         )
 
     def submit(self, relay, **overrides):
         values = {
             "relay": relay, "signed_transaction": self.signed,
             "governor": self.governor, "intent": self.intent,
-            "authorization": self.authorization, "envelope": self.envelope, "now": self.now,
+            "authorization": self.authorization, "envelope": self.envelope,
+            "executor_authority": self.authority, "now": self.now,
         }
         values.update(overrides)
         return submit_governed_transaction(**values)
@@ -95,9 +107,38 @@ class PrivateSubmitBoundaryTests(unittest.TestCase):
         relay = FakeRelay()
         result = self.submit(relay)
         self.assertEqual(relay.calls, 1)
-        self.assertEqual(relay.payloads, [RAW])
+        self.assertEqual(relay.payloads, [self.signed.raw_transaction])
         self.assertEqual(result.transaction_hash, self.signed.transaction_hash)
         self.assertTrue(result.relay_private)
+        self.assertEqual(result.executor_runtime_binding_hash, runtime_code_binding_hash(self.authority))
+
+    def test_later_block_same_runtime_identity_is_accepted(self):
+        relay = FakeRelay()
+        later = replace(self.authority, observed_block=5002)
+        result = self.submit(relay, executor_authority=later)
+        self.assertEqual(relay.calls, 1)
+        self.assertEqual(result.executor_runtime_binding_hash, runtime_code_binding_hash(self.authority))
+
+    def test_runtime_code_mutation_is_rejected_before_network_io(self):
+        relay = FakeRelay()
+        mutated = replace(self.authority, observed_block=5001, runtime_code_hash="0x" + "66" * 32)
+        with self.assertRaisesRegex(PrivateSubmitError, "runtime identity differs"):
+            self.submit(relay, executor_authority=mutated)
+        self.assertEqual(relay.calls, 0)
+
+    def test_owner_mutation_is_rejected_before_network_io(self):
+        relay = FakeRelay()
+        mutated = replace(self.authority, observed_block=5001, owner="0x" + "22" * 20)
+        with self.assertRaisesRegex(PrivateSubmitError, "executor authority is invalid"):
+            self.submit(relay, executor_authority=mutated)
+        self.assertEqual(relay.calls, 0)
+
+    def test_older_submission_observation_is_rejected_before_network_io(self):
+        relay = FakeRelay()
+        stale = replace(self.authority, observed_block=4999)
+        with self.assertRaisesRegex(PrivateSubmitError, "runtime identity differs|predates"):
+            self.submit(relay, executor_authority=stale)
+        self.assertEqual(relay.calls, 0)
 
     def test_public_relay_is_rejected_before_network_io(self):
         relay = PublicRelay()
