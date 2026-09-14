@@ -34,8 +34,12 @@ class Phase19ExecutorSourceTests(unittest.TestCase):
         self.assertIn("if (!activeExecution) revert NoActiveExecution();", self.source)
         self.assertIn("if (asset != activeAsset || amount != activeLoanAmount) revert ActiveExecutionMismatch();", self.source)
 
-    def test_route_is_reconstructed_on_chain(self):
-        self.assertIn("p.routeHash != routeHash(p.asset, p.tokenMid, p.firstOnQuickSwap, p.uniswapFee)", self.source)
+    def test_quote_route_and_on_chain_topology_are_separate_commitments(self):
+        self.assertIn("bytes32 topologyHash;", self.source)
+        self.assertIn("function routeTopologyHash(", self.source)
+        self.assertIn("p.routeHash == bytes32(0)", self.source)
+        self.assertIn("p.topologyHash != routeTopologyHash(p.asset, p.tokenMid, p.firstOnQuickSwap, p.uniswapFee)", self.source)
+        self.assertIn("p.routeHash,", self.source)
         for value in ("aavePool", "quickSwapRouter", "uniswapV3Router"):
             self.assertIn(value, self.source)
 
