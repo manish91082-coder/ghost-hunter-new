@@ -21,6 +21,8 @@ class ExecutionKeccakBindingTests(unittest.TestCase):
             loan_amount=1_000_000,
             route_hash="0xroute",
             calldata_hash="0xcalldata",
+            economic_proof_hash="0xeconomic",
+            simulation_proof_hash="0xsimulation",
             nonce=42,
             deadline=2_000,
         )
@@ -30,10 +32,7 @@ class ExecutionKeccakBindingTests(unittest.TestCase):
             digest = keccak256_hex(b"")
         except KeccakUnavailable as exc:
             self.skipTest(str(exc))
-        self.assertEqual(
-            digest,
-            "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
-        )
+        self.assertEqual(digest, "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")
 
     def test_intent_hash_uses_ethereum_keccak(self):
         try:
@@ -42,10 +41,7 @@ class ExecutionKeccakBindingTests(unittest.TestCase):
             self.skipTest(str(exc))
         self.assertTrue(digest.startswith("0x"))
         self.assertEqual(len(digest), 66)
-        self.assertNotEqual(
-            digest,
-            self.intent.test_only_sha256_fingerprint(),
-        )
+        self.assertNotEqual(digest, self.intent.test_only_sha256_fingerprint())
 
     def test_calldata_binding_changes_when_calldata_changes(self):
         try:
