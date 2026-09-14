@@ -1,5 +1,6 @@
 import unittest
 
+from phantomx.market_block import MarketBlockError
 from phantomx.quickswap_v2 import (
     BlockSnapshot,
     QuickSwapV2Error,
@@ -124,7 +125,7 @@ class QuickSwapV2ExactQuoteTests(unittest.TestCase):
         self.assertEqual(len(evidence.quote_hash), 66)
 
     def test_invalid_snapshot_timestamp_is_rejected_at_snapshot_construction(self):
-        with self.assertRaises(Exception):
+        with self.assertRaises(MarketBlockError):
             BlockSnapshot(137, 99, 0)
 
     def test_multihop_path_preserves_router_returned_final_integer(self):
@@ -138,7 +139,7 @@ class QuickSwapV2ExactQuoteTests(unittest.TestCase):
         self.assertEqual(quote.token_out, TOKEN_C)
 
     def test_invalid_snapshot_chain_is_rejected_at_snapshot_construction(self):
-        with self.assertRaises(Exception):
+        with self.assertRaises(MarketBlockError):
             BlockSnapshot(1, 99, 2000)
 
     def test_malformed_rpc_result_fails_closed(self):
