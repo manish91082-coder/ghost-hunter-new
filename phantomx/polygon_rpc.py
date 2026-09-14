@@ -2,7 +2,7 @@
 
 This module deliberately has no signing, transaction submission, or relay
 capability. It verifies chain identity and provider observations before they
-can influence nonce reconciliation.
+can influence nonce reconciliation or executor-authority attestation.
 """
 from __future__ import annotations
 
@@ -73,3 +73,48 @@ def quorum_pending_nonce_from_providers(providers: Sequence[RPCProvider], sender
         return quorum_pending_nonce(observations, quorum=quorum)
     except PolygonNonceError as exc:
         raise PolygonRPCError(str(exc)) from exc
+
+
+def read_contract_owner(provider: RPCProvider, contract: str) -> str:
+    """Read owner() at one explicit latest block after verifying Polygon chain identity."""
+    verify_chain(provider)
+    if not isinstance(contract, str) or len(contract) != 42 or not contract.startswith("0x"):
+        raise PolygonRPCError("contract must be a 20-byte 0x address")
+    try:
+        raw = bytes.fromhex(contract[2:])
+    except ValueError as exc:
+        raise PolygonRPCError("contract is not valid hexadecimal") from exc
+    if raw == b"\x00" * 20:
+        raise PolygonRPCError("contract must be non-zero")
+
+    block_number = parse_quantity(_result(provider.transport("eth_blockNumber"), "eth_blockNumber"), field="block number")
+    block_tag = "0x" + format(block_number, "x")
+    call_result = _result(
+        provider.transport("eth_call", {"to": contract.lower(), "data": "0x8da5cb5b"}, block_tag),
+        "eth_call owner",
+    )
+    if not isinstance(call_result, str) or not call_result.startswith("0x"):
+        raise PolygonRPCError("owner() result must be hex")
+    try:
+        encoded = bytes.fromhex(call_result[2:])
+    except ValueError as exc:
+        raise PolygonRPCError("owner() result is not valid hexadecimal") from exc
+    if len(encoded) != 32 or encoded[:12] != b"\x00" * 12:
+        raise PolygonRPCError("owner() result is not a canonical ABI address word")
+    owner = "0x" + encoded[12:].hex()
+    if owner == "0x" + "00" * 20:
+        raise PolygonRPCError("owner() returned zero address")
+    return owner
+
+
+def read_contract_code(provider: RPCProvider, contract: str) -> tuple[int, str]:
+    """Read runtime bytecode at the same explicit latest block used for authority evidence."""
+    verify_chain(provider)
+    if not isinstance(contract, str) or len(contract) != 42 or not contract.startswith("0x"):
+        raise PolygonRPCError("contract must be a 20-byte 0x address")
+    block_number = parse_quantity(_result(provider.transport("eth_blockNumber"), "eth_blockNumber"), field="block number")
+    block_tag = "0x" + format(block_number, "x")
+    code = _result(provider.transport("eth_getCode", contract.lower(), block_tag), "eth_getCode")
+    if not isinstance(code, str) or not code.startswith("0x") or len(code) <= 2 or (len(code) - 2) % 2:
+        raise PolygonRPCError("runtime code must be non-empty even-length hex")
+    return block_number, code.lower()
