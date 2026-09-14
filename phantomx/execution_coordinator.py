@@ -1,8 +1,9 @@
 """Durable Phase-19 execution preparation coordinator.
 
 This module is the narrow bridge from proven route/economic evidence into the
-existing durable nonce, governor, signer and transaction-record boundaries.
-It performs no RPC, relay submission or live broadcast.
+existing durable nonce, executor-authority, governor, signer and
+transaction-record boundaries. It performs no RPC, relay submission or live
+broadcast.
 """
 from __future__ import annotations
 
@@ -13,6 +14,7 @@ from .economic_proof import EconomicProof
 from .execution import ExecutionState
 from .execution_assembly import ExecutionAssembly, assemble_execution
 from .evm_preflight import EVMPreflightResult, preflight_execution
+from .executor_authority import ExecutorAuthorityEvidence, ExecutorAuthorityError, verify_executor_authority
 from .governor import GovernorDecision, GovernorPolicy, govern_execution
 from .nonce_binding import BoundNonce, bind_nonce
 from .signer import SignedTransaction, TransactionSigner, sign_governed_transaction
@@ -32,6 +34,7 @@ class PreparedExecution:
 
     reservation: DurableNonceRecord
     assembly: ExecutionAssembly
+    authority: ExecutorAuthorityEvidence
     preflight: EVMPreflightResult
     governor: GovernorDecision
     bound_nonce: BoundNonce
@@ -50,6 +53,7 @@ def prepare_signed_execution(
     economic_proof: EconomicProof,
     executor: str,
     sender: str,
+    executor_authority: ExecutorAuthorityEvidence,
     chain_pending_nonce: int,
     deadline: int,
     first_on_quickswap: bool,
@@ -72,15 +76,28 @@ def prepare_signed_execution(
     """Prepare, durably bind, govern, sign and persist one exact transaction.
 
     The nonce is allocated before the final intent is built, then the allocated
-    reservation is atomically bound to that final intent hash. Any failure
-    before signing releases the still-uncommitted reservation. After signing,
-    persistence is mandatory and failures leave the reservation intact for
-    forensic recovery rather than silently recycling the nonce.
+    reservation is atomically bound to that final intent hash. Executor owner
+    evidence must prove that the authorized sender owns the exact deployed
+    executor and was observed no earlier than the proven route block. Any
+    failure before signing releases the still-uncommitted reservation. After
+    signing, persistence is mandatory and failures leave the reservation intact
+    for forensic recovery rather than silently recycling the nonce.
     """
     if chain_pending_nonce < 0:
         raise ExecutionCoordinatorError("chain pending nonce cannot be negative")
     if now < 0 or current_block_number < 0:
         raise ExecutionCoordinatorError("time and block must be non-negative")
+
+    try:
+        verify_executor_authority(
+            executor_authority,
+            chain_id=simulation.chain_id,
+            executor=executor,
+            sender=sender,
+            minimum_observed_block=simulation.block_number,
+        )
+    except ExecutorAuthorityError as exc:
+        raise ExecutionCoordinatorError(str(exc)) from exc
 
     binding = ExecutionNonceBinding(store)
     reservation_id = reservation_id or _new_reservation_id()
@@ -175,6 +192,7 @@ def prepare_signed_execution(
         return PreparedExecution(
             reservation=store.get_nonce(sender, reservation.nonce),
             assembly=assembly,
+            authority=executor_authority,
             preflight=preflight,
             governor=governor,
             bound_nonce=bound_nonce,
