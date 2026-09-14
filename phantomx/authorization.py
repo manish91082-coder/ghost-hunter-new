@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .execution import Authorization, ExecutionIntent
+from .execution import Authorization, ExecutionIntent, TransactionEnvelope
 
 
 @dataclass(frozen=True)
@@ -27,7 +27,7 @@ class AuthorizationController:
         self._consumed: set[str] = set()
         self._nonces: dict[str, int] = {}
 
-    def authorize(self, authorization: Authorization, intent: ExecutionIntent, now: int) -> AuthorizationReceipt:
+    def _consume(self, authorization: Authorization, intent: ExecutionIntent, now: int) -> AuthorizationReceipt:
         if not authorization.matches(intent, now):
             raise ValueError("authorization does not match current intent")
 
@@ -42,6 +42,26 @@ class AuthorizationController:
         self._consumed.add(intent_hash)
         self._nonces[intent.sender.lower()] = intent.nonce
         return AuthorizationReceipt(intent_hash=intent_hash, nonce=intent.nonce)
+
+    def authorize(self, authorization: Authorization, intent: ExecutionIntent, now: int) -> AuthorizationReceipt:
+        """Consume an authorization after validating its intent binding."""
+        return self._consume(authorization, intent, now)
+
+    def authorize_envelope(
+        self,
+        authorization: Authorization,
+        intent: ExecutionIntent,
+        envelope: TransactionEnvelope,
+        now: int,
+    ) -> AuthorizationReceipt:
+        """Consume only when the transaction envelope exactly matches authorization.
+
+        Validation happens before consumption, so a failed envelope check cannot
+        burn a valid authorization.
+        """
+        if not authorization.matches_envelope(envelope, now, intent):
+            raise ValueError("transaction envelope does not match authorization")
+        return self._consume(authorization, intent, now)
 
     def is_consumed(self, intent_hash: str) -> bool:
         return intent_hash.lower() in self._consumed
