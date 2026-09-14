@@ -74,7 +74,18 @@ class SignerBoundaryTests(unittest.TestCase):
 
     def test_governor_block_prevents_signer_call(self):
         signer = FakeSigner()
-        blocked = replace(self.governor, approved=False, reason="locked")
+        blocked = GovernorDecision(
+            approved=False,
+            reason="locked",
+            chain_id=self.governor.chain_id,
+            block_number=self.governor.block_number,
+            intent_hash=self.governor.intent_hash,
+            route_hash=self.governor.route_hash,
+            economic_proof_hash=self.governor.economic_proof_hash,
+            simulation_proof_hash=self.governor.simulation_proof_hash,
+            calldata_hash=self.governor.calldata_hash,
+            ai_rank=self.governor.ai_rank,
+        )
         with self.assertRaises(SignerError):
             self.sign(signer=signer, governor=blocked)
         self.assertEqual(signer.calls, 0)
