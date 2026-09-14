@@ -1,6 +1,6 @@
 import unittest
 
-from phantomx.polygon_rpc import PolygonRPCError, RPCProvider, pending_nonce_observation, quorum_pending_nonce_from_providers, verify_chain
+from phantomx.polygon_rpc import PolygonRPCError, RPCProvider, pending_nonce_observation, quorum_pending_nonce_from_providers, read_contract_code, read_contract_owner, verify_chain
 
 
 class PolygonRPCTests(unittest.TestCase):
@@ -11,6 +11,8 @@ class PolygonRPCTests(unittest.TestCase):
             if method == "eth_getTransactionCount":
                 self.assertEqual(params[1], "pending")
                 return {"result": nonce}
+            if method == "eth_blockNumber":
+                return {"result": "0x100"}
             raise AssertionError(method)
         return RPCProvider(name, transport)
 
@@ -42,6 +44,63 @@ class PolygonRPCTests(unittest.TestCase):
     def test_quorum_failure_is_fail_closed(self):
         with self.assertRaises(PolygonRPCError):
             quorum_pending_nonce_from_providers([self.provider("a", nonce="0x2a"), self.provider("b", nonce="0x2b")], "0xabc", quorum=2)
+
+    def test_executor_owner_is_read_at_explicit_block(self):
+        executor = "0x" + "aa" * 20
+        owner = "0x" + "bb" * 20
+        def transport(method, *params):
+            if method == "eth_chainId":
+                return {"result": "0x89"}
+            if method == "eth_blockNumber":
+                return {"result": "0x100"}
+            if method == "eth_call":
+                self.assertEqual(params[0]["to"], executor)
+                self.assertEqual(params[0]["data"], "0x8da5cb5b")
+                self.assertEqual(params[1], "0x100")
+                return {"result": "0x" + "00" * 12 + owner[2:]}
+            raise AssertionError(method)
+        self.assertEqual(read_contract_owner(RPCProvider("owner", transport), executor), owner)
+
+    def test_executor_owner_malformed_result_fails_closed(self):
+        def transport(method, *params):
+            if method == "eth_chainId":
+                return {"result": "0x89"}
+            if method == "eth_blockNumber":
+                return {"result": "0x100"}
+            if method == "eth_call":
+                return {"result": "0x1234"}
+            raise AssertionError(method)
+        with self.assertRaises(PolygonRPCError):
+            read_contract_owner(RPCProvider("bad-owner", transport), "0x" + "aa" * 20)
+
+    def test_executor_runtime_code_is_nonempty_and_block_bound(self):
+        executor = "0x" + "aa" * 20
+        code = "0x6001600055"
+        def transport(method, *params):
+            if method == "eth_chainId":
+                return {"result": "0x89"}
+            if method == "eth_blockNumber":
+                return {"result": "0x101"}
+            if method == "eth_getCode":
+                self.assertEqual(params[0], executor)
+                self.assertEqual(params[1], "0x101")
+                return {"result": code}
+            raise AssertionError(method)
+        block, observed = read_contract_code(RPCProvider("code", transport), executor)
+        self.assertEqual(block, 257)
+        self.assertEqual(observed, code)
+
+    def test_empty_runtime_code_is_rejected(self):
+        def transport(method, *params):
+            if method == "eth_chainId":
+                return {"result": "0x89"}
+            if method == "eth_blockNumber":
+                return {"result": "0x101"}
+            if method == "eth_getCode":
+                return {"result": "0x"}
+            raise AssertionError(method)
+        with self.assertRaises(PolygonRPCError):
+            read_contract_code(RPCProvider("empty-code", transport), "0x" + "aa" * 20)
 
 
 if __name__ == "__main__":
