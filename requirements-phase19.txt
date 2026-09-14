@@ -1,0 +1,3 @@
+# Ethereum canonical hashing dependency used by Phase-19 execution proofs.
+# Keccak-256 is required; SHA-3 is not an interchangeable substitute.
+pycryptodome>=3.20,<4
