@@ -20,7 +20,7 @@ from .nonce_binding import BoundNonce, bind_nonce
 from .signer import SignedTransaction, TransactionSigner, sign_governed_transaction
 from .sqlite_execution_store import SQLiteExecutionStore
 from .transaction_record import TransactionRecord, build_signed_record
-from .durable_nonce import DurableNonceInvariantError, DurableNonceRecord
+from .durable_nonce import DurableNonceInvariantError
 from .execution_nonce_binding import ExecutionNonceBinding
 
 
@@ -32,7 +32,7 @@ class ExecutionCoordinatorError(RuntimeError):
 class PreparedExecution:
     """Immutable evidence bundle persisted at the signer boundary."""
 
-    reservation: DurableNonceRecord
+    reservation: object
     assembly: ExecutionAssembly
     authority: ExecutorAuthorityEvidence
     preflight: EVMPreflightResult
@@ -156,6 +156,7 @@ def prepare_signed_execution(
             intent=assembly.intent,
             envelope=assembly.envelope,
             economic_proof=assembly.economic_proof,
+            executor_authority=executor_authority,
             lifecycle_state=ExecutionState.VERIFIED,
             nonce_reserved=True,
             replay_consumed=False,
