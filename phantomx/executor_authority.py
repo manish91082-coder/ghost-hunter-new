@@ -10,8 +10,11 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from typing import Any, Mapping
 
 from .hashing import keccak256_hex
+from .polygon_nonce import parse_quantity
+from .polygon_rpc import POLYGON_CHAIN_ID, RPCProvider
 
 
 class ExecutorAuthorityError(ValueError):
@@ -40,6 +43,16 @@ def _hash(value: str, field: str) -> str:
     return value.lower()
 
 
+def _rpc_result(response: Mapping[str, Any], method: str) -> Any:
+    if not isinstance(response, Mapping):
+        raise ExecutorAuthorityError(f"{method}: response must be an object")
+    if response.get("error") is not None:
+        raise ExecutorAuthorityError(f"{method}: RPC error")
+    if "result" not in response:
+        raise ExecutorAuthorityError(f"{method}: missing result")
+    return response["result"]
+
+
 @dataclass(frozen=True)
 class ExecutorAuthorityEvidence:
     """Immutable observation that a sender owns a concrete deployed executor."""
@@ -55,7 +68,7 @@ class ExecutorAuthorityEvidence:
     def __post_init__(self) -> None:
         if self.schema_version != 1:
             raise ExecutorAuthorityError("unsupported executor authority schema")
-        if self.chain_id != 137:
+        if self.chain_id != POLYGON_CHAIN_ID:
             raise ExecutorAuthorityError("Phase-19 executor authority is Polygon-only")
         if not isinstance(self.observed_block, int) or isinstance(self.observed_block, bool) or self.observed_block < 0:
             raise ExecutorAuthorityError("observed block must be a non-negative integer")
@@ -83,6 +96,62 @@ class ExecutorAuthorityEvidence:
         return keccak256_hex(encoded)
 
 
+def observe_executor_authority(provider: RPCProvider, executor: str) -> ExecutorAuthorityEvidence:
+    """Observe owner and runtime code at one explicit Polygon block."""
+    executor = _address(executor, "executor")
+    chain_raw = _rpc_result(provider.transport("eth_chainId"), "eth_chainId")
+    try:
+        chain_id = parse_quantity(chain_raw, field="chain id")
+    except Exception as exc:
+        raise ExecutorAuthorityError(str(exc)) from exc
+    if chain_id != POLYGON_CHAIN_ID:
+        raise ExecutorAuthorityError(f"unexpected chain id: {chain_id}")
+
+    try:
+        block_number = parse_quantity(
+            _rpc_result(provider.transport("eth_blockNumber"), "eth_blockNumber"),
+            field="block number",
+        )
+    except Exception as exc:
+        raise ExecutorAuthorityError(str(exc)) from exc
+    block_tag = "0x" + format(block_number, "x")
+
+    owner_result = _rpc_result(
+        provider.transport("eth_call", {"to": executor, "data": "0x8da5cb5b"}, block_tag),
+        "eth_call owner",
+    )
+    code_result = _rpc_result(
+        provider.transport("eth_getCode", executor, block_tag),
+        "eth_getCode",
+    )
+
+    if not isinstance(owner_result, str) or not owner_result.startswith("0x"):
+        raise ExecutorAuthorityError("owner() result must be hex")
+    try:
+        owner_encoded = bytes.fromhex(owner_result[2:])
+    except ValueError as exc:
+        raise ExecutorAuthorityError("owner() result is not valid hexadecimal") from exc
+    if len(owner_encoded) != 32 or owner_encoded[:12] != b"\x00" * 12:
+        raise ExecutorAuthorityError("owner() result is not a canonical ABI address word")
+    owner = "0x" + owner_encoded[12:].hex()
+
+    if not isinstance(code_result, str) or not code_result.startswith("0x") or len(code_result) <= 2 or (len(code_result) - 2) % 2:
+        raise ExecutorAuthorityError("runtime code must be non-empty even-length hex")
+    try:
+        runtime_code = bytes.fromhex(code_result[2:])
+    except ValueError as exc:
+        raise ExecutorAuthorityError("runtime code is not valid hexadecimal") from exc
+
+    return ExecutorAuthorityEvidence(
+        schema_version=1,
+        chain_id=chain_id,
+        executor=executor,
+        owner=owner,
+        observed_block=block_number,
+        runtime_code_hash=keccak256_hex(runtime_code),
+    )
+
+
 def verify_executor_authority(
     evidence: ExecutorAuthorityEvidence,
     *,
@@ -92,7 +161,7 @@ def verify_executor_authority(
     minimum_observed_block: int = 0,
 ) -> None:
     """Require deployed executor ownership to exactly match the execution sender."""
-    if chain_id != 137:
+    if chain_id != POLYGON_CHAIN_ID:
         raise ExecutorAuthorityError("execution chain is not Polygon")
     if evidence.chain_id != chain_id:
         raise ExecutorAuthorityError("authority evidence chain does not match execution chain")
