@@ -34,7 +34,7 @@ def evaluate(amount: int) -> LoanEvaluation:
     settlements = {
         100: "100.50",
         200: "201.00",
-        300: "301.00",
+        300: "301.50",
         400: "400.50",
     }
     return LoanEvaluation(amount, 137, 5000, proof_for(amount, settlements[amount]))
@@ -44,12 +44,13 @@ class LoanOptimizerTests(unittest.TestCase):
     def test_selects_best_exact_candidate_not_continuous_proxy(self):
         result = optimize_exact_candidates((100, 200, 300, 400), evaluate)
         self.assertEqual(result.best.loan_amount, 300)
-        self.assertEqual(result.best_net_profit_usd, Decimal("0.99"))
+        self.assertEqual(result.best_net_profit_usd, Decimal("1.49"))
         self.assertEqual(tuple(item.loan_amount for item in result.evaluated), (100, 200, 300, 400))
 
     def test_candidates_at_or_below_floor_are_not_eligible(self):
         def evaluate_floor(amount):
-            settlement = Decimal(amount) + Decimal("0.22")
+            premium = Decimal("0.21") if amount == 100 else Decimal("0.22")
+            settlement = Decimal(amount) + premium
             return LoanEvaluation(
                 amount,
                 137,
@@ -60,6 +61,7 @@ class LoanOptimizerTests(unittest.TestCase):
         result = optimize_exact_candidates((100, 200), evaluate_floor)
         self.assertEqual(result.best.loan_amount, 200)
         self.assertTrue(result.best.proof.economically_valid)
+        self.assertEqual(result.evaluated[0].proof.worst_case_net_profit_usd, Decimal("0.20"))
 
     def test_no_profitable_candidate_fails_closed(self):
         def evaluate_bad(amount):
@@ -88,14 +90,24 @@ class LoanOptimizerTests(unittest.TestCase):
 
     def test_mismatched_return_amount_is_rejected(self):
         def bad(amount):
-            return LoanEvaluation(amount + 1, 137, 5000, proof_for(amount + 1, str(Decimal(amount + 1) + Decimal("1.0"))))
+            return LoanEvaluation(
+                amount + 1,
+                137,
+                5000,
+                proof_for(amount + 1, str(Decimal(amount + 1) + Decimal("1.0"))),
+            )
 
         with self.assertRaises(LoanOptimizationError):
             optimize_exact_candidates((100,), bad)
 
     def test_mixed_market_blocks_are_rejected(self):
         def bad(amount):
-            return LoanEvaluation(amount, 137, 5000 + amount, proof_for(amount, str(Decimal(amount) + Decimal("1.0"))))
+            return LoanEvaluation(
+                amount,
+                137,
+                5000 + amount,
+                proof_for(amount, str(Decimal(amount) + Decimal("1.0"))),
+            )
 
         with self.assertRaises(LoanOptimizationError):
             optimize_exact_candidates((100, 200), bad)
