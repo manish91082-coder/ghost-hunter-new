@@ -24,9 +24,10 @@ def encode_uint_array(values):
 
 
 class FakeRpc:
-    def __init__(self, chain="0x89", block="0x1234", quote=None):
+    def __init__(self, chain="0x89", block="0x1234", timestamp="0x2000", quote=None):
         self.chain = chain
         self.block = block
+        self.timestamp = timestamp
         self.quote = quote
         self.calls = []
 
@@ -36,6 +37,8 @@ class FakeRpc:
             return self.chain
         if method == "eth_blockNumber":
             return self.block
+        if method == "eth_getBlockByNumber":
+            return {"timestamp": self.timestamp}
         if method == "eth_call":
             if self.quote is None:
                 raise AssertionError("unexpected eth_call")
@@ -54,11 +57,39 @@ class QuickSwapV2ExactQuoteTests(unittest.TestCase):
         self.assertEqual(raw[112:132], bytes.fromhex("aa" * 20))
         self.assertEqual(raw[144:164], bytes.fromhex("bb" * 20))
 
-    def test_snapshot_verifies_polygon_chain_and_pins_block(self):
-        rpc = FakeRpc(block="0x4567")
+    def test_snapshot_verifies_polygon_chain_pins_block_and_timestamp(self):
+        rpc = FakeRpc(block="0x4567", timestamp="0x89ab")
         snapshot = QuickSwapV2ExactQuoter(rpc, ROUTER).snapshot()
-        self.assertEqual(snapshot, BlockSnapshot(137, 0x4567))
-        self.assertEqual([c[0] for c in rpc.calls], ["eth_chainId", "eth_blockNumber"])
+        self.assertEqual(snapshot, BlockSnapshot(137, 0x4567, 0x89AB))
+        self.assertEqual(
+            [c[0] for c in rpc.calls],
+            ["eth_chainId", "eth_blockNumber", "eth_getBlockByNumber"],
+        )
+        self.assertEqual(rpc.calls[-1][1], ["0x4567", False])
+
+    def test_missing_block_timestamp_fails_closed(self):
+        class BadBlockRpc(FakeRpc):
+            def call(self, method, params):
+                if method == "eth_getBlockByNumber":
+                    return {"number": self.block}
+                return super().call(method, params)
+
+        with self.assertRaises(QuickSwapV2Error):
+            QuickSwapV2ExactQuoter(BadBlockRpc(), ROUTER).snapshot()
+
+    def test_malformed_block_result_fails_closed(self):
+        class BadBlockRpc(FakeRpc):
+            def call(self, method, params):
+                if method == "eth_getBlockByNumber":
+                    return "0x1000"
+                return super().call(method, params)
+
+        with self.assertRaises(QuickSwapV2Error):
+            QuickSwapV2ExactQuoter(BadBlockRpc(), ROUTER).snapshot()
+
+    def test_non_positive_block_timestamp_fails_closed(self):
+        with self.assertRaises(QuickSwapV2Error):
+            QuickSwapV2ExactQuoter(FakeRpc(timestamp="0x0"), ROUTER).snapshot()
 
     def test_wrong_chain_fails_closed(self):
         rpc = FakeRpc(chain="0x1")
@@ -70,7 +101,7 @@ class QuickSwapV2ExactQuoteTests(unittest.TestCase):
         amount_out = 997 * 10**15
         rpc = FakeRpc(quote=encode_uint_array([amount_in, amount_out]))
         quoter = QuickSwapV2ExactQuoter(rpc, ROUTER)
-        quote = quoter.quote(amount_in, [TOKEN_A, TOKEN_B], BlockSnapshot(137, 0x1234))
+        quote = quoter.quote(amount_in, [TOKEN_A, TOKEN_B], BlockSnapshot(137, 0x1234, 0x2000))
 
         self.assertEqual(quote.amount_in, amount_in)
         self.assertEqual(quote.amount_out, amount_out)
@@ -80,11 +111,28 @@ class QuickSwapV2ExactQuoteTests(unittest.TestCase):
         self.assertEqual(call[1][0]["to"], ROUTER)
         self.assertEqual(call[1][1], "0x1234")
 
+    def test_quote_snapshot_uses_pinned_block_timestamp(self):
+        amount_in = 100
+        rpc = FakeRpc(timestamp="0x2000", quote=encode_uint_array([amount_in, 120]))
+        quoter = QuickSwapV2ExactQuoter(rpc, ROUTER)
+        snapshot = quoter.snapshot()
+        evidence = quoter.quote_snapshot(amount_in, [TOKEN_A, TOKEN_B], snapshot, gas_estimate=120000)
+        self.assertEqual(evidence.chain_id, 137)
+        self.assertEqual(evidence.block_number, 0x1234)
+        self.assertEqual(evidence.observed_at_unix, 0x2000)
+        self.assertEqual(evidence.amount_out, 120)
+        self.assertEqual(len(evidence.quote_hash), 66)
+
+    def test_quote_rejects_non_positive_snapshot_timestamp(self):
+        rpc = FakeRpc(quote=encode_uint_array([10, 20]))
+        with self.assertRaises(QuickSwapV2Error):
+            QuickSwapV2ExactQuoter(rpc, ROUTER).quote(10, [TOKEN_A, TOKEN_B], BlockSnapshot(137, 99, 0))
+
     def test_multihop_path_preserves_router_returned_final_integer(self):
         amount_in = 123456789012345678901
         rpc = FakeRpc(quote=encode_uint_array([amount_in, 456789, 987654321]))
         quote = QuickSwapV2ExactQuoter(rpc, ROUTER).quote(
-            amount_in, [TOKEN_A, TOKEN_B, TOKEN_C], BlockSnapshot(137, 99)
+            amount_in, [TOKEN_A, TOKEN_B, TOKEN_C], BlockSnapshot(137, 99, 2000)
         )
         self.assertEqual(quote.amount_out, 987654321)
         self.assertEqual(quote.token_in, TOKEN_A)
@@ -93,27 +141,27 @@ class QuickSwapV2ExactQuoteTests(unittest.TestCase):
     def test_quote_rejects_snapshot_from_wrong_chain(self):
         rpc = FakeRpc(quote=encode_uint_array([10, 20]))
         with self.assertRaises(QuickSwapV2Error):
-            QuickSwapV2ExactQuoter(rpc, ROUTER).quote(10, [TOKEN_A, TOKEN_B], BlockSnapshot(1, 99))
+            QuickSwapV2ExactQuoter(rpc, ROUTER).quote(10, [TOKEN_A, TOKEN_B], BlockSnapshot(1, 99, 2000))
 
     def test_malformed_rpc_result_fails_closed(self):
         rpc = FakeRpc(quote="0x1234")
         with self.assertRaises(QuickSwapV2Error):
-            QuickSwapV2ExactQuoter(rpc, ROUTER).quote(10, [TOKEN_A, TOKEN_B], BlockSnapshot(137, 1))
+            QuickSwapV2ExactQuoter(rpc, ROUTER).quote(10, [TOKEN_A, TOKEN_B], BlockSnapshot(137, 1, 2000))
 
     def test_unexpected_array_length_fails_closed(self):
         rpc = FakeRpc(quote=encode_uint_array([10, 20, 30]))
         with self.assertRaises(QuickSwapV2Error):
-            QuickSwapV2ExactQuoter(rpc, ROUTER).quote(10, [TOKEN_A, TOKEN_B], BlockSnapshot(137, 1))
+            QuickSwapV2ExactQuoter(rpc, ROUTER).quote(10, [TOKEN_A, TOKEN_B], BlockSnapshot(137, 1, 2000))
 
     def test_router_input_mismatch_fails_closed(self):
         rpc = FakeRpc(quote=encode_uint_array([11, 20]))
         with self.assertRaises(QuickSwapV2Error):
-            QuickSwapV2ExactQuoter(rpc, ROUTER).quote(10, [TOKEN_A, TOKEN_B], BlockSnapshot(137, 1))
+            QuickSwapV2ExactQuoter(rpc, ROUTER).quote(10, [TOKEN_A, TOKEN_B], BlockSnapshot(137, 1, 2000))
 
     def test_zero_output_fails_closed(self):
         rpc = FakeRpc(quote=encode_uint_array([10, 0]))
         with self.assertRaises(QuickSwapV2Error):
-            QuickSwapV2ExactQuoter(rpc, ROUTER).quote(10, [TOKEN_A, TOKEN_B], BlockSnapshot(137, 1))
+            QuickSwapV2ExactQuoter(rpc, ROUTER).quote(10, [TOKEN_A, TOKEN_B], BlockSnapshot(137, 1, 2000))
 
     def test_invalid_address_fails_closed(self):
         with self.assertRaises(QuickSwapV2Error):
@@ -128,7 +176,7 @@ class QuickSwapV2ExactQuoteTests(unittest.TestCase):
 
         with self.assertRaises(QuickSwapV2Error):
             QuickSwapV2ExactQuoter(ErrorRpc(), ROUTER).quote(
-                10, [TOKEN_A, TOKEN_B], BlockSnapshot(137, 1)
+                10, [TOKEN_A, TOKEN_B], BlockSnapshot(137, 1, 2000)
             )
 
     def test_decode_rejects_bad_offset(self):
