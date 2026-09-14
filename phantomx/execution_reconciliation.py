@@ -19,6 +19,7 @@ from .settlement import ReceiptRecord, Reconciliation, reconcile
 from .sqlite_execution_store import SQLiteExecutionStore
 
 _TX_HASH = re.compile(r"^0x[0-9a-fA-F]{64}$")
+_BLOCK_HASH = re.compile(r"^0x[0-9a-fA-F]{64}$")
 
 
 class ExecutionReconciliationError(ValueError):
@@ -175,6 +176,8 @@ def reconcile_included_execution(
     intent: ExecutionIntent,
     observation: ObservationDecision,
     receipt: ReceiptRecord,
+    block_hash: str,
+    canonical_block_hash: str,
     final_settlement: Decimal | str | int | float,
     flash_repayment: Decimal | str | int | float,
     costs: CostBreakdown,
@@ -191,12 +194,12 @@ def reconcile_included_execution(
         raise ExecutionReconciliationError("invalid transaction hash")
     if observation.tx_hash.lower() != receipt.tx_hash.lower():
         raise ExecutionReconciliationError("observation and receipt transaction hash mismatch")
+    if not _BLOCK_HASH.fullmatch(block_hash) or not _BLOCK_HASH.fullmatch(canonical_block_hash):
+        raise ExecutionReconciliationError("invalid block hash")
+    if block_hash.lower() != canonical_block_hash.lower():
+        raise ExecutionReconciliationError("settlement block is not canonical")
     if receipt.status != 1:
         raise ExecutionReconciliationError("realized settlement requires successful receipt")
-    if not observation.block_hash or not observation.canonical_block_hash:
-        raise ExecutionReconciliationError("included settlement requires canonical block identity")
-    if observation.block_hash.lower() != observation.canonical_block_hash.lower():
-        raise ExecutionReconciliationError("settlement block is not canonical")
     if receipt.gas_used < 0 or receipt.effective_gas_price < 0 or receipt.block_number < 0:
         raise ExecutionReconciliationError("invalid receipt accounting fields")
 
@@ -237,8 +240,8 @@ def reconcile_included_execution(
             payload = _evidence_payload(
                 tx_hash=receipt.tx_hash,
                 receipt=receipt,
-                block_hash=observation.block_hash,
-                canonical_block_hash=observation.canonical_block_hash,
+                block_hash=block_hash,
+                canonical_block_hash=canonical_block_hash,
                 final_settlement=final_settlement_d,
                 flash_repayment=flash_repayment_d,
                 costs=costs_d,
@@ -271,8 +274,8 @@ def reconcile_included_execution(
                         receipt.gas_used,
                         receipt.effective_gas_price,
                         receipt.block_number,
-                        observation.block_hash.lower(),
-                        observation.canonical_block_hash.lower(),
+                        block_hash.lower(),
+                        canonical_block_hash.lower(),
                         str(final_settlement_d),
                         str(flash_repayment_d),
                         str(costs_d.flash_loan_fee),
@@ -287,8 +290,8 @@ def reconcile_included_execution(
                     ),
                 )
                 terminal = ExecutionState.PROFIT_CONFIRMED if reconciliation.profit_confirmed else ExecutionState.PROFIT_FAILED
-                db.execute("UPDATE transaction_records SET state=? WHERE record_hash=? AND state=?", (terminal.value, record_hash.lower(), ExecutionState.INCLUDED.value))
-                if db.total_changes < 1:
+                update = db.execute("UPDATE transaction_records SET state=? WHERE record_hash=? AND state=?", (terminal.value, record_hash.lower(), ExecutionState.INCLUDED.value))
+                if update.rowcount != 1:
                     raise ExecutionReconciliationError("transaction terminal-state update was not applied")
                 db.execute("COMMIT")
         except Exception:
