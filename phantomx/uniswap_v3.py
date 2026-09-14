@@ -1,22 +1,14 @@
-"""Read-only, block-pinned Uniswap V3 exact quote adapter.
-
-This module is intentionally independent of legacy PhantomX execution code.
-It resolves a concrete V3 pool for an explicit fee tier, then asks the deployed
-Uniswap V3 Quoter V1 for exact output at a pinned block. No spot-price
-reconstruction, reserve approximation, signing, submission, or relay
-capability exists.
-"""
+"""Read-only, block-pinned Uniswap V3 exact quote adapter."""
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Mapping, Protocol, Sequence
 
+from .market_block import MarketBlockSnapshot, acquire_market_block
 from .quote_engine import ExactQuote, QuoteEngineError
 from .quote_snapshot import QuoteSnapshot
 
 POLYGON_CHAIN_ID = 137
-GET_POOL_SELECTOR = "1698ee82"  # factory.getPool(address,address,uint24)
-# keccak256("quoteExactInputSingle(address,address,uint24,uint256,uint160)")[:4]
+GET_POOL_SELECTOR = "1698ee82"
 QUOTE_EXACT_INPUT_SINGLE_SELECTOR = "f7729d43"
 
 
@@ -29,11 +21,7 @@ class UniswapV3Error(QuoteEngineError):
     """Raised when an exact Uniswap V3 quote cannot be proven valid."""
 
 
-@dataclass(frozen=True)
-class BlockSnapshot:
-    chain_id: int
-    block_number: int
-    timestamp: int = 0
+BlockSnapshot = MarketBlockSnapshot
 
 
 def _address_word(address: str) -> bytes:
@@ -55,19 +43,14 @@ def _uint_word(value: int, name: str, bits: int = 256) -> bytes:
 
 
 def _encode_get_pool(token_a: str, token_b: str, fee: int) -> str:
-    return "0x" + (bytes.fromhex(GET_POOL_SELECTOR)
-        + _address_word(token_a) + _address_word(token_b) + _uint_word(fee, "fee", 24)).hex()
+    return "0x" + (bytes.fromhex(GET_POOL_SELECTOR) + _address_word(token_a) +
+                     _address_word(token_b) + _uint_word(fee, "fee", 24)).hex()
 
 
 def _encode_quote_exact_input_single(token_in: str, token_out: str, fee: int, amount_in: int) -> str:
-    # Uniswap V3 Quoter V1:
-    # quoteExactInputSingle(address,address,uint24,uint256,uint160)
-    return "0x" + (bytes.fromhex(QUOTE_EXACT_INPUT_SINGLE_SELECTOR)
-        + _address_word(token_in)
-        + _address_word(token_out)
-        + _uint_word(fee, "fee", 24)
-        + _uint_word(amount_in, "amount_in")
-        + _uint_word(0, "sqrt_price_limit_x96")).hex()
+    return "0x" + (bytes.fromhex(QUOTE_EXACT_INPUT_SINGLE_SELECTOR) + _address_word(token_in) +
+                     _address_word(token_out) + _uint_word(fee, "fee", 24) +
+                     _uint_word(amount_in, "amount_in") + _uint_word(0, "sqrt_price_limit_x96")).hex()
 
 
 def _result_hex(result: Any, label: str) -> bytes:
@@ -101,24 +84,6 @@ def _decode_amount_out(result: Any) -> int:
     return amount_out
 
 
-def _parse_quantity(value: Any, name: str) -> int:
-    if not isinstance(value, str) or not value.startswith("0x"):
-        raise UniswapV3Error(f"{name}: malformed quantity")
-    try:
-        parsed = int(value, 16)
-    except ValueError as exc:
-        raise UniswapV3Error(f"{name}: invalid hexadecimal") from exc
-    if parsed < 0:
-        raise UniswapV3Error(f"{name}: negative value")
-    return parsed
-
-
-def _decode_block_timestamp(result: Any) -> int:
-    if not isinstance(result, Mapping):
-        raise UniswapV3Error("block: result must be an object")
-    return _parse_quantity(result.get("timestamp"), "block timestamp")
-
-
 class UniswapV3ExactQuoter:
     """Exact single-hop Uniswap V3 Quoter V1 over injected read-only RPC."""
 
@@ -134,22 +99,19 @@ class UniswapV3ExactQuoter:
         self.chain_id = chain_id
 
     def snapshot(self) -> BlockSnapshot:
-        chain_id = _parse_quantity(self._rpc.call("eth_chainId", []), "chainId")
-        if chain_id != self.chain_id:
-            raise UniswapV3Error(f"unexpected chain id: {chain_id}")
-        block_number = _parse_quantity(self._rpc.call("eth_blockNumber", []), "blockNumber")
-        block = self._rpc.call("eth_getBlockByNumber", [hex(block_number), False])
-        timestamp = _decode_block_timestamp(block)
-        return BlockSnapshot(chain_id, block_number, timestamp)
+        try:
+            return acquire_market_block(self._rpc, expected_chain_id=self.chain_id)
+        except Exception as exc:
+            raise UniswapV3Error(str(exc)) from exc
 
     def resolve_pool(self, token_in: str, token_out: str, fee: int, snapshot: BlockSnapshot) -> str:
         if snapshot.chain_id != self.chain_id:
             raise UniswapV3Error("snapshot chain identity mismatch")
         if token_in.lower() == token_out.lower():
             raise UniswapV3Error("token_in and token_out must differ")
-        data = _encode_get_pool(token_in, token_out, fee)
         result = self._rpc.call("eth_call", [
-            {"to": self.factory_address, "data": data}, hex(snapshot.block_number)
+            {"to": self.factory_address, "data": _encode_get_pool(token_in, token_out, fee)},
+            hex(snapshot.block_number),
         ])
         return _decode_address(result)
 
@@ -158,39 +120,25 @@ class UniswapV3ExactQuoter:
         if amount_in <= 0:
             raise UniswapV3Error("amount_in must be positive")
         pool = self.resolve_pool(token_in, token_out, fee, snapshot)
-        data = _encode_quote_exact_input_single(token_in, token_out, fee, amount_in)
         result = self._rpc.call("eth_call", [
-            {"to": self.quoter_address, "data": data}, hex(snapshot.block_number)
+            {"to": self.quoter_address,
+             "data": _encode_quote_exact_input_single(token_in, token_out, fee, amount_in)},
+            hex(snapshot.block_number),
         ])
-        amount_out = _decode_amount_out(result)
-        return ExactQuote(
-            venue=f"uniswap_v3:{pool.lower()}",
-            token_in=token_in,
-            token_out=token_out,
-            amount_in=amount_in,
-            amount_out=amount_out,
-            block_number=snapshot.block_number,
-            fee_raw=fee,
-        )
+        return ExactQuote(f"uniswap_v3:{pool.lower()}", token_in, token_out,
+                          amount_in, _decode_amount_out(result), snapshot.block_number, fee)
 
     def quote_snapshot(self, amount_in: int, token_in: str, token_out: str, fee: int,
                        snapshot: BlockSnapshot, gas_estimate: int | None = None) -> QuoteSnapshot:
-        """Return hash-bound canonical quote evidence for one pinned block."""
-        if snapshot.timestamp <= 0:
-            raise UniswapV3Error("snapshot timestamp is required for canonical quote evidence")
         quote = self.quote(amount_in, token_in, token_out, fee, snapshot)
         pool = quote.venue.split(":", 1)[1]
         return QuoteSnapshot.from_exact_quote(
-            quote,
-            chain_id=self.chain_id,
-            observed_at_unix=snapshot.timestamp,
-            pool_or_router=pool,
-            gas_estimate=gas_estimate,
+            quote, chain_id=self.chain_id, observed_at_unix=snapshot.timestamp,
+            pool_or_router=pool, gas_estimate=gas_estimate,
         )
 
 
 def quote_uniswap_v3_exact(rpc: RpcTransport, factory_address: str, quoter_address: str,
                            amount_in: int, token_in: str, token_out: str, fee: int) -> ExactQuote:
-    """Pin one Polygon block and obtain one exact V3 single-hop quote."""
     quoter = UniswapV3ExactQuoter(rpc, factory_address, quoter_address)
     return quoter.quote(amount_in, token_in, token_out, fee, quoter.snapshot())
