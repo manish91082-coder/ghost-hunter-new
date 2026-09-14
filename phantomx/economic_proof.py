@@ -46,14 +46,18 @@ def _hash(value: str, name: str) -> str:
 
 @dataclass(frozen=True)
 class EconomicProof:
-    """Worst-case candidate economics bound to route/quote/valuation evidence."""
+    """Worst-case candidate economics bound to route/quote/valuation evidence.
+
+    ``loan_principal_usd`` excludes the flash-loan fee. The fee is represented
+    exactly once by ``costs.flash_loan_fee``.
+    """
 
     schema_version: int
     route_hash: str
     quote_hashes: tuple[str, ...]
     valuation_hash: str
     final_settlement_usd: Decimal
-    flash_repayment_usd: Decimal
+    loan_principal_usd: Decimal
     costs: CostBreakdown
     max_gas_usd: Decimal
     max_relay_usd: Decimal
@@ -70,18 +74,27 @@ class EconomicProof:
             raise EconomicProofError("at least one quote hash is required")
         object.__setattr__(self, "quote_hashes", hashes)
 
-        for name in ("final_settlement_usd", "flash_repayment_usd", "max_gas_usd", "max_relay_usd", "minimum_net_profit_usd"):
+        for name in (
+            "final_settlement_usd",
+            "loan_principal_usd",
+            "max_gas_usd",
+            "max_relay_usd",
+            "minimum_net_profit_usd",
+        ):
             object.__setattr__(self, name, _decimal(getattr(self, name), name))
 
-        for name in ("flash_loan_fee", "dex_fees", "price_impact", "gas", "relay", "other"):
-            value = _decimal(getattr(self.costs, name), f"costs.{name}")
-            if value != getattr(self.costs, name):
-                updated = self.costs.__class__(**{
-                    field: value if field == name else getattr(self.costs, field)
-                    for field in ("flash_loan_fee", "dex_fees", "price_impact", "gas", "relay", "other")
-                })
-                object.__setattr__(self, "costs", updated)
-                break
+        normalized_costs = {
+            field: _decimal(getattr(self.costs, field), f"costs.{field}")
+            for field in (
+                "flash_loan_fee",
+                "dex_fees",
+                "price_impact",
+                "gas",
+                "relay",
+                "other",
+            )
+        }
+        object.__setattr__(self, "costs", CostBreakdown(**normalized_costs))
 
         if self.costs.gas > self.max_gas_usd:
             raise EconomicProofError("gas cost exceeds authorized maximum")
@@ -94,12 +107,13 @@ class EconomicProof:
         if self.proof_hash:
             if self.proof_hash.lower() != expected:
                 raise EconomicProofError("economic proof hash mismatch")
+            object.__setattr__(self, "proof_hash", self.proof_hash.lower())
         else:
             object.__setattr__(self, "proof_hash", expected)
 
     @property
     def gross_surplus_usd(self) -> Decimal:
-        return self.final_settlement_usd - self.flash_repayment_usd
+        return self.final_settlement_usd - self.loan_principal_usd
 
     @property
     def total_cost_usd(self) -> Decimal:
@@ -120,7 +134,7 @@ class EconomicProof:
             "quote_hashes": list(self.quote_hashes),
             "valuation_hash": self.valuation_hash,
             "final_settlement_usd": str(self.final_settlement_usd),
-            "flash_repayment_usd": str(self.flash_repayment_usd),
+            "loan_principal_usd": str(self.loan_principal_usd),
             "costs": {
                 "flash_loan_fee": str(self.costs.flash_loan_fee),
                 "dex_fees": str(self.costs.dex_fees),
@@ -145,24 +159,24 @@ def build_economic_proof(
     quote_hashes: Iterable[str],
     valuation_hash: str,
     final_settlement_usd: Decimal | int | str,
-    flash_repayment_usd: Decimal | int | str,
+    loan_principal_usd: Decimal | int | str,
     costs: CostBreakdown,
     max_gas_usd: Decimal | int | str,
     max_relay_usd: Decimal | int | str,
     minimum_net_profit_usd: Decimal | int | str = STRICT_MIN_NET_PROFIT_USD,
 ) -> EconomicProof:
-    """Build a deterministic proof; callers must explicitly inspect the gate."""
+    """Build a deterministic proof and reject candidates at or below the floor."""
     proof = EconomicProof(
         schema_version=1,
         route_hash=route_hash,
         quote_hashes=tuple(quote_hashes),
         valuation_hash=valuation_hash,
-        final_settlement_usd=Decimal(final_settlement_usd),
-        flash_repayment_usd=Decimal(flash_repayment_usd),
+        final_settlement_usd=final_settlement_usd,
+        loan_principal_usd=loan_principal_usd,
         costs=costs,
-        max_gas_usd=Decimal(max_gas_usd),
-        max_relay_usd=Decimal(max_relay_usd),
-        minimum_net_profit_usd=Decimal(minimum_net_profit_usd),
+        max_gas_usd=max_gas_usd,
+        max_relay_usd=max_relay_usd,
+        minimum_net_profit_usd=minimum_net_profit_usd,
     )
     if not proof.economically_valid:
         raise EconomicProofError("worst-case net profit does not exceed the strict minimum")
