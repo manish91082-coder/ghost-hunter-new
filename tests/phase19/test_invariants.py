@@ -1,8 +1,7 @@
-"""Phase-19 adversarial tests for the non-negotiable execution invariants.
+"""Phase-19 adversarial tests for non-negotiable execution invariants.
 
-These tests are deliberately dependency-free. They validate policy and data
-contracts only. They do NOT claim Polygon execution, fork execution, or
-production signing has been proven.
+These tests validate policy/data contracts only. They do NOT claim Polygon
+execution, fork execution, production signing, or live relay submission.
 """
 
 from decimal import Decimal
@@ -30,35 +29,29 @@ class StrictProfitTests(unittest.TestCase):
         self.assertTrue(strict_profit_ok(Decimal("0.200001")))
 
     def test_all_costs_are_subtracted(self):
-        costs = CostBreakdown(
-            flash_loan_fee=Decimal("0.10"), dex_fees=Decimal("0.20"),
-            price_impact=Decimal("0.10"), gas=Decimal("0.15"),
-            relay=Decimal("0.05"), other=Decimal("0.01"),
-        )
+        costs = CostBreakdown(Decimal("0.10"), Decimal("0.20"), Decimal("0.10"), Decimal("0.15"), Decimal("0.05"), Decimal("0.01"))
         settlement = RealizedSettlement(Decimal("101.00"), Decimal("100.00"), costs)
         self.assertEqual(settlement.realized_net_profit, Decimal("0.39"))
         self.assertTrue(settlement.profit_confirmed)
 
     def test_successful_trade_can_still_fail_profit_gate(self):
-        settlement = RealizedSettlement(
-            Decimal("100.50"), Decimal("100.00"), CostBreakdown(gas=Decimal("0.20"), relay=Decimal("0.11"))
-        )
+        settlement = RealizedSettlement(Decimal("100.50"), Decimal("100.00"), CostBreakdown(gas=Decimal("0.20"), relay=Decimal("0.11")))
         self.assertFalse(settlement.profit_confirmed)
 
 
 class BindingTests(unittest.TestCase):
     def setUp(self):
         self.intent = ExecutionIntent(
-            chain_id=137,
-            executor="0x0000000000000000000000000000000000000001",
-            sender="0x0000000000000000000000000000000000000002",
-            loan_asset="0x0000000000000000000000000000000000000003",
-            loan_amount=1_000_000, route_hash="0xroute", calldata_hash="0xcalldata",
-            nonce=42, deadline=2_000,
+            137, "0x0000000000000000000000000000000000000001",
+            "0x0000000000000000000000000000000000000002",
+            "0x0000000000000000000000000000000000000003", 1_000_000,
+            "0xroute", "0xcalldata", "0xeconomic", "0xsimulation", 42, 2_000,
         )
         self.authorization = Authorization(
-            self.intent.intent_hash(), self.intent.calldata_hash, self.intent.chain_id,
-            self.intent.executor, self.intent.sender, self.intent.nonce, self.intent.deadline,
+            self.intent.intent_hash(), self.intent.calldata_hash,
+            self.intent.economic_proof_hash, self.intent.simulation_proof_hash,
+            self.intent.chain_id, self.intent.executor, self.intent.sender,
+            self.intent.nonce, self.intent.deadline,
         )
 
     def test_authorization_matches_unchanged_intent(self):
@@ -69,6 +62,12 @@ class BindingTests(unittest.TestCase):
 
     def test_loan_change_invalidates_authorization(self):
         self.assertFalse(self.authorization.matches(self.intent.with_field(loan_amount=2_000_000), 1_000))
+
+    def test_economic_proof_change_invalidates_authorization(self):
+        self.assertFalse(self.authorization.matches(self.intent.with_field(economic_proof_hash="0xchanged"), 1_000))
+
+    def test_simulation_proof_change_invalidates_authorization(self):
+        self.assertFalse(self.authorization.matches(self.intent.with_field(simulation_proof_hash="0xchanged"), 1_000))
 
     def test_nonce_change_invalidates_authorization(self):
         self.assertFalse(self.authorization.matches(self.intent.with_field(nonce=43), 1_000))
@@ -86,12 +85,10 @@ class LifecycleTests(unittest.TestCase):
     def test_happy_path_reaches_profit_confirmation(self):
         lifecycle = Lifecycle()
         lifecycle.walk([
-            ExecutionState.SIMULATED, ExecutionState.AUTHORIZED,
-            ExecutionState.NONCE_RESERVED, ExecutionState.BUILT,
-            ExecutionState.VERIFIED, ExecutionState.SIGNED,
-            ExecutionState.PRIVATE_SUBMITTED, ExecutionState.PENDING,
-            ExecutionState.INCLUDED, ExecutionState.RECONCILED,
-            ExecutionState.PROFIT_CONFIRMED,
+            ExecutionState.SIMULATED, ExecutionState.AUTHORIZED, ExecutionState.NONCE_RESERVED,
+            ExecutionState.BUILT, ExecutionState.VERIFIED, ExecutionState.SIGNED,
+            ExecutionState.PRIVATE_SUBMITTED, ExecutionState.PENDING, ExecutionState.INCLUDED,
+            ExecutionState.RECONCILED, ExecutionState.PROFIT_CONFIRMED,
         ])
         self.assertEqual(lifecycle.state, ExecutionState.PROFIT_CONFIRMED)
 
@@ -101,9 +98,8 @@ class LifecycleTests(unittest.TestCase):
             lifecycle.advance(ExecutionState.CREATED)
 
     def test_invalid_skip_is_rejected(self):
-        lifecycle = Lifecycle()
         with self.assertRaises(ValueError):
-            lifecycle.advance(ExecutionState.AUTHORIZED)
+            Lifecycle().advance(ExecutionState.AUTHORIZED)
 
 
 class ReplayAndNonceTests(unittest.TestCase):
@@ -129,23 +125,13 @@ class ReplayAndNonceTests(unittest.TestCase):
 class ReceiptAccountingTests(unittest.TestCase):
     def test_successful_receipt_does_not_imply_profit(self):
         receipt = ReceiptRecord("0xtx", 1, 100_000, 30_000_000_000, 123)
-        result = reconcile(
-            receipt=receipt,
-            final_settlement=Decimal("100.50"),
-            flash_repayment=Decimal("100.00"),
-            costs=CostBreakdown(gas=Decimal("0.20"), relay=Decimal("0.11")),
-        )
+        result = reconcile(receipt, Decimal("100.50"), Decimal("100.00"), CostBreakdown(gas=Decimal("0.20"), relay=Decimal("0.11")))
         self.assertTrue(result.successful)
         self.assertFalse(result.profit_confirmed)
 
     def test_reverted_receipt_cannot_confirm_profit(self):
         receipt = ReceiptRecord("0xtx", 0, 100_000, 30_000_000_000, 123)
-        result = reconcile(
-            receipt=receipt,
-            final_settlement=Decimal("101.00"),
-            flash_repayment=Decimal("100.00"),
-            costs=CostBreakdown(gas=Decimal("0.01")),
-        )
+        result = reconcile(receipt, Decimal("101.00"), Decimal("100.00"), CostBreakdown(gas=Decimal("0.01")))
         self.assertFalse(result.successful)
         self.assertFalse(result.profit_confirmed)
 
