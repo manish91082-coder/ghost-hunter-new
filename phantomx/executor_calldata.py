@@ -19,10 +19,12 @@ from .hashing import keccak256_hex
 EXECUTE_SIGNATURE = (
     "execute((address,address,bool,uint24,uint256,uint256,uint256,uint256,bytes32,bytes32,bytes32),uint256)"
 )
+EXECUTE_WORD_COUNT = 12
+EXECUTE_TOTAL_LENGTH = 4 + EXECUTE_WORD_COUNT * 32
 
 
 class ExecutorCalldataError(ValueError):
-    """Raised when executor calldata cannot be constructed safely."""
+    """Raised when executor calldata cannot be constructed or decoded safely."""
 
 
 def _require_address(value: str, field: str) -> bytes:
@@ -134,6 +136,92 @@ def _encode_execute(
         _word_uint(amount, "amount"),
     )
     return executor_selector() + b"".join(words)
+
+
+def _decode_uint(word: bytes, field: str, *, max_value: int = (1 << 256) - 1) -> int:
+    if len(word) != 32:
+        raise ExecutorCalldataError(f"{field} is not a 32-byte ABI word")
+    value = int.from_bytes(word, "big")
+    if value > max_value:
+        raise ExecutorCalldataError(f"{field} exceeds its declared unsigned width")
+    return value
+
+
+def _decode_address(word: bytes, field: str) -> str:
+    if len(word) != 32 or word[:12] != b"\x00" * 12:
+        raise ExecutorCalldataError(f"{field} is not a canonical ABI address word")
+    return "0x" + word[12:].hex()
+
+
+def _decode_bool(word: bytes, field: str) -> bool:
+    value = _decode_uint(word, field, max_value=1)
+    return bool(value)
+
+
+def _decode_hash(word: bytes, field: str) -> str:
+    if len(word) != 32 or word == b"\x00" * 32:
+        raise ExecutorCalldataError(f"{field} must be a non-zero 32-byte hash")
+    return "0x" + word.hex()
+
+
+@dataclass(frozen=True)
+class DecodedExecutorCall:
+    """Semantically decoded Phase-19 executor calldata."""
+
+    asset: str
+    token_mid: str
+    first_on_quickswap: bool
+    uniswap_fee: int
+    amount_out_min_first: int
+    amount_out_min_second: int
+    minimum_surplus: int
+    deadline: int
+    route_hash: str
+    topology_hash: str
+    intent_commitment_hash: str
+    amount: int
+
+
+def decode_executor_calldata(calldata: bytes) -> DecodedExecutorCall:
+    """Decode and validate the exact static Phase-19 execute calldata layout."""
+    if not isinstance(calldata, (bytes, bytearray, memoryview)):
+        raise ExecutorCalldataError("calldata must be bytes-like")
+    raw = bytes(calldata)
+    if len(raw) != EXECUTE_TOTAL_LENGTH:
+        raise ExecutorCalldataError("unexpected executor calldata length")
+    if raw[:4] != executor_selector():
+        raise ExecutorCalldataError("unexpected executor selector")
+
+    body = raw[4:]
+    words = tuple(body[i : i + 32] for i in range(0, len(body), 32))
+    if len(words) != EXECUTE_WORD_COUNT:
+        raise ExecutorCalldataError("unexpected executor ABI word count")
+
+    result = DecodedExecutorCall(
+        asset=_decode_address(words[0], "asset"),
+        token_mid=_decode_address(words[1], "token_mid"),
+        first_on_quickswap=_decode_bool(words[2], "first_on_quickswap"),
+        uniswap_fee=_decode_uint(words[3], "uniswap_fee", max_value=0xFFFFFF),
+        amount_out_min_first=_decode_uint(words[4], "amount_out_min_first"),
+        amount_out_min_second=_decode_uint(words[5], "amount_out_min_second"),
+        minimum_surplus=_decode_uint(words[6], "minimum_surplus"),
+        deadline=_decode_uint(words[7], "deadline"),
+        route_hash=_decode_hash(words[8], "route_hash"),
+        topology_hash=_decode_hash(words[9], "topology_hash"),
+        intent_commitment_hash=_decode_hash(words[10], "intent_commitment_hash"),
+        amount=_decode_uint(words[11], "amount"),
+    )
+    if result.uniswap_fee == 0:
+        raise ExecutorCalldataError("uniswap_fee must be non-zero")
+    if result.amount == 0:
+        raise ExecutorCalldataError("amount must be positive")
+    if result.amount_out_min_first == 0 or result.amount_out_min_second == 0:
+        raise ExecutorCalldataError("per-leg minimum outputs must be positive")
+    if result.minimum_surplus == 0:
+        raise ExecutorCalldataError("minimum_surplus must be positive")
+    if result.deadline == 0:
+        raise ExecutorCalldataError("deadline must be positive")
+    return result
 
 
 @dataclass(frozen=True)
