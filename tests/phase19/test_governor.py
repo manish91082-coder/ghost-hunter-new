@@ -5,9 +5,9 @@ from decimal import Decimal
 from phantomx.economic_proof import EconomicProof, build_economic_proof
 from phantomx.economics import CostBreakdown
 from phantomx.evm_preflight import preflight_execution, simulation_hash
-from phantomx.execution import Authorization, ExecutionIntent, ExecutionState, TransactionEnvelope
+from phantomx.execution import Authorization, ExecutionIntent, ExecutionState
+from phantomx.executor_calldata import build_executor_transaction
 from phantomx.governor import GovernorError, GovernorPolicy, govern_execution
-from phantomx.hashing import keccak256_hex
 from phantomx.quote_engine import ExactQuote
 from phantomx.quote_snapshot import QuoteSnapshot
 from phantomx.route_simulator import simulate_two_leg
@@ -16,6 +16,7 @@ TOKEN_A = "0x" + "aa" * 20
 TOKEN_B = "0x" + "bb" * 20
 ROUTER_A = "0x" + "cc" * 20
 ROUTER_B = "0x" + "dd" * 20
+AAVE_POOL = "0x" + "11" * 20
 EXECUTOR = "0x" + "ee" * 20
 SENDER = "0x" + "ff" * 20
 VALUATION = "0x" + "44" * 32
@@ -25,7 +26,6 @@ class GovernorTests(unittest.TestCase):
     def setUp(self):
         self.block = 5000
         self.now = 1_700_000_000
-        calldata = bytes.fromhex("12345678" + "00" * 32)
         leg_one = QuoteSnapshot.from_exact_quote(
             ExactQuote("QuickSwapV2", TOKEN_A, TOKEN_B, 100, 110, self.block, 3),
             chain_id=137,
@@ -58,30 +58,38 @@ class GovernorTests(unittest.TestCase):
             max_gas_usd="0.05",
             max_relay_usd="0.02",
         )
-        self.intent = ExecutionIntent(
+
+        seed_intent = ExecutionIntent(
             chain_id=137,
             executor=EXECUTOR,
             sender=SENDER,
             loan_asset=TOKEN_A,
             loan_amount=100,
             route_hash=self.simulation.route_hash,
-            calldata_hash=keccak256_hex(calldata),
+            calldata_hash="0x" + "00" * 32,
             economic_proof_hash=self.proof.proof_hash,
             simulation_proof_hash=simulation_hash(self.simulation),
             nonce=7,
             deadline=self.now + 60,
             minimum_net_profit_usd="0.20",
         )
-        self.envelope = TransactionEnvelope(
-            chain_id=137,
-            sender=SENDER,
-            executor=EXECUTOR,
-            nonce=7,
-            calldata=calldata,
+        bound = build_executor_transaction(
+            seed_intent,
+            token_mid=TOKEN_B,
+            first_on_quickswap=True,
+            uniswap_fee=3000,
+            amount_out_min_first=100,
+            amount_out_min_second=95,
+            minimum_surplus=1,
+            aave_pool=AAVE_POOL,
+            quickswap_router=ROUTER_A,
+            uniswap_v3_router=ROUTER_B,
             gas_limit=300_000,
             max_fee_per_gas=100,
             max_priority_fee_per_gas=30,
         )
+        self.intent = bound.bound_intent
+        self.envelope = bound.envelope
         self.authorization = Authorization(
             intent_hash=self.intent.intent_hash(),
             calldata_hash=self.intent.calldata_hash,
