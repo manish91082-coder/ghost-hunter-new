@@ -180,9 +180,10 @@ class EVMPreflightTests(unittest.TestCase):
         with self.assertRaises(EVMPreflightError):
             self.run_preflight(economic_proof=altered)
 
-    def test_simulation_hash_is_deterministic_and_changes_with_route(self):
+    def test_simulation_hash_is_deterministic_and_changes_when_route_digest_changes(self):
         self.assertEqual(simulation_hash(self.simulation), simulation_hash(self.simulation))
-        altered = replace(self.simulation, final_amount=102)
+        altered = replace(self.simulation)
+        object.__setattr__(altered, "route_hash", "0x" + "99" * 32)
         self.assertNotEqual(simulation_hash(self.simulation), simulation_hash(altered))
 
 
