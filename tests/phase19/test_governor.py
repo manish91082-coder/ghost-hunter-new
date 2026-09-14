@@ -120,6 +120,7 @@ class GovernorTests(unittest.TestCase):
             simulation=self.simulation,
             economic_proof=self.proof,
             now=self.now,
+            executor_authority=self.authority,
         )
         self.policy = GovernorPolicy(
             live_execution_enabled=True,
@@ -158,20 +159,41 @@ class GovernorTests(unittest.TestCase):
         self.assertEqual(decision.reason, "all governor policy gates passed")
         self.assertEqual(decision.ai_rank, "0.99")
         self.assertEqual(decision.executor_authority_hash, self.authority.evidence_hash)
+        self.assertEqual(self.preflight.authority_evidence_hash, self.authority.evidence_hash)
         self.assertEqual(len(decision.decision_hash), 66)
 
     def test_authority_mutation_is_blocked_and_decision_commits_to_evidence(self):
-        mutated = replace(self.authority, owner=TOKEN_B)
+        mutated = ExecutorAuthorityEvidence(
+            schema_version=1,
+            chain_id=137,
+            executor=EXECUTOR,
+            owner=TOKEN_B,
+            observed_block=self.block + 1,
+            runtime_code_hash=RUNTIME_CODE_HASH,
+        )
         blocked = self.run_governor(executor_authority=mutated)
         self.assertFalse(blocked.approved)
         self.assertIn("authority evidence is invalid", blocked.reason)
         self.assertNotEqual(blocked.executor_authority_hash, self.authority.evidence_hash)
 
     def test_authority_observation_before_proven_block_is_blocked(self):
-        stale = replace(self.authority, observed_block=self.block - 1)
+        stale = ExecutorAuthorityEvidence(
+            schema_version=1,
+            chain_id=137,
+            executor=EXECUTOR,
+            owner=SENDER,
+            observed_block=self.block - 1,
+            runtime_code_hash=RUNTIME_CODE_HASH,
+        )
         blocked = self.run_governor(executor_authority=stale)
         self.assertFalse(blocked.approved)
         self.assertIn("authority evidence is invalid", blocked.reason)
+
+    def test_preflight_authority_binding_cannot_be_missing_or_mutated(self):
+        missing = replace(self.preflight, authority_evidence_hash="")
+        self.assertFalse(self.run_governor(preflight=missing).approved)
+        mutated = replace(self.preflight, authority_evidence_hash="0x" + "66" * 32)
+        self.assertFalse(self.run_governor(preflight=mutated).approved)
 
     def test_live_capital_lock_blocks_even_valid_preflight(self):
         decision = self.run_governor(policy=replace(self.policy, live_execution_enabled=False))
@@ -219,7 +241,7 @@ class GovernorTests(unittest.TestCase):
         self.assertFalse(self.run_governor(policy=replace(self.policy, approved_executors=(TOKEN_A,))).approved)
         self.assertFalse(self.run_governor(policy=replace(self.policy, approved_senders=(TOKEN_A,))).approved)
         self.assertFalse(self.run_governor(policy=replace(self.policy, allowed_loan_assets=(TOKEN_B,))).approved)
-        self.assertFalse(self.run_governor(policy=replace(self.policy, allowed_route_hashes=("0x" + "55" * 32,))).approved)
+        self.assertFalse(self.run_governor(policy=replace(self.policy, allowed_route_hashes=("0x" + "77" * 32,))).approved)
 
     def test_preflight_identity_mutation_is_blocked(self):
         mutated = replace(self.preflight, calldata_hash="0x" + "55" * 32)
