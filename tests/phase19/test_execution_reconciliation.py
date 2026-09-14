@@ -11,6 +11,10 @@ from phantomx.settlement import ReceiptRecord
 from tests.phase19.test_execution_submission import ExecutionSubmissionTests, FakeRelay
 
 
+BLOCK_HASH = "0x" + "12" * 32
+BAD_BLOCK_HASH = "0x" + "34" * 32
+
+
 class ExecutionReconciliationTests(unittest.TestCase):
     def setUp(self):
         self.fixture = ExecutionSubmissionTests()
@@ -32,9 +36,9 @@ class ExecutionReconciliationTests(unittest.TestCase):
             observation=self.included_observation,
             tx_nonce=self.prepared.assembly.intent.nonce,
             pending_nonce=self.prepared.assembly.intent.nonce + 1,
-            block_hash="0x" + "12" * 32,
+            block_hash=BLOCK_HASH,
             block_number=6000,
-            canonical_block_hash="0x" + "12" * 32,
+            canonical_block_hash=BLOCK_HASH,
         )
 
     def _receipt(self):
@@ -46,18 +50,25 @@ class ExecutionReconciliationTests(unittest.TestCase):
             block_number=6000,
         )
 
-    def test_realized_profit_above_strict_floor_confirms(self):
-        receipt = self._receipt()
-        self.assertEqual(receipt.gas_cost_wei, 2_100_000)
-        result = reconcile_included_execution(
+    def _settle(self, **overrides):
+        kwargs = dict(
             store=self.store,
             intent=self.prepared.assembly.intent,
             observation=self.included_observation,
-            receipt=receipt,
+            receipt=self._receipt(),
+            block_hash=BLOCK_HASH,
+            canonical_block_hash=BLOCK_HASH,
             final_settlement="101.00",
             flash_repayment="100.00",
             costs=CostBreakdown(flash_loan_fee="0.05", dex_fees="0.02", gas="0.01", relay="0.01", other="0.01"),
         )
+        kwargs.update(overrides)
+        return reconcile_included_execution(**kwargs)
+
+    def test_realized_profit_above_strict_floor_confirms(self):
+        receipt = self._receipt()
+        self.assertEqual(receipt.gas_cost_wei, 2_100_000)
+        result = self._settle()
         self.assertEqual(result.transaction_state, ExecutionState.PROFIT_CONFIRMED)
         self.assertTrue(result.settlement_record.profit_confirmed)
         self.assertEqual(result.settlement_record.realized_net_profit_usd, result.reconciliation.settlement.realized_net_profit)
@@ -65,11 +76,7 @@ class ExecutionReconciliationTests(unittest.TestCase):
         self.assertEqual(self.store.get_nonce(self.prepared.assembly.intent.sender, self.prepared.assembly.intent.nonce).status.value, "INCLUDED")
 
     def test_exact_twenty_cents_fails_strict_floor(self):
-        result = reconcile_included_execution(
-            store=self.store,
-            intent=self.prepared.assembly.intent,
-            observation=self.included_observation,
-            receipt=self._receipt(),
+        result = self._settle(
             final_settlement="100.30",
             flash_repayment="100.00",
             costs=CostBreakdown(gas="0.10"),
@@ -79,21 +86,11 @@ class ExecutionReconciliationTests(unittest.TestCase):
         self.assertEqual(result.settlement_record.realized_net_profit_usd, result.reconciliation.settlement.realized_net_profit)
 
     def test_settlement_is_idempotent_but_conflicting_evidence_is_rejected(self):
-        kwargs = dict(
-            store=self.store,
-            intent=self.prepared.assembly.intent,
-            observation=self.included_observation,
-            receipt=self._receipt(),
-            final_settlement="101.00",
-            flash_repayment="100.00",
-            costs=CostBreakdown(flash_loan_fee="0.05", dex_fees="0.02", gas="0.01", relay="0.01", other="0.01"),
-        )
-        first = reconcile_included_execution(**kwargs)
-        self.assertEqual(first.settlement_record.record_hash, reconcile_included_execution(**kwargs).settlement_record.record_hash)
-        conflicting = dict(kwargs)
-        conflicting["final_settlement"] = "101.01"
+        first = self._settle()
+        second = self._settle()
+        self.assertEqual(first.settlement_record.record_hash, second.settlement_record.record_hash)
         with self.assertRaises(ExecutionReconciliationError):
-            reconcile_included_execution(**conflicting)
+            self._settle(final_settlement="101.01")
 
     def test_noncanonical_observation_is_rejected_before_accounting(self):
         bad_observation = ObservationDecision(
@@ -108,10 +105,18 @@ class ExecutionReconciliationTests(unittest.TestCase):
                 intent=self.prepared.assembly.intent,
                 observation=bad_observation,
                 tx_nonce=self.prepared.assembly.intent.nonce,
-                block_hash="0x" + "12" * 32,
+                block_hash=BLOCK_HASH,
                 block_number=6000,
-                canonical_block_hash="0x" + "34" * 32,
+                canonical_block_hash=BAD_BLOCK_HASH,
             )
+
+    def test_settlement_requires_matching_canonical_block_evidence(self):
+        with self.assertRaises(ExecutionReconciliationError):
+            self._settle(canonical_block_hash=BAD_BLOCK_HASH)
+        self.assertEqual(
+            self.store.get_transaction(self.prepared.transaction_record.record_hash()).state,
+            ExecutionState.INCLUDED,
+        )
 
 
 if __name__ == "__main__":
