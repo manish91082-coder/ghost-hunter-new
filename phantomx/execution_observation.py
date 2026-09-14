@@ -63,11 +63,12 @@ def persist_chain_observation(
 ) -> PersistedObservation:
     """Persist one safe observation and advance only evidence-proven lifecycle state.
 
-    PENDING leaves the durable nonce SUBMITTED. INCLUDED advances the nonce to
-    INCLUDED. A reverted receipt terminates the execution as PROFIT_FAILED and
-    advances the nonce to INCLUDED. Drop, replacement and reorg evidence are
-    recorded nowhere as state transitions here because they require dedicated
-    recovery flows rather than implicit mutation.
+    PENDING leaves the durable nonce SUBMITTED unless the execution was
+    previously REORGED, in which case canonical re-observation restores
+    SUBMITTED. INCLUDED advances the nonce to INCLUDED. A reverted receipt
+    terminates the execution as PROFIT_FAILED and advances the nonce to
+    INCLUDED. Drop, replacement and reorg evidence use the dedicated recovery
+    adapter rather than implicit mutation here.
     """
     _ensure_schema(store)
     if not _TX_HASH.fullmatch(observation.tx_hash):
@@ -112,15 +113,15 @@ def persist_chain_observation(
             nonce_state = NonceStatus(nrow[0])
 
             if observation.state is ChainObservationState.PENDING:
-                if tx_state not in {ExecutionState.PRIVATE_SUBMITTED, ExecutionState.PENDING} or nonce_state is not NonceStatus.SUBMITTED:
+                if tx_state not in {ExecutionState.PRIVATE_SUBMITTED, ExecutionState.PENDING, ExecutionState.REORGED} or nonce_state not in {NonceStatus.SUBMITTED, NonceStatus.REORGED}:
                     raise ExecutionObservationError("PENDING evidence conflicts with durable lifecycle")
                 target_tx, target_nonce = ExecutionState.PENDING, NonceStatus.SUBMITTED
             elif observation.state is ChainObservationState.INCLUDED:
-                if tx_state not in {ExecutionState.PRIVATE_SUBMITTED, ExecutionState.PENDING, ExecutionState.INCLUDED} or nonce_state not in {NonceStatus.SUBMITTED, NonceStatus.INCLUDED}:
+                if tx_state not in {ExecutionState.PRIVATE_SUBMITTED, ExecutionState.PENDING, ExecutionState.INCLUDED, ExecutionState.REORGED} or nonce_state not in {NonceStatus.SUBMITTED, NonceStatus.INCLUDED, NonceStatus.REORGED}:
                     raise ExecutionObservationError("INCLUDED evidence conflicts with durable lifecycle")
                 target_tx, target_nonce = ExecutionState.INCLUDED, NonceStatus.INCLUDED
             elif observation.state is ChainObservationState.REVERTED:
-                if tx_state not in {ExecutionState.PRIVATE_SUBMITTED, ExecutionState.PENDING, ExecutionState.INCLUDED} or nonce_state not in {NonceStatus.SUBMITTED, NonceStatus.INCLUDED}:
+                if tx_state not in {ExecutionState.PRIVATE_SUBMITTED, ExecutionState.PENDING, ExecutionState.INCLUDED, ExecutionState.REORGED} or nonce_state not in {NonceStatus.SUBMITTED, NonceStatus.INCLUDED, NonceStatus.REORGED}:
                     raise ExecutionObservationError("REVERTED evidence conflicts with durable lifecycle")
                 target_tx, target_nonce = ExecutionState.PROFIT_FAILED, NonceStatus.INCLUDED
             else:
