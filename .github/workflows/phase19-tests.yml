@@ -18,5 +18,11 @@ jobs:
           python-version: "3.11"
       - name: Install Phase-19 dependencies
         run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Compile Phase-19 Solidity
+        run: forge build --root . --contracts contracts --out out --cache-path .forge-cache
       - name: Run Phase-19 unittest suite
         run: python -m unittest discover -s tests/phase19 -v
