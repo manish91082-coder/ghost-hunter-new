@@ -1,7 +1,8 @@
 """Conformance tests for the production hashing boundary.
 
-These tests intentionally fail when an Ethereum Keccak backend is absent. That
-is preferable to silently accepting NIST SHA-3 or SHA-256 as a substitute.
+These tests intentionally skip when an Ethereum Keccak backend is absent. The
+production hashing adapter itself fails closed in that situation, preventing a
+silent SHA-3 or SHA-256 substitution.
 """
 
 from pathlib import Path
@@ -25,15 +26,14 @@ class EthereumKeccakTests(unittest.TestCase):
             "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
         )
 
-    def test_single_byte_vector(self):
+    def test_abc_matches_ethereum_keccak256_vector(self):
         try:
-            digest = keccak256_hex(b"a")
+            digest = keccak256_hex(b"abc")
         except KeccakUnavailable as exc:
             self.skipTest(str(exc))
         self.assertEqual(
             digest,
-            "0x3ac225168df54212a25e3e9e6e5f3a2f5c1f7b5b8d4a0b4f1c5f3d7b7e8f2f0a"
-            if False else digest,
+            "0x4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45",
         )
 
     def test_nist_sha3_must_not_be_used_as_the_ethereum_digest(self):
