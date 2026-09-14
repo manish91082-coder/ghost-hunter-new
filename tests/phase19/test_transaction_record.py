@@ -10,7 +10,7 @@ sys.path.insert(0, str(ROOT))
 from phantomx.execution import Authorization, ExecutionIntent, ExecutionState, TransactionEnvelope
 from phantomx.nonce_binding import bind_nonce
 from phantomx.nonce_manager import NonceManager
-from phantomx.transaction_record import TransactionRecord, build_signed_record
+from phantomx.transaction_record import build_signed_record
 
 
 class TransactionRecordTests(unittest.TestCase):
@@ -73,10 +73,11 @@ class TransactionRecordTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             build_signed_record(self.intent, self.authorization, self.envelope, self.bound, "0x1234")
 
-    def test_record_hash_changes_on_state_or_tx_mutation(self):
+    def test_identity_hash_is_stable_but_state_hash_changes(self):
         record = build_signed_record(self.intent, self.authorization, self.envelope, self.bound, self.tx_hash)
-        self.assertNotEqual(record.record_hash(), record.with_state(ExecutionState.PRIVATE_SUBMITTED).record_hash())
-        self.assertNotEqual(record.record_hash(), record.__class__(**{**record.canonical(), "state": ExecutionState.SIGNED}).record_hash() if False else record.with_state(ExecutionState.RECONCILED).record_hash())
+        submitted = record.with_state(ExecutionState.PRIVATE_SUBMITTED)
+        self.assertEqual(record.record_hash(), submitted.record_hash())
+        self.assertNotEqual(record.state_hash(), submitted.state_hash())
 
     def test_record_is_frozen(self):
         record = build_signed_record(self.intent, self.authorization, self.envelope, self.bound, self.tx_hash)
