@@ -21,6 +21,7 @@ The public interface and invariants should remain compatible.
 from __future__ import annotations
 
 import sqlite3
+import time
 from pathlib import Path
 from typing import Iterator
 
@@ -72,7 +73,24 @@ class SQLiteNonceStore:
         )
         connection.execute(f"PRAGMA busy_timeout={int(self.timeout_seconds * 1000)}")
         connection.execute("PRAGMA foreign_keys=ON")
-        connection.execute("PRAGMA journal_mode=WAL")
+
+        # journal_mode is a database-level transition and can briefly return
+        # SQLITE_BUSY when several processes open a fresh database together.
+        # Retry only this setup operation. Transactional writers still use
+        # BEGIN IMMEDIATE below, so allocation remains serialized atomically.
+        delay = 0.005
+        deadline = time.monotonic() + self.timeout_seconds
+        while True:
+            try:
+                connection.execute("PRAGMA journal_mode=WAL")
+                break
+            except sqlite3.OperationalError as exc:
+                if "locked" not in str(exc).lower() or time.monotonic() >= deadline:
+                    connection.close()
+                    raise
+                time.sleep(delay)
+                delay = min(delay * 2, 0.1)
+
         connection.execute("PRAGMA synchronous=FULL")
         return connection
 
