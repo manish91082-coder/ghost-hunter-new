@@ -12,6 +12,7 @@ EXECUTOR = "0x" + "bb" * 20
 ROUTE = "0x" + "11" * 32
 ECONOMIC = "0x" + "22" * 32
 SIMULATION = "0x" + "33" * 32
+AUTHORITY = "0x" + "44" * 32
 CALldata = b"phase19-calldata"
 PRIVATE_KEY = "0x" + "01" * 32
 
@@ -53,7 +54,8 @@ class SignerBoundaryTests(unittest.TestCase):
             approved=True, reason="all governor policy gates passed", chain_id=137,
             block_number=5000, intent_hash=self.intent.intent_hash(), route_hash=ROUTE,
             economic_proof_hash=ECONOMIC, simulation_proof_hash=SIMULATION,
-            calldata_hash=self.envelope.calldata_hash, ai_rank="0.9",
+            calldata_hash=self.envelope.calldata_hash, executor_authority_hash=AUTHORITY,
+            ai_rank="0.9",
         )
 
     def sign(self, **overrides):
@@ -96,6 +98,7 @@ class SignerBoundaryTests(unittest.TestCase):
             economic_proof_hash=self.governor.economic_proof_hash,
             simulation_proof_hash=self.governor.simulation_proof_hash,
             calldata_hash=self.governor.calldata_hash,
+            executor_authority_hash=self.governor.executor_authority_hash,
             ai_rank=self.governor.ai_rank,
         )
         with self.assertRaises(SignerError):
