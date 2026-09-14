@@ -6,6 +6,7 @@ from phantomx.economic_proof import EconomicProof, build_economic_proof
 from phantomx.economics import CostBreakdown
 from phantomx.evm_preflight import preflight_execution, simulation_hash
 from phantomx.execution import Authorization, ExecutionIntent, ExecutionState
+from phantomx.executor_authority import ExecutorAuthorityEvidence
 from phantomx.executor_calldata import build_executor_transaction
 from phantomx.governor import GovernorError, GovernorPolicy, govern_execution
 from phantomx.quote_engine import ExactQuote
@@ -20,6 +21,7 @@ AAVE_POOL = "0x" + "11" * 20
 EXECUTOR = "0x" + "ee" * 20
 SENDER = "0x" + "ff" * 20
 VALUATION = "0x" + "44" * 32
+RUNTIME_CODE_HASH = "0x" + "55" * 32
 
 
 class GovernorTests(unittest.TestCase):
@@ -58,7 +60,6 @@ class GovernorTests(unittest.TestCase):
             max_gas_usd="0.05",
             max_relay_usd="0.02",
         )
-
         seed_intent = ExecutionIntent(
             chain_id=137,
             executor=EXECUTOR,
@@ -104,6 +105,14 @@ class GovernorTests(unittest.TestCase):
             max_fee_per_gas=100,
             max_priority_fee_per_gas=30,
         )
+        self.authority = ExecutorAuthorityEvidence(
+            schema_version=1,
+            chain_id=137,
+            executor=EXECUTOR,
+            owner=SENDER,
+            observed_block=self.block + 1,
+            runtime_code_hash=RUNTIME_CODE_HASH,
+        )
         self.preflight = preflight_execution(
             intent=self.intent,
             authorization=self.authorization,
@@ -133,6 +142,7 @@ class GovernorTests(unittest.TestCase):
             "intent": self.intent,
             "envelope": self.envelope,
             "economic_proof": self.proof,
+            "executor_authority": self.authority,
             "lifecycle_state": ExecutionState.VERIFIED,
             "nonce_reserved": True,
             "replay_consumed": False,
@@ -147,7 +157,21 @@ class GovernorTests(unittest.TestCase):
         self.assertTrue(decision.approved)
         self.assertEqual(decision.reason, "all governor policy gates passed")
         self.assertEqual(decision.ai_rank, "0.99")
+        self.assertEqual(decision.executor_authority_hash, self.authority.evidence_hash)
         self.assertEqual(len(decision.decision_hash), 66)
+
+    def test_authority_mutation_is_blocked_and_decision_commits_to_evidence(self):
+        mutated = replace(self.authority, owner=TOKEN_B)
+        blocked = self.run_governor(executor_authority=mutated)
+        self.assertFalse(blocked.approved)
+        self.assertIn("authority evidence is invalid", blocked.reason)
+        self.assertNotEqual(blocked.executor_authority_hash, self.authority.evidence_hash)
+
+    def test_authority_observation_before_proven_block_is_blocked(self):
+        stale = replace(self.authority, observed_block=self.block - 1)
+        blocked = self.run_governor(executor_authority=stale)
+        self.assertFalse(blocked.approved)
+        self.assertIn("authority evidence is invalid", blocked.reason)
 
     def test_live_capital_lock_blocks_even_valid_preflight(self):
         decision = self.run_governor(policy=replace(self.policy, live_execution_enabled=False))
