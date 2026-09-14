@@ -6,6 +6,7 @@ from phantomx.economic_proof import build_economic_proof
 from phantomx.economics import CostBreakdown
 from phantomx.execution import ExecutionState
 from phantomx.execution_coordinator import ExecutionCoordinatorError, prepare_signed_execution
+from phantomx.executor_authority import ExecutorAuthorityEvidence
 from phantomx.quote_engine import ExactQuote
 from phantomx.quote_snapshot import QuoteSnapshot
 from phantomx.route_simulator import simulate_two_leg
@@ -22,6 +23,7 @@ AAVE_POOL = "0x" + "11" * 20
 QUICKSWAP = "0x" + "22" * 20
 UNISWAP = "0x" + "33" * 20
 VALUATION = "0x" + "44" * 32
+RUNTIME_CODE_HASH = "0x" + "55" * 32
 
 
 class FakeSigner:
@@ -56,6 +58,14 @@ class ExecutionCoordinatorTests(unittest.TestCase):
             gas_estimate=120_000,
         )
         self.simulation = simulate_two_leg(leg_one, leg_two)
+        self.authority = ExecutorAuthorityEvidence(
+            schema_version=1,
+            chain_id=137,
+            executor=EXECUTOR,
+            owner=SENDER,
+            observed_block=self.block + 1,
+            runtime_code_hash=RUNTIME_CODE_HASH,
+        )
         self.proof = build_economic_proof(
             route_hash=self.simulation.route_hash,
             quote_hashes=tuple(leg.quote_hash for leg in self.simulation.legs),
@@ -82,13 +92,14 @@ class ExecutionCoordinatorTests(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def _run(self, *, policy=None, signer=None, reservation_id="res-test"):
+    def _run(self, *, policy=None, signer=None, authority=None, reservation_id="res-test"):
         return prepare_signed_execution(
             store=self.store,
             simulation=self.simulation,
             economic_proof=self.proof,
             executor=EXECUTOR,
             sender=SENDER,
+            executor_authority=authority or self.authority,
             chain_pending_nonce=7,
             deadline=self.now + 60,
             first_on_quickswap=True,
@@ -115,11 +126,44 @@ class ExecutionCoordinatorTests(unittest.TestCase):
         self.assertEqual(signer.calls, 1)
         self.assertEqual(prepared.reservation.nonce, 7)
         self.assertEqual(prepared.reservation.intent_hash, prepared.assembly.intent_hash)
+        self.assertEqual(prepared.authority.evidence_hash, self.authority.evidence_hash)
         self.assertTrue(prepared.governor.approved)
         self.assertEqual(prepared.transaction_record.state, ExecutionState.SIGNED)
         durable = self.store.get_transaction(prepared.transaction_record.record_hash())
         self.assertEqual(durable.tx_hash, prepared.signed_transaction.transaction_hash)
         self.assertEqual(self.store.get_nonce(SENDER, 7).status.value, "SIGNED")
+
+    def test_invalid_executor_authority_releases_before_nonce_reservation(self):
+        signer = FakeSigner()
+        bad_authority = ExecutorAuthorityEvidence(
+            schema_version=1,
+            chain_id=137,
+            executor=EXECUTOR,
+            owner="0x" + "99" * 20,
+            observed_block=self.block + 1,
+            runtime_code_hash=RUNTIME_CODE_HASH,
+        )
+        with self.assertRaises(ExecutionCoordinatorError):
+            self._run(authority=bad_authority, signer=signer, reservation_id="res-bad-authority")
+        self.assertEqual(signer.calls, 0)
+        with self.assertRaises(Exception):
+            self.store.get_nonce(SENDER, 7)
+
+    def test_stale_executor_authority_is_rejected_before_nonce_reservation(self):
+        signer = FakeSigner()
+        stale = ExecutorAuthorityEvidence(
+            schema_version=1,
+            chain_id=137,
+            executor=EXECUTOR,
+            owner=SENDER,
+            observed_block=self.block - 1,
+            runtime_code_hash=RUNTIME_CODE_HASH,
+        )
+        with self.assertRaises(ExecutionCoordinatorError):
+            self._run(authority=stale, signer=signer, reservation_id="res-stale-authority")
+        self.assertEqual(signer.calls, 0)
+        with self.assertRaises(Exception):
+            self.store.get_nonce(SENDER, 7)
 
     def test_governor_block_releases_unsigned_reservation_and_never_signs(self):
         signer = FakeSigner()
