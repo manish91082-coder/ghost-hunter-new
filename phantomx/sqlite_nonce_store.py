@@ -291,6 +291,11 @@ class SQLiteNonceStore:
                         f"invalid nonce transition: {current_status} -> {new_status}"
                     )
 
+                if new_status is NonceStatus.REPLACED and replacement_of != row[3]:
+                    raise DurableNonceInvariantError(
+                        "replacement_of must match the currently active transaction hash"
+                    )
+
                 next_tx_hash = tx_hash or row[3]
                 next_replacement_of = replacement_of or row[4]
                 connection.execute(
