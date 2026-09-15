@@ -13,12 +13,7 @@ import json
 import sys
 from typing import Sequence
 
-from phantomx.executor_authority import ExecutorAuthorityError
-from phantomx.production_authority import (
-    ProductionAuthorityConfigError,
-    load_production_authority_config_from_env,
-    observe_production_executor_authority,
-)
+from phantomx.production_authority import load_production_authority_config_from_env, observe_production_executor_authority
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -44,7 +39,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         config = load_production_authority_config_from_env()
         evidence = observe_production_executor_authority(config)
-    except (ProductionAuthorityConfigError, ExecutorAuthorityError):
+    except Exception:
+        # The operator-facing boundary must never echo configuration, endpoint,
+        # transport, or provider exception detail into an audit terminal/log.
         print("BLOCKED: production authority observation failed closed", file=sys.stderr)
         return 2
 
