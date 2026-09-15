@@ -190,6 +190,7 @@ def prepare_signed_execution(
             envelope=assembly.envelope,
             executor_authority=executor_authority,
             now=now,
+            authority_evidence_reuse_policy=authority_evidence_reuse_policy,
         )
         signed = True
 
