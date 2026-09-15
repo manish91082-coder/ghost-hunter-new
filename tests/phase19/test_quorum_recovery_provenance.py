@@ -4,12 +4,9 @@ from pathlib import Path
 
 from phantomx.chain_observer import ChainObservationState, ObservationDecision
 from phantomx.durable_nonce import NonceStatus
-from phantomx.durable_recovery import (
-    DurableRecoveryError,
-    persist_chain_observation,
-    persist_quorum_recovery_observation,
-)
+from phantomx.durable_recovery import DurableRecoveryError, persist_quorum_recovery_observation
 from phantomx.execution import ExecutionState
+from phantomx.execution_observation import persist_chain_observation
 from phantomx.production_chain_observation import QuorumChainObservation
 from phantomx.production_chain_observation_store import persist_quorum_chain_observation
 from phantomx.execution_submission import submit_prepared_execution
@@ -150,7 +147,7 @@ class QuorumRecoveryProvenanceTests(unittest.TestCase):
             ExecutionState.PRIVATE_SUBMITTED,
         )
 
-    def test_two_provider_reorg_requires_changed_canonical_identity_and_is_admitted(self):
+    def test_two_provider_reorg_is_admitted_after_prior_inclusion(self):
         persist_chain_observation(
             store=self.store,
             intent=self.intent,
