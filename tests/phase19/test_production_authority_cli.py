@@ -24,6 +24,7 @@ class ProductionAuthorityCliTests(unittest.TestCase):
             owner=OWNER,
             observed_block=123456,
             runtime_code_hash=RUNTIME_HASH,
+            attesting_provider_names=("primary", "secondary"),
             evidence_hash=EVIDENCE_HASH,
         )
         stdout = StringIO()
@@ -41,6 +42,7 @@ class ProductionAuthorityCliTests(unittest.TestCase):
         self.assertEqual(
             json.loads(stdout.getvalue()),
             {
+                "attesting_provider_names": ["primary", "secondary"],
                 "chain_id": 137,
                 "evidence_hash": EVIDENCE_HASH,
                 "executor": EXECUTOR,
