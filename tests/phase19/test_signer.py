@@ -99,22 +99,22 @@ class SignerBoundaryTests(unittest.TestCase):
             self.sign(signer=foreign)
 
     def test_authority_identity_mismatch_is_blocked(self):
-        foreign = replace(self.authority, owner="0x" + "22" * 20)
+        foreign = replace(self.authority, owner="0x" + "22" * 20, evidence_hash="")
         with self.assertRaisesRegex(SignerError, "executor authority is invalid"):
             self.sign(executor_authority=foreign)
 
     def test_authority_runtime_code_mutation_is_blocked(self):
-        mutated = replace(self.authority, runtime_code_hash="0x" + "66" * 32)
+        mutated = replace(self.authority, runtime_code_hash="0x" + "66" * 32, evidence_hash="")
         with self.assertRaisesRegex(SignerError, "executor authority is invalid"):
             self.sign(executor_authority=mutated)
 
     def test_stale_authority_observation_is_blocked(self):
-        stale = replace(self.authority, observed_block=4999)
+        stale = replace(self.authority, observed_block=4999, evidence_hash="")
         with self.assertRaisesRegex(SignerError, "executor authority is invalid"):
             self.sign(executor_authority=stale)
 
     def test_governor_authority_hash_mismatch_is_blocked(self):
-        blocked = replace(self.governor, executor_authority_hash="0x" + "77" * 32)
+        blocked = replace(self.governor, executor_authority_hash="0x" + "77" * 32, decision_hash="")
         with self.assertRaisesRegex(SignerError, "governor executor authority evidence"):
             self.sign(governor=blocked)
 
