@@ -107,7 +107,26 @@ class ReplacementCoordinatorTests(unittest.TestCase):
             self._replacement(max_fee_per_gas=109, max_priority_fee_per_gas=33)
 
     def test_replacement_requires_source_to_be_in_explicit_drop_or_replaced_state(self):
-        replacement = self._replacement()
+        self.prepared = self.fixture._prepare()
+        self.policy = ReplacementFeePolicy(
+            min_bump_bps=11000,
+            max_fee_multiplier_bps=10000,
+            max_absolute_fee_per_gas=100,
+            max_priority_fee_per_gas=30,
+        )
+        persist_recovery_observation(
+            store=self.store,
+            intent=self.prepared.assembly.intent,
+            observation=ObservationDecision(
+                state=ChainObservationState.DROPPED,
+                tx_hash=self.prepared.signed_transaction.transaction_hash,
+                replacement_tx_hash=None,
+                evidence_reason="pending nonce advanced beyond submitted nonce",
+            ),
+            tx_nonce=self.prepared.assembly.intent.nonce,
+            pending_nonce=self.prepared.assembly.intent.nonce + 1,
+        )
+        replacement = self._replacement(max_fee_per_gas=100, max_priority_fee_per_gas=30)
         with self.assertRaisesRegex(ReplacementCoordinatorError, "replaceable durable state"):
             prepare_replacement_execution(
                 store=self.store,
@@ -127,8 +146,8 @@ class ReplacementCoordinatorTests(unittest.TestCase):
                 quickswap_router="0x" + "22" * 20,
                 uniswap_v3_router="0x" + "33" * 20,
                 gas_limit=300_000,
-                max_fee_per_gas=130,
-                max_priority_fee_per_gas=40,
+                max_fee_per_gas=100,
+                max_priority_fee_per_gas=30,
                 policy=self.fixture.policy,
                 signer=_Signer("0x" + "01" * 32),
                 now=self.fixture.now,
