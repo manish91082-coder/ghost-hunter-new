@@ -135,7 +135,10 @@ class ExecutorAuthorityTests(unittest.TestCase):
         self.assertEqual(observed.observed_block, 1000)
         self.assertEqual(observed.owner, OWNER)
         self.assertEqual(observed.runtime_code_hash, CODE_HASH)
-        self.assertEqual(sorted({item[1] for item in calls}), ["eth_call", "eth_chainId", "eth_getCode", "eth_blockNumber"])
+        self.assertEqual(
+            {item[1] for item in calls},
+            {"eth_call", "eth_chainId", "eth_getCode", "eth_blockNumber"},
+        )
 
     def test_quorum_rejects_ambiguous_split_consensus(self):
         def make_transport(owner: str):
