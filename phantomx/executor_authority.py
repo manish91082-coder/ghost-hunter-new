@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 from .hashing import keccak256_hex
 from .polygon_nonce import parse_quantity
@@ -163,6 +163,94 @@ def observe_executor_authority(provider: RPCProvider, executor: str) -> Executor
         owner=owner,
         observed_block=block_number,
         runtime_code_hash=keccak256_hex(runtime_code),
+    )
+
+
+def _observe_authority_at_block(provider: RPCProvider, executor: str, block_number: int) -> tuple[str, str]:
+    """Read owner and runtime bytecode at a caller-selected common block."""
+    block_tag = "0x" + format(block_number, "x")
+    owner_result = _rpc_result(
+        provider.transport("eth_call", {"to": executor, "data": "0x8da5cb5b"}, block_tag),
+        f"{provider.name}: eth_call owner",
+    )
+    if not isinstance(owner_result, str) or not owner_result.startswith("0x"):
+        raise ExecutorAuthorityError(f"{provider.name}: owner() result must be hex")
+    try:
+        owner_encoded = bytes.fromhex(owner_result[2:])
+    except ValueError as exc:
+        raise ExecutorAuthorityError(f"{provider.name}: owner() result is not valid hexadecimal") from exc
+    if len(owner_encoded) != 32 or owner_encoded[:12] != b"\x00" * 12:
+        raise ExecutorAuthorityError(f"{provider.name}: owner() result is not a canonical ABI address word")
+    owner = _address("0x" + owner_encoded[12:].hex(), f"{provider.name}: owner")
+
+    code_result = _rpc_result(
+        provider.transport("eth_getCode", executor, block_tag),
+        f"{provider.name}: eth_getCode",
+    )
+    if not isinstance(code_result, str) or not code_result.startswith("0x") or len(code_result) <= 2 or (len(code_result) - 2) % 2:
+        raise ExecutorAuthorityError(f"{provider.name}: runtime code must be non-empty even-length hex")
+    try:
+        runtime_code = bytes.fromhex(code_result[2:])
+    except ValueError as exc:
+        raise ExecutorAuthorityError(f"{provider.name}: runtime code is not valid hexadecimal") from exc
+    return owner, keccak256_hex(runtime_code)
+
+
+def observe_executor_authority_quorum(
+    providers: Sequence[RPCProvider],
+    executor: str,
+    *,
+    quorum: int,
+) -> ExecutorAuthorityEvidence:
+    """Require provider quorum on one common Polygon block for owner and code."""
+    executor = _address(executor, "executor")
+    if not providers:
+        raise ExecutorAuthorityError("at least one provider is required")
+    if not isinstance(quorum, int) or isinstance(quorum, bool) or quorum <= 0 or quorum > len(providers):
+        raise ExecutorAuthorityError("quorum must be between one and provider count")
+    names = [provider.name for provider in providers]
+    if len(set(names)) != len(names):
+        raise ExecutorAuthorityError("provider names must be unique")
+
+    blocks: list[int] = []
+    for provider in providers:
+        chain_raw = _rpc_result(provider.transport("eth_chainId"), f"{provider.name}: eth_chainId")
+        try:
+            chain_id = parse_quantity(chain_raw, field=f"{provider.name} chain id")
+        except Exception as exc:
+            raise ExecutorAuthorityError(str(exc)) from exc
+        if chain_id != POLYGON_CHAIN_ID:
+            raise ExecutorAuthorityError(f"{provider.name}: unexpected chain id: {chain_id}")
+        try:
+            block_number = parse_quantity(
+                _rpc_result(provider.transport("eth_blockNumber"), f"{provider.name}: eth_blockNumber"),
+                field=f"{provider.name} block number",
+            )
+        except Exception as exc:
+            raise ExecutorAuthorityError(str(exc)) from exc
+        blocks.append(block_number)
+
+    common_block = min(blocks)
+    observations: dict[tuple[str, str], list[str]] = {}
+    for provider in providers:
+        owner, runtime_hash = _observe_authority_at_block(provider, executor, common_block)
+        observations.setdefault((owner, runtime_hash), []).append(provider.name)
+
+    ranked = sorted(observations.items(), key=lambda item: (-len(item[1]), item[0]))
+    winner_key, winner_providers = ranked[0]
+    if len(winner_providers) < quorum:
+        raise ExecutorAuthorityError("executor authority provider quorum not reached")
+    if len(ranked) > 1 and len(ranked[1][1]) == len(winner_providers):
+        raise ExecutorAuthorityError("executor authority provider quorum is ambiguous")
+
+    owner, runtime_hash = winner_key
+    return ExecutorAuthorityEvidence(
+        schema_version=1,
+        chain_id=POLYGON_CHAIN_ID,
+        executor=executor,
+        owner=owner,
+        observed_block=common_block,
+        runtime_code_hash=runtime_hash,
     )
 
 
