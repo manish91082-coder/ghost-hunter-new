@@ -146,6 +146,111 @@ class SQLiteExecutionStore:
         if record.record_hash().lower() != record_hash.lower(): raise ValueError("stored transaction identity mismatch")
         return record
 
+    def persist_signed_replacement(
+        self,
+        *,
+        source_record_hash: str,
+        replacement_record: TransactionRecord,
+        replacement_nonce: DurableNonceRecord,
+    ) -> TransactionRecord:
+        """Atomically mark a replaceable source as REPLACED and install its signed successor.
+
+        This is a dedicated transition because replacing a DROPPED/REPLACED
+        transaction intentionally resets the active nonce lifecycle to SIGNED;
+        that cross-state move is not part of the ordinary linear transition map.
+        """
+        if replacement_record.state is not ExecutionState.SIGNED:
+            raise ValueError("replacement transaction must start SIGNED")
+        if not _TX_HASH.fullmatch(replacement_record.tx_hash):
+            raise ValueError("invalid replacement transaction hash")
+        if not _TX_HASH.fullmatch(source_record_hash):
+            raise ValueError("invalid source record hash")
+        if replacement_record.replacement_of is None or not _TX_HASH.fullmatch(replacement_record.replacement_of):
+            raise ValueError("replacement source transaction hash is required")
+
+        source_record_hash = source_record_hash.lower()
+        replacement_of = replacement_record.replacement_of.lower()
+        if replacement_record.tx_hash.lower() == replacement_of:
+            raise ValueError("replacement transaction hash must differ from source")
+
+        with self._connect() as db:
+            try:
+                db.execute("BEGIN IMMEDIATE")
+                row = db.execute(
+                    "SELECT record_hash,intent_hash,authorization_hash,reservation_id,chain_id,sender,executor,nonce,calldata_hash,gas_limit,max_fee_per_gas,max_priority_fee_per_gas,tx_hash,state,replacement_of FROM transaction_records WHERE record_hash=?",
+                    (source_record_hash,),
+                ).fetchone()
+                if row is None:
+                    raise KeyError("unknown source transaction record")
+                source = self._record_from_row(row)
+                if source.state not in {ExecutionState.DROPPED, ExecutionState.REPLACED}:
+                    raise ValueError("source transaction is not in a replaceable durable state")
+                if source.tx_hash.lower() != replacement_of:
+                    raise ValueError("replacement source hash does not match source record")
+                if source.intent_hash.lower() != replacement_record.intent_hash.lower():
+                    raise ValueError("replacement intent does not match source")
+                if source.sender.lower() != replacement_record.sender.lower() or source.executor.lower() != replacement_record.executor.lower():
+                    raise ValueError("replacement identity does not match source")
+                if source.nonce != replacement_record.nonce or source.reservation_id != replacement_record.reservation_id:
+                    raise ValueError("replacement nonce binding does not match source")
+
+                nrow = db.execute(
+                    "SELECT sender,nonce,reservation_id,intent_hash,status,tx_hash,replacement_of FROM nonce_records WHERE sender=? AND nonce=?",
+                    (replacement_nonce.sender.lower(), replacement_nonce.nonce),
+                ).fetchone()
+                if nrow is None:
+                    raise ValueError("replacement durable nonce does not exist")
+                if nrow[2] != source.reservation_id or nrow[3].lower() != source.intent_hash.lower():
+                    raise ValueError("replacement durable nonce binding does not match source")
+                current_nonce = NonceStatus(nrow[4])
+                if current_nonce not in {NonceStatus.DROPPED, NonceStatus.REPLACED}:
+                    raise ValueError("replacement durable nonce is not in a replaceable state")
+                if nrow[5] is not None and nrow[5].lower() != source.tx_hash.lower():
+                    raise ValueError("replacement durable nonce active hash does not match source")
+
+                replacement_payload = replacement_record.canonical()
+                db.execute(
+                    "INSERT INTO transaction_records VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (
+                        replacement_record.record_hash(),
+                        replacement_payload["intent_hash"],
+                        replacement_payload["authorization_hash"],
+                        replacement_payload["reservation_id"],
+                        replacement_payload["chain_id"],
+                        replacement_payload["sender"],
+                        replacement_payload["executor"],
+                        replacement_payload["nonce"],
+                        replacement_payload["calldata_hash"],
+                        replacement_payload["gas_limit"],
+                        replacement_payload["max_fee_per_gas"],
+                        replacement_payload["max_priority_fee_per_gas"],
+                        replacement_payload["tx_hash"],
+                        replacement_payload["state"],
+                        replacement_payload["replacement_of"],
+                    ),
+                )
+                db.execute(
+                    "UPDATE transaction_records SET state=? WHERE record_hash=? AND state IN (?,?)",
+                    (ExecutionState.REPLACED.value, source_record_hash, ExecutionState.DROPPED.value, ExecutionState.REPLACED.value),
+                )
+                db.execute(
+                    "UPDATE nonce_records SET status=?,tx_hash=?,replacement_of=? WHERE sender=? AND nonce=? AND status IN (?,?)",
+                    (
+                        NonceStatus.SIGNED.value,
+                        replacement_record.tx_hash.lower(),
+                        source.tx_hash.lower(),
+                        source.sender.lower(),
+                        source.nonce,
+                        NonceStatus.DROPPED.value,
+                        NonceStatus.REPLACED.value,
+                    ),
+                )
+                db.execute("COMMIT")
+            except Exception:
+                if db.in_transaction: db.execute("ROLLBACK")
+                raise
+        return self.get_transaction(replacement_record.record_hash())
+
     def apply_recovery(self, *, decision: RecoveryDecision, chain_state: str, tx_hash: str, replacement_tx_hash: str | None, transaction_state: ExecutionState, nonce_state: NonceStatus, intent: ExecutionIntent) -> RecoveryApplication:
         """Journal evidence and update transaction + nonce state in one commit."""
         tx_hash = tx_hash.lower()
