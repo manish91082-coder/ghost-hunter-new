@@ -15,6 +15,7 @@ from phantomx.governor import GovernorPolicy
 from phantomx.signer import EthereumEip1559Signer
 from phantomx.sqlite_execution_store import SQLiteExecutionStore
 from phantomx.hashing import keccak256_hex
+from phantomx.production_authority_evidence import AuthorityEvidenceReusePolicy
 
 TOKEN_A = "0x" + "aa" * 20
 TOKEN_B = "0x" + "bb" * 20
@@ -68,6 +69,7 @@ class ExecutionCoordinatorTests(unittest.TestCase):
             observed_block=self.block + 1,
             runtime_code_hash=RUNTIME_CODE_HASH,
         )
+        self.authority_reuse_policy = AuthorityEvidenceReusePolicy(maximum_age_blocks=2)
         self.proof = build_economic_proof(
             route_hash=self.simulation.route_hash,
             quote_hashes=tuple(leg.quote_hash for leg in self.simulation.legs),
@@ -94,7 +96,7 @@ class ExecutionCoordinatorTests(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def _run(self, *, policy=None, signer=None, authority=None, reservation_id="res-test"):
+    def _run(self, *, policy=None, signer=None, authority=None, authority_reuse_policy=None, reservation_id="res-test", current_block=None):
         return prepare_signed_execution(
             store=self.store,
             simulation=self.simulation,
@@ -102,6 +104,7 @@ class ExecutionCoordinatorTests(unittest.TestCase):
             executor=EXECUTOR,
             sender=SENDER,
             executor_authority=authority or self.authority,
+            authority_evidence_reuse_policy=authority_reuse_policy or self.authority_reuse_policy,
             chain_pending_nonce=7,
             deadline=self.now + 60,
             first_on_quickswap=True,
@@ -117,7 +120,7 @@ class ExecutionCoordinatorTests(unittest.TestCase):
             policy=policy or self.policy,
             signer=signer or FakeSigner(),
             now=self.now,
-            current_block_number=self.block + 1,
+            current_block_number=self.block + 1 if current_block is None else current_block,
             ai_rank="0.88",
             reservation_id=reservation_id,
         )
@@ -205,6 +208,48 @@ class ExecutionCoordinatorTests(unittest.TestCase):
         )
         with self.assertRaises(ExecutionCoordinatorError):
             self._run(authority=stale, signer=signer, reservation_id="res-stale-authority")
+        self.assertEqual(signer.calls, 0)
+        with self.assertRaises(Exception):
+            self.store.get_nonce(SENDER, 7)
+
+    def test_replayed_authority_is_rejected_by_freshness_window_before_nonce_reservation(self):
+        signer = FakeSigner()
+        replayed = ExecutorAuthorityEvidence(
+            schema_version=1,
+            chain_id=137,
+            executor=EXECUTOR,
+            owner=SENDER,
+            observed_block=self.block - 10,
+            runtime_code_hash=RUNTIME_CODE_HASH,
+        )
+        with self.assertRaises(ExecutionCoordinatorError):
+            self._run(
+                authority=replayed,
+                signer=signer,
+                authority_reuse_policy=AuthorityEvidenceReusePolicy(maximum_age_blocks=2),
+                reservation_id="res-replayed-authority",
+            )
+        self.assertEqual(signer.calls, 0)
+        with self.assertRaises(Exception):
+            self.store.get_nonce(SENDER, 7)
+
+    def test_future_authority_is_rejected_by_freshness_window_before_nonce_reservation(self):
+        signer = FakeSigner()
+        future = ExecutorAuthorityEvidence(
+            schema_version=1,
+            chain_id=137,
+            executor=EXECUTOR,
+            owner=SENDER,
+            observed_block=self.block + 2,
+            runtime_code_hash=RUNTIME_CODE_HASH,
+        )
+        with self.assertRaises(ExecutionCoordinatorError):
+            self._run(
+                authority=future,
+                signer=signer,
+                authority_reuse_policy=AuthorityEvidenceReusePolicy(maximum_age_blocks=2),
+                reservation_id="res-future-authority",
+            )
         self.assertEqual(signer.calls, 0)
         with self.assertRaises(Exception):
             self.store.get_nonce(SENDER, 7)
