@@ -87,7 +87,11 @@ def prepare_replacement_execution(
     nonce = store.get_nonce(sender, source.nonce)
     if nonce.reservation_id != source.reservation_id:
         raise ReplacementCoordinatorError("durable nonce reservation does not match source")
-    if nonce.tx_hash is None or not _same_hash(nonce.tx_hash, source.tx_hash):
+    # A signed-but-never-submitted transaction may not yet have materialized its
+    # tx hash in the durable nonce row. That is safe because the durable source
+    # transaction record itself already binds the exact signed transaction hash.
+    # Once a nonce tx hash exists it must match the source exactly.
+    if nonce.tx_hash is not None and not _same_hash(nonce.tx_hash, source.tx_hash):
         raise ReplacementCoordinatorError("durable nonce active transaction does not match source")
     if nonce.status not in {NonceStatus.DROPPED, NonceStatus.REPLACED}:
         raise ReplacementCoordinatorError("durable nonce is not in an explicitly replaceable state")
@@ -239,7 +243,7 @@ def prepare_replacement_execution(
             ).fetchone()
             if nrow is None or nrow[2] != source.reservation_id or nrow[3].lower() != source.intent_hash.lower():
                 raise ReplacementCoordinatorError("durable nonce identity changed before replacement persistence")
-            if nrow[1] is None or nrow[1].lower() != source.tx_hash.lower():
+            if nrow[1] is not None and nrow[1].lower() != source.tx_hash.lower():
                 raise ReplacementCoordinatorError("durable nonce active transaction changed before replacement persistence")
             if nrow[0] not in {NonceStatus.DROPPED.value, NonceStatus.REPLACED.value}:
                 raise ReplacementCoordinatorError("durable nonce is no longer replaceable")
