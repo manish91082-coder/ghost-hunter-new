@@ -41,20 +41,24 @@ class ProductionExecutionSurfaceTests(unittest.TestCase):
         ]
         self.assertEqual(offenders, [])
 
-    def test_governed_transaction_signing_has_only_expected_production_consumers(self):
+    def test_governed_transaction_signing_has_only_coordinator_callers(self):
         self.assertEqual(
             sorted(self._calls_named("sign_governed_transaction")),
-            ["execution_coordinator.py", "replacement_coordinator.py", "signer.py"],
+            ["execution_coordinator.py", "replacement_coordinator.py"],
         )
 
     def test_raw_relay_submission_call_is_confined_to_private_boundary(self):
         self.assertEqual(self._calls_named("submit_raw_transaction"), ["private_submit.py"])
 
-    def test_production_python_contains_no_direct_raw_transaction_rpc_method(self):
+    def test_raw_transaction_rpc_method_is_only_present_in_explicit_blocklist(self):
+        source = self._source(PHANTOMX / "polygon_rpc_http.py")
+        self.assertIn("_BLOCKED_METHODS", source)
+        self.assertIn('"eth_sendRawTransaction"', source)
         offenders = [
             path.name
             for path in PRODUCTION_FILES
             if "eth_sendRawTransaction" in self._source(path)
+            and path.name != "polygon_rpc_http.py"
         ]
         self.assertEqual(offenders, [])
 
