@@ -100,7 +100,14 @@ class QuorumRecoveryIntegrationTests(unittest.TestCase):
                 ExecutionState.SUBMISSION_IN_FLIGHT,
             )
             with fixture.store._connect() as db:
-                observation_count = db.execute("SELECT COUNT(*) FROM chain_observations").fetchone()[0]
+                table_exists = db.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chain_observations'"
+                ).fetchone()
+                observation_count = (
+                    db.execute("SELECT COUNT(*) FROM chain_observations").fetchone()[0]
+                    if table_exists
+                    else 0
+                )
             self.assertEqual(observation_count, 0)
         finally:
             fixture.tearDown()
