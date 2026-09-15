@@ -4,8 +4,9 @@ The signer accepts only a Governor-approved transaction whose exact intent,
 authorization, envelope identities, and deployed executor authority still match.
 The concrete EIP-1559 signer serializes the exact Ethereum transaction, and the
 boundary recovers the sender from the signed bytes so the cryptographic signing
-identity must equal ExecutionIntent.sender. No RPC, relay, or broadcaster is
-used here.
+identity must equal ExecutionIntent.sender. Authority evidence must also satisfy
+an explicit replay/freshness policy at the signing block. No RPC, relay, or
+broadcaster is used here.
 """
 from __future__ import annotations
 from dataclasses import dataclass
@@ -17,6 +18,7 @@ from .execution import Authorization, ExecutionIntent, TransactionEnvelope
 from .executor_authority import ExecutorAuthorityError, ExecutorAuthorityEvidence, runtime_code_binding_hash, verify_executor_authority
 from .governor import GovernorDecision
 from .hashing import keccak256_hex
+from .production_authority_evidence import AuthorityEvidenceReusePolicy, ProductionAuthorityEvidenceError, verify_reusable_production_authority_evidence
 
 
 class SignerError(ValueError):
@@ -189,8 +191,8 @@ def prove_signer_identity(*, signer: ChallengeSigner, expected_address: str, cha
     return SignedChallenge(challenge_hash=challenge_hash, expected_address=expected, recovered_address=recovered, signature=signature, evidence_hash=evidence_hash)
 
 
-def sign_governed_transaction(*, signer: TransactionSigner, governor: GovernorDecision, intent: ExecutionIntent, authorization: Authorization, envelope: TransactionEnvelope, executor_authority: ExecutorAuthorityEvidence, now: int) -> SignedTransaction:
-    """Sign only an exact, approved, still-authorized transaction envelope and deployed executor identity."""
+def sign_governed_transaction(*, signer: TransactionSigner, governor: GovernorDecision, intent: ExecutionIntent, authorization: Authorization, envelope: TransactionEnvelope, executor_authority: ExecutorAuthorityEvidence, now: int, authority_evidence_reuse_policy: AuthorityEvidenceReusePolicy | None = None) -> SignedTransaction:
+    """Sign only exact governed evidence with a fresh authority observation window."""
     if not governor.approved:
         raise SignerError("governor did not approve signing")
     if now < 0:
@@ -209,12 +211,17 @@ def sign_governed_transaction(*, signer: TransactionSigner, governor: GovernorDe
         raise SignerError("governor simulation proof identity does not match intent")
     if not authorization.matches_envelope(envelope, now, intent):
         raise SignerError("authorization does not match exact signing envelope")
+    policy = authority_evidence_reuse_policy or AuthorityEvidenceReusePolicy(maximum_age_blocks=1)
     try:
-        verify_executor_authority(executor_authority, chain_id=intent.chain_id, executor=intent.executor, sender=intent.sender, minimum_observed_block=governor.block_number)
-    except ExecutorAuthorityError as exc:
-        raise SignerError(f"executor authority is invalid: {exc}") from exc
-    if governor.executor_authority_hash.lower() != executor_authority.evidence_hash.lower():
-        raise SignerError("governor executor authority evidence does not match signing evidence")
+        verify_reusable_production_authority_evidence(
+            executor_authority,
+            expected_executor=intent.executor,
+            expected_signer=intent.sender,
+            current_observed_block=governor.block_number,
+            policy=policy,
+        )
+    except ProductionAuthorityEvidenceError as exc:
+        raise SignerError("executor authority freshness or identity is invalid") from exc
     signer_address = getattr(signer, "address", None)
     if signer_address is not None and (not isinstance(signer_address, str) or signer_address.lower() != intent.sender.lower()):
         raise SignerError("signer identity does not match authorized intent sender")
