@@ -6,10 +6,9 @@
 ## 0. CURRENT RESUME CARD
 - Project: `manish91082-coder/ghost-hunter-new`
 - Active branch: `phase-19-e2e-harness`
-- Latest implementation-bearing commit: `6ff08b45e0250880e66e1545fa2f29691a9759ae`
-- Latest implementation-bearing hardening before this checkpoint: `e40aa7b4abc86cce0bee0951717ab3b7aa651f70`
-- Earlier implementation-bearing hardening: `eb9ee0c6b62e349500f177b8fa761673ce1a999b`, `ad04f49a2083e0de54949405016776753dea1fbb`
-- Recent cleanup/docs commits: `777c7cc7ed8a0055a1b557682a8a...`, `941288f13b079ff417402ef46776b8c27d7f1359`, `01b20c5a6713aa84778e88fda07b9c71aaa4f18a`
+- Latest implementation-bearing commit: `fe748b626060a7a2a63d79e309bb633becdefa17`
+- Latest implementation-bearing hardening before this checkpoint: `839f8c30d8b764723135ed135e1f1320fdad682b`
+- Earlier implementation-bearing hardening: `6ff08b45e0250880e66e1545fa2f29691a9759ae`, `e40aa7b4abc86cce0bee0951717ab3b7aa651f70`
 - Phase: Phase 19 execution-integrity / E2E policy harness
 - Live mainnet execution: **BLOCKED**
 - Live capital authorization: **BLOCKED**
@@ -32,7 +31,7 @@ Initial scope: Polygon, Aave V3, QuickSwap V2, Uniswap V3, USDC/WETH/WMATIC/WBTC
 ## 3. VERIFIED IMPLEMENTATION CAPABILITIES
 Phase 19 includes strict realized-profit gating, deterministic all-in economics, Keccak hashing, immutable intent/auth/envelope binding, exact block-bound quotes, route simulation and topology commitment, loan optimization, EVM preflight, Governor, signer boundary, durable SQLite nonce/transaction state, atomic replacement/recovery coordination, private-only submission, chain/recovery/reorg/replacement handling, receipt reconciliation, Solidity executor controls, Polygon fork harness, and adversarial/regression coverage.
 
-Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, one-path coordinator artifact-chain certification, quorum-bound read-only executor authority attestation, nullable durable-nonce-hash replacement coverage, restart-audit coverage proving a pre-submission `SIGNED` nonce may legitimately remain hash-free while the durable transaction record remains authoritative, and CI runtime modernization to Node 24-compatible action majors.
+Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, one-path coordinator artifact-chain certification, quorum-bound read-only executor authority attestation, nullable durable-nonce-hash replacement coverage, restart-audit coverage for pre-submission `SIGNED` state, CI runtime modernization, and duplicate-private-submission prevention before relay I/O.
 
 ## 4. MVP REPOSITORY CLEANUP / CONSISTENCY
 The active branch has been reduced to the targeted Phase-19 implementation/test spine.
@@ -64,7 +63,7 @@ This is read-only and cannot sign or submit transactions.
 - Repair commit `e8ded6459a8d7a070310f49481f335043617650e` corrected the assertion.
 - Run `#276`: GREEN, 14/14 EVM + 3/3 Polygon smoke + 1/1 Polygon fork execution probe + 413/413 Python.
 
-Historical run logs show the previous workflow executed 164 Phase-19 Python tests successfully, but that run checked out an older branch SHA and is therefore not certification for current HEAD. The available connector still does not expose push-triggered runs for the current branch through its commit-run filter. No current-head GREEN claim is made.
+Historical runner logs also show a successful Phase-19 Python suite of 164/164 tests, but that run checked out an older SHA. Current implementation commits `839f8c30...` and `fe748b626...` have no exposed push-triggered run through the connector's commit-run filter, so no current-head GREEN claim is made.
 
 ## 7. CURRENT BLOCKERS / P0 GATES
 1. Controlled production signer identity proof without exposing private key material.
@@ -83,14 +82,14 @@ Every P0 gate must be GREEN with reproducible evidence before live capital. Any 
 ## 9. CURRENT CHECKPOINT
 **Timestamp:** 2026-09-15
 
-**Atomic task:** lead-directed CI/runtime hygiene and continuity checkpoint.
+**Atomic task:** lead-directed submission-path integration audit and duplicate-submission hardening.
 
 **New work completed:**
-- Updated `.github/workflows/phase19-tests.yml` from `actions/checkout@v4` / `actions/setup-python@v5` to Node 24-compatible `checkout@v5` / `setup-python@v6`.
-- The change directly addresses the deprecation warnings observed in the historical CI runner logs while preserving the Phase-19 build/test sequence.
-- Historical GitHub Actions evidence was re-read: the prior run completed successfully with 164 Phase-19 Python tests, while explicitly warning that checkout/setup actions were forcing deprecated Node 20 execution.
+- `phantomx/execution_submission.py` now revalidates the durable transaction + nonce lifecycle immediately before private relay I/O and requires the prepared artifact to remain in exact `SIGNED` state.
+- A repeated call using an already `PRIVATE_SUBMITTED` prepared artifact is rejected before any second relay call.
+- `tests/phase19/test_execution_submission.py` now explicitly proves duplicate submission is blocked before network I/O and that durable state remains `PRIVATE_SUBMITTED`/`SUBMITTED` after the first successful submission.
 
-**Current verdict:** the workflow definition is now aligned with the current Node 24 runner direction, but the latest workflow change `6ff08b45...` has not yet received exposed fresh CI evidence through the available connector. Current HEAD therefore remains **NOT CI-CERTIFIED**.
+**Current verdict:** the submission boundary is stronger against caller retries and stale prepared-object reuse. The change is not yet current-head CI-certified through the available connector; therefore no GREEN claim is made.
 
 **Authority/input finding:**
 - Production authority remains blocked pending approved Polygon provider quorum + intended executor identity + expected signer identity.
@@ -98,7 +97,7 @@ Every P0 gate must be GREEN with reproducible evidence before live capital. Any 
 
 **Safety boundary:** no live signing, public broadcast, live capital, or production execution authorization.
 
-**Next atomic action:** obtain/inspect fresh CI for `6ff08b45...`; if green, continue the highest-value unresolved production-like startup/recovery and authority gates. If not green, perform failure forensics before any new feature work.
+**Next atomic action:** obtain authoritative fresh CI for `fe748b626...`; if green, continue the startup/recovery and shadow/staging audit. If not green, perform failure forensics before further implementation work.
 
 ---
 
