@@ -30,6 +30,7 @@ def _evidence_record(evidence) -> dict[str, object]:
         "owner": evidence.owner,
         "observed_block": evidence.observed_block,
         "runtime_code_hash": evidence.runtime_code_hash,
+        "attesting_provider_names": list(evidence.attesting_provider_names),
         "evidence_hash": evidence.evidence_hash,
     }
 
