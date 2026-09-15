@@ -28,14 +28,14 @@
 Initial scope: Polygon, Aave V3, QuickSwap V2, Uniswap V3, USDC/WETH/WMATIC/WBTC, direct two-leg `A → B → A`.
 
 ## 3. VERIFIED IMPLEMENTATION CAPABILITIES
-Phase 19 includes strict realized-profit gating, deterministic all-in economics, Keccak hashing, immutable intent/auth/envelope binding, exact block-bound quotes, route simulation and topology commitment, loan optimization, EVM preflight, Governor, signer boundary, durable SQLite nonce/transaction state, atomic replacement/recovery coordination, private-only submission, receipt/reconciliation handling, Solidity executor controls, Polygon fork harness, and adversarial/regression coverage.
+Phase 19 includes strict realized-profit gating, deterministic all-in economics, Keccak hashing, immutable intent/auth/envelope binding, exact block-bound quotes, route simulation and topology commitment, loan optimization, EVM preflight, Governor, signer boundary, durable SQLite nonce/transaction state, atomic replacement/recovery coordination, private-only submission, chain/recovery/reorg/replacement handling, receipt reconciliation, Solidity executor controls, Polygon fork harness, and adversarial/regression coverage.
 
 Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, one-path coordinator artifact-chain certification, and quorum-bound read-only executor authority attestation.
 
 ## 4. CURRENT AUTHORITY-PROOF HARDENING
 `phantomx/executor_authority.py` provides `observe_executor_authority_quorum(...)`.
 
-The quorum observer verifies Polygon chain identity on every configured provider, chooses one common observation block, reads executor `owner()` and runtime bytecode from every provider at that identical block, requires provider consensus on owner + runtime-code hash at the configured quorum, rejects duplicate identities/wrong chain/insufficient agreement/ambiguous splits, and returns the existing immutable `ExecutorAuthorityEvidence`.
+The quorum observer verifies Polygon chain identity on every configured provider, chooses one common observation block, reads executor `owner()` and runtime bytecode from every provider at that identical block, requires configured provider quorum on owner + runtime-code hash, rejects duplicate identities/wrong chain/insufficient agreement/ambiguous splits, and returns the immutable `ExecutorAuthorityEvidence`.
 
 This is read-only and cannot sign or submit transactions.
 
@@ -67,26 +67,25 @@ Required before real production authority attestation: approved Polygon RPC prov
 Every P0 gate must be GREEN with reproducible evidence before live capital. Any unchecked gate means **LIVE CAPITAL = LOCKED**.
 
 ## 8. CURRENT CHECKPOINT
-
 **Timestamp:** 2026-09-15
 
-**Atomic task:** continuity audit of the active Phase-19 branch after discovering that the active branch has advanced beyond the previously certified quorum checkpoint.
+**Atomic task:** continuity audit of the active Phase-19 branch after discovering the active branch has advanced beyond the previously certified quorum checkpoint.
 
 **New active-branch evidence:**
 - Active branch HEAD is `ad04f49a2083e0de54949405016776753dea1fbb`, commit `fix: allow signed drop before nonce tx hash is materialized`.
-- The change is limited to `phantomx/replacement_coordinator.py` and permits a signed-but-never-submitted source transaction whose durable nonce row has not yet materialized a transaction hash, while still rejecting a conflicting non-null durable transaction hash. cite_internal_commit_placeholder
-- No workflow run or combined status was returned for `ad04f49...`, so this newer implementation commit is **NOT independently CI-certified** in the currently observed evidence.
+- The change is limited to `phantomx/replacement_coordinator.py` and allows a signed-but-never-submitted source transaction whose durable nonce row has not yet materialized a tx hash, while still rejecting a conflicting non-null durable tx hash.
+- No workflow run or combined status was returned for `ad04f49...`; therefore this newer implementation commit is **NOT independently CI-certified** in the currently observed evidence.
 
 **Authority/input finding:**
-- Historical Library material contains a prior PhantomXV2FlashLoanExecutor candidate `0x24056bCA6538693aE94Cc97E82f21Ee4EC7f128`, but the same record explicitly marks it NOT YET PROVEN LIVE and requires chain, bytecode, interface, owner, domain, and runtime-code-hash verification.
-- Historical public Polygon RPC endpoints also exist in old runtime notes, but they are not an approved production quorum.
+- Historical project material records `0x24056bCA6538693aE94Cc97E82f21Ee4EC7f128` as a PhantomXV2FlashLoanExecutor deployment candidate, but the same material explicitly marks it NOT YET PROVEN LIVE and requires chain, bytecode, interface, owner, domain, and runtime-code-hash verification.
+- Historical public Polygon RPC endpoints also exist in older runtime notes, but they are not an approved production quorum.
 - `common/active_rpc.txt` remains an Ethereum endpoint and is not promoted into production authority.
 
 **Decision:** The replacement-coordinator change is useful hardening but remains an **UNVERIFIED CURRENT-HEAD CHANGE** until a fresh full Phase-19 CI run certifies it. P19-AUTH-02 remains **BLOCKED** because controlled production provider/signing inputs are still absent.
 
 **Safety boundary:** no live signing, public broadcast, live capital, or production execution authorization.
 
-**Next atomic action:** obtain a fresh full CI certification for current HEAD `ad04f49...` before treating that branch state as green; independently maintain the production-authority gate as blocked until approved provider quorum + intended executor identity + expected signer identity are supplied.
+**Next atomic action:** obtain a fresh full CI certification for current HEAD `ad04f49...`; independently keep production authority blocked until approved provider quorum + intended executor identity + expected signer identity are supplied.
 
 ---
 
