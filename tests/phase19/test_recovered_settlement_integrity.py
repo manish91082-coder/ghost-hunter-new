@@ -6,7 +6,7 @@ from phantomx.chain_observer import ChainObservationState, ObservationDecision
 from phantomx.durable_nonce import NonceStatus
 from phantomx.durable_recovery import DurableRecoveryError, persist_recovery_observation
 from phantomx.execution import ExecutionState
-from phantomx.execution_observation import ExecutionObservationError, persist_chain_observation
+from phantomx.execution_observation import persist_chain_observation
 from phantomx.execution_reconciliation import ExecutionReconciliationError, reconcile_included_execution
 from phantomx.execution_submission import ExecutionSubmissionError, submit_prepared_execution
 from phantomx.economics import CostBreakdown
@@ -83,17 +83,23 @@ class RecoveredSettlementIntegrityTests(unittest.TestCase):
             block_number=block_number,
         )
 
-    def _settle(self, observation, block_hash=BLOCK_HASH, canonical_block_hash=BLOCK_HASH, **overrides):
+    def _settle(self, persisted_observation, block_hash=BLOCK_HASH, canonical_block_hash=BLOCK_HASH, **overrides):
         kwargs = dict(
             store=self.store,
             intent=self.intent,
-            observation=observation,
+            observation=persisted_observation.observation,
             receipt=self._receipt(),
             block_hash=block_hash,
             canonical_block_hash=canonical_block_hash,
             final_settlement="101.00",
             flash_repayment="100.00",
-            costs=CostBreakdown(flash_loan_fee="0.05", dex_fees="0.02", gas="0.01", relay="0.01", other="0.01"),
+            costs=CostBreakdown(
+                flash_loan_fee="0.05",
+                dex_fees="0.02",
+                gas="0.01",
+                relay="0.01",
+                other="0.01",
+            ),
         )
         kwargs.update(overrides)
         return reconcile_included_execution(**kwargs)
@@ -101,7 +107,7 @@ class RecoveredSettlementIntegrityTests(unittest.TestCase):
     def test_pending_recovery_cannot_bypass_settlement(self):
         self._enter_in_flight()
         pending = self._observe_pending()
-        with self.assertRaisesRegex(ExecutionReconciliationError, "transaction must be INCLUDED"):
+        with self.assertRaisesRegex(ExecutionReconciliationError, "settlement requires canonical INCLUDED observation"):
             self._settle(pending)
         self.assertEqual(
             self.store.get_transaction(self.prepared.transaction_record.record_hash()).state,
@@ -149,7 +155,7 @@ class RecoveredSettlementIntegrityTests(unittest.TestCase):
         self.assertEqual(reorged.transaction_state, ExecutionState.REORGED)
         with self.assertRaises(ExecutionReconciliationError):
             self._settle(
-                ObservationDecision(ChainObservationState.INCLUDED, self.tx_hash, None, "stale inclusion evidence"),
+                self._make_stale_included_observation(),
                 block_hash=BLOCK_HASH,
                 canonical_block_hash=BLOCK_HASH,
             )
@@ -157,6 +163,16 @@ class RecoveredSettlementIntegrityTests(unittest.TestCase):
             self.store.get_transaction(self.prepared.transaction_record.record_hash()).state,
             ExecutionState.REORGED,
         )
+
+    def _make_stale_included_observation(self):
+        return type("PersistedObservation", (), {
+            "observation": ObservationDecision(
+                ChainObservationState.INCLUDED,
+                self.tx_hash,
+                None,
+                "stale inclusion evidence",
+            )
+        })()
 
     def test_recovery_cannot_create_second_submission_from_pending_state(self):
         self._enter_in_flight()
@@ -178,7 +194,12 @@ class RecoveredSettlementIntegrityTests(unittest.TestCase):
         persist_recovery_observation(
             store=self.store,
             intent=self.intent,
-            observation=ObservationDecision(ChainObservationState.REORGED, self.tx_hash, None, "canonical block changed"),
+            observation=ObservationDecision(
+                ChainObservationState.REORGED,
+                self.tx_hash,
+                None,
+                "canonical block changed",
+            ),
             tx_nonce=self.nonce,
             block_hash=BLOCK_HASH,
             block_number=10000,
@@ -200,7 +221,12 @@ class RecoveredSettlementIntegrityTests(unittest.TestCase):
         dropped = persist_recovery_observation(
             store=self.store,
             intent=self.intent,
-            observation=ObservationDecision(ChainObservationState.DROPPED, self.tx_hash, None, "pending nonce advanced"),
+            observation=ObservationDecision(
+                ChainObservationState.DROPPED,
+                self.tx_hash,
+                None,
+                "pending nonce advanced",
+            ),
             tx_nonce=self.nonce,
             pending_nonce=self.nonce + 1,
         )
@@ -235,7 +261,12 @@ class RecoveredSettlementIntegrityTests(unittest.TestCase):
             persist_recovery_observation(
                 store=self.store,
                 intent=self.intent,
-                observation=ObservationDecision(ChainObservationState.REORGED, self.tx_hash, None, "invalid unchanged canonical identity"),
+                observation=ObservationDecision(
+                    ChainObservationState.REORGED,
+                    self.tx_hash,
+                    None,
+                    "invalid unchanged canonical identity",
+                ),
                 tx_nonce=self.nonce,
                 block_hash=BLOCK_HASH,
                 block_number=10000,
