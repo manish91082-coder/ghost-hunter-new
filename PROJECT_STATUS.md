@@ -5,24 +5,22 @@
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Latest implementation: `8460c589ef6b82b1da08d73624f29d0cd63d2549`
+- Latest implementation: `d018f8aea32d7db5aa012b02dcaacab87435af4c`
 - Recovered-settlement certification `#420`: **GREEN**
 - Production chain observation adapter: `77c3c457...`
 - Read-only transaction/receipt RPC allowlist: `64f96d8b...`
 - Adapter adversarial certification `#423`: **GREEN**
 - Durable quorum observation admission store: `9cd129c26c23b62d5ae0e7ea796f070fd7802c9c`
-- Durable quorum admission tests: `8dc6d111...` lineage restored on branch by equivalent direct commit
 - Execution-observation quorum gate: `2a02e9110f303befa1fba2b0311f0e321530f0ba`
-- Quorum execution-observation contract tests: `86bb4786...`
-- Fresh certification `#427`: **GREEN**. All compile/EVM/Polygon stages and the Phase-19 unittest suite completed successfully.
-- End-to-end quorum recovery isolation fixture repair certification `#430`: **GREEN**. The single-provider INCLUDED path was blocked before lifecycle persistence, while the broader suite completed successfully.
+- Fresh certification `#427`: **GREEN**
+- End-to-end quorum recovery isolation certification `#430`: **GREEN**
 - Settlement reconciliation quorum boundary: `6a48ed044cc1579116b75e3f801e6fa866f2e89b`
-- Quorum settlement reconciliation certification `#432`: **GREEN**. All compile/EVM/Polygon stages and the Phase-19 unittest suite completed successfully.
+- Quorum settlement reconciliation certification `#432`: **GREEN**
 - Quorum recovery provenance boundary: `03e2c93ee8b1116d38b81332f45f84265b4a5c3d`
-- Quorum recovery provenance tests: `73f29f3912376b2beeeb3d8a5d974385ef7534c7`
-- Fresh certification `#435`: **GREEN**. The quorum recovery provenance matrix and production-surface bypass audit completed successfully. fileciteturn1536file0L2-L2
-- Final Phase-19 adversarial recovery/settlement matrix: `8460c589ef6b82b1da08d73624f29d0cd63d2549`
-- Fresh certification for final matrix: **PENDING**. The newly committed test head has not yet surfaced a new workflow run in the Actions index.
+- Quorum recovery provenance certification `#435`: **GREEN**
+- Final Phase-19 adversarial recovery/settlement matrix: `d018f8aea32d7db5aa012b02dcaacab87435af4c`
+- Fresh certification for final matrix: **PENDING / RUN NOT YET SURFACED**
+- Matrix fixture hardening: isolated fixture recreation now uses registered cleanup rather than manually tearing down a fixture whose cleanup remains registered; final matrix explicitly exercises PENDING, REVERTED, DROP, REPLACED, and REORGED paths.
 - Live mainnet execution: **BLOCKED**
 - Live capital: **LOCKED**
 - Production readiness: **NOT ACHIEVED**
@@ -35,25 +33,15 @@ Evidence first. Contradictory or missing evidence is UNKNOWN/BLOCKED. Private ex
 `LIVE BLOCK → DATA/RPC QUORUM → EXACT QUOTES → ROUTE ENGINE → LOAN OPTIMIZER → EXACT COST MODEL → WORST-CASE NET PNL → AI RANKING → EVM PREFLIGHT → GOVERNOR → SIGNER → PRIVATE SUBMIT → ON-CHAIN EXECUTOR → RECEIPT AUDITOR → REALIZED NET PNL`
 
 ## VERIFIED CAPABILITIES
-Deterministic economics, immutable authorization/envelope binding, quote and simulation evidence, EVM preflight, Governor, signer verification, durable nonce/transaction state, private-only submission, recovery, receipt reconciliation, executor controls, and authority quorum/provenance/freshness controls are implemented. #420 certified the recovered-settlement repair and #423 certified the production chain observation adapter.
+Deterministic economics, immutable authorization/envelope binding, quote and simulation evidence, EVM preflight, Governor, signer verification, durable nonce/transaction state, private-only submission, recovery, receipt reconciliation, executor controls, and authority quorum/provenance/freshness controls are implemented. #420, #423, #427, #430, #432, and #435 provide the latest certified gates.
 
-The production chain observer is read-only. It verifies Polygon identity, gathers transaction/receipt/pending-nonce evidence, validates receipt block canonicality, groups provider observations deterministically, and requires a unique quorum-backed decision. It has no signing or submission dependency. fileciteturn1368file0L1-L2
+The production chain observer is read-only and requires a unique quorum-backed decision. fileciteturn1534file0L2-L2
 
-The HTTP read-only transport permits the transaction and receipt lookup methods required by the observer while submission/write methods remain blocked before network I/O. fileciteturn1344file0L3-L12
+The execution-observation path requires an exact, previously persisted and fresh quorum record before lifecycle persistence. fileciteturn1545file0L2-L2
 
-The durable quorum admission boundary stores the exact intent/transaction binding, decision state, common observed block, attesting provider names, and evidence hash, and provides an exact/fresh reuse check. fileciteturn1466file0L2-L2
+Settlement reconciliation now has a dedicated quorum boundary, and the lower-level settlement primitive is explicitly treated as an already-admitted path. fileciteturn1548file0L2-L2
 
-The execution-observation entry point exposes a dedicated quorum-gated persistence path. It first requires the exact, previously persisted and fresh quorum record, verifies transaction/state/replacement identity, and only then delegates to the existing durable chain-observation persistence. The full canonical block evidence remains supplied separately to preserve receipt canonicality validation. fileciteturn1465file0L2-L2
-
-The recovery isolation fixture statically constrains plain observation lifecycle persistence to its intentional boundary and exercises a single-provider INCLUDED observation that is rejected by a two-provider admission policy before transaction lifecycle mutation. fileciteturn1503file0L2-L2
-
-The settlement layer exposes a dedicated quorum-gated reconciliation boundary. The low-level settlement primitive is an already-admitted path, while the production boundary validates exact transaction/state/replacement binding and requires persisted, fresh quorum provenance before any settlement record or terminal profit state can be created. fileciteturn1510file0L2-L2
-
-The durable recovery layer exposes a matching quorum-gated boundary for DROP, REPLACED, and REORGED evidence. It validates exact state/transaction/replacement binding and fresh attester policy before calling the existing durable recovery mutation primitive. fileciteturn1527file0L2-L2
-
-The certified recovery provenance matrix covers single-provider rejection, fresh two-provider DROP admission, stale replacement rejection, future REORG rejection, replacement binding mismatch, two-provider REORG admission, and a production-module static bypass audit. fileciteturn1530file0L2-L2
-
-The final adversarial matrix commit adds quorum-gated PENDING and REVERTED lifecycle coverage, explicit future/stale/single-provider/tampered evidence rejection, canonical-block settlement conflict protection, idempotent/conflicting settlement evidence checks, restart persistence of quorum evidence, and static confinement of the low-level recovery/settlement mutation primitives.
+Recovery mutation now has the same quorum provenance boundary for DROP, REPLACED, and REORGED evidence. fileciteturn1549file0L2-L2
 
 ## P0 BLOCKERS
 1. Controlled production signer identity proof.
@@ -65,12 +53,12 @@ The final adversarial matrix commit adds quorum-gated PENDING and REVERTED lifec
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-`#435` is GREEN for quorum recovery provenance. fileciteturn1536file0L2-L2
+`#435` is GREEN for quorum recovery provenance, including single-provider rejection, fresh two-provider admission, stale/future evidence rejection, replacement binding checks, reorg admission, and the static production-surface bypass audit. fileciteturn1536file0L2-L2
 
-The final adversarial matrix is committed at `8460c589...`. It has not yet earned a certification result because the latest Actions index still reports `#435` as the newest completed run. No pass is claimed until the new workflow run executes the matrix.
+The final adversarial matrix was previously committed at `8460c589...`. Its certification had not surfaced in the Actions index, so the fixture was hardened before accepting any certification claim. Commit `d018f8aea32d7db5aa012b02dcaacab87435af4c` removes the double-teardown hazard by centralizing fixture recreation and explicitly adds fresh REPLACED and REORGED coverage alongside the already present PENDING, REVERTED, DROP, stale/future/tampered, canonical-block, settlement-conflict, restart, and low-level caller-confinement checks.
 
 ## NEXT ATOMIC ACTION
-Obtain the fresh certification for `8460c589ef6b82b1da08d73624f29d0cd63d2549`. On GREEN, execute the production-readiness gate audit for controlled signer identity, approved Polygon provider authority, private relay, shadow/staging, and realized-PnL evidence. On any failure, repair only the exact failing boundary and recertify.
+Obtain and verify the fresh Phase-19 certification for `d018f8aea32d7db5aa012b02dcaacab87435af4c`. On GREEN, begin the production-readiness gate audit. On failure, repair only the exact failing boundary and recertify.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
