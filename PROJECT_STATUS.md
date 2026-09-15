@@ -1,7 +1,7 @@
 # PHANTOMX / FLASH LOAN GHOST HUNTER
 # PROJECT STATUS • MASTER CONTINUITY • MISSION CONTROL
 
-> Canonical project-state anchor. Update this file after every meaningful project execution step that changes implementation, evidence, blockers, architecture, tests, governance, or next action.
+> Canonical project-state anchor. **STRICT RULE: synchronize this file on every assistant project response, without exception.** The synchronization must record the latest known branch HEAD/checkpoint, current phase/task, evidence actually observed, blockers, next action, and safety boundary. Never fabricate passes.
 
 ## 0. CURRENT RESUME CARD
 
@@ -9,8 +9,8 @@
 - Repository: `manish91082-coder/ghost-hunter-new`
 - Default branch: `master`
 - Active implementation branch: `phase-19-e2e-harness`
-- Current branch HEAD: `b5255d6cfb3616f852bfe5edfd35e5fa652d2f05`
-- Current HEAD commit: `test(P19-RC-01): isolate Governor ceiling boundary`
+- Current branch HEAD: `abb5aaa9576dff6f7b9de115107c50a2db8238fe`
+- Current HEAD commit: `fix(P19-RC-02): implement atomic replacement persistence boundary`
 - Phase: Phase 19, execution-integrity / E2E policy harness
 - Live mainnet execution: **BLOCKED**
 - Live capital authorization: **BLOCKED**
@@ -30,6 +30,8 @@ Private execution has no public fallback.
 Zero-cost means no mandatory paid infrastructure dependency. Gas and unavoidable execution costs remain real and must be modeled.
 
 Live capital remains locked until all P0 gates have reproducible evidence.
+
+**Status synchronization is mandatory on every project response.** A response is not considered complete until this file reflects the latest evidence-backed checkpoint.
 
 ## 2. CANONICAL PRODUCTION SPINE
 
@@ -62,7 +64,9 @@ Completed and under active integration/testing on Phase 19 include:
 - Polygon fork protocol smoke and execution-probe harness;
 - adversarial/regression test coverage across the above boundaries;
 - durable replacement preparation and replacement-fee policy hardening;
-- explicit Governor-envelope isolation for replacement preparation in the Phase-19 test harness.
+- explicit Governor-envelope isolation for replacement preparation in the Phase-19 test harness;
+- immutable replacement transaction-record construction;
+- atomic durable replacement persistence across transaction and nonce state.
 
 ## 4. ROUTE COMMITMENT INTEGRITY
 
@@ -82,38 +86,38 @@ Startup recovery audit detects inconsistent nonce/transaction mappings and prese
 
 Replacement preparation is fail-closed on source state, sender/executor identity, nonce linkage, replacement fee policy, EVM preflight, Governor approval, signing, and durable persistence.
 
+Replacement persistence is a dedicated atomic boundary: a validated replacement record is inserted only while the source is explicitly replaceable, the source is moved to `REPLACED`, and the same durable nonce is rebound to the new signed transaction in `SIGNED` state within one SQLite transaction.
+
 ## 6. LATEST VERIFIED CI EVIDENCE
 
-Latest completed Phase-19 run before this status checkpoint:
+Latest completed Phase-19 verification observed before this checkpoint:
 
-- Run `#249` on commit `3636abe0fe2bc55b7d3b028600fa9d5efdb85130`: **FAIL**
+- Run `#252` on commit `d21e42183759ed06905c91be98b1e425444dcfc4`: **FAIL**
 - Solidity compile: PASS
 - Phase-19 EVM harness: PASS, 14 tests
 - Polygon protocol smoke: PASS, 3 tests
 - Polygon fork execution probe: PASS, 1 test
-- Python Phase-19 suite: FAIL, **402 tests: 1 failure, 2 errors**
+- Python Phase-19 suite: FAIL
 
-Forensic result from run #249:
+Run `#253`/subsequent intermediate state is not used as certified evidence because no terminal full-suite result has been established here.
 
-1. Two valid replacement-lifecycle tests reached an invalid unused `build_signed_record(..., replacement_of=...)` call in `replacement_coordinator.py`. The public `build_signed_record()` API does not accept `replacement_of`; the resulting object was never used because the replacement record is correctly created later by `TransactionRecord.from_replacement()`.
-2. The Governor-ceiling boundary test used a replacement fee that the replacement-policy relative escalation bound rejected first, so it did not actually exercise the Governor ceiling.
+Current implementation commits after that evidence:
 
-Corrections are now committed:
+- `a72ebc2efb61bf742b3a0374657693e72839bd28`: added `TransactionRecord.from_replacement()` with strict source/authorization/identity/nonce/governor/preflight validation.
+- `abb5aaa9576dff6f7b9de115107c50a2db8238fe`: added `SQLiteExecutionStore.persist_signed_replacement()` as an atomic source-replace + nonce-rebind + replacement-insert operation.
 
-- `ad66f948b76f2555baffdd5b125f18437cefc51e`: removed the invalid, unused replacement-record construction from production replacement preparation.
-- `b5255d6cfb3616f852bfe5edfd35e5fa652d2f05`: changed the Governor-ceiling test fixture so its replacement-policy bound deliberately permits the test fee while the explicit replacement Governor ceiling rejects it.
-
-**Current proof state:** the corrections are committed, but no CI result for current HEAD `b5255d6cfb3616f852bfe5edfd35e5fa652d2f05` is yet certified green.
+A new CI run `#254` has been queued for `abb5aaa9576dff6f7b9de115107c50a2db8238fe`. No current-HEAD GREEN claim is made until that workflow reaches a terminal result.
 
 ## 7. CURRENT BLOCKERS
 
-1. Obtain current-HEAD CI evidence after the replacement-coordinator corrections.
-2. If regression is green, audit the replacement lifecycle for semantic completeness and adversarial cross-layer mutation cases before advancing Phase 19.
-3. Continue hardening the route/topology cryptographic bridge and exact execution commitment.
-4. Production signer/network credentials remain intentionally absent and locked.
-5. Production private relay capability is not yet proven on mainnet.
-6. Realized live PnL evidence does not exist.
-7. Live mainnet capital deployment remains forbidden.
+1. Obtain terminal CI evidence for the replacement persistence implementation.
+2. Add/verify adversarial tests covering replacement record linkage, atomic rollback, and repeated replacement chains if any remain unproven.
+3. If the full regression becomes green, perform a focused Phase-19 replacement-lifecycle semantic audit before advancing to the next execution-integrity gap.
+4. Continue hardening the route/topology cryptographic bridge and exact execution commitment.
+5. Production signer/network credentials remain intentionally absent and locked.
+6. Production private relay capability is not yet proven on mainnet.
+7. Realized live PnL evidence does not exist.
+8. Live mainnet capital deployment remains forbidden.
 
 ## 8. GO-LIVE GATES
 
@@ -142,12 +146,14 @@ Any unchecked P0 gate means **LIVE CAPITAL = LOCKED**.
 
 ## 9. CONTINUITY RULE
 
-At the end of every meaningful project execution response, synchronize this file with:
+**STRICT EXECUTION RULE:** Every project response must end with a synchronized `PROJECT_STATUS.md` commit. No exceptions.
+
+The synchronized checkpoint must contain:
 - current timestamp/checkpoint;
 - current phase and atomic task;
 - changed files;
 - tests/evidence actually observed;
-- exact commit SHA;
+- exact latest implementation commit SHA;
 - blockers/risks;
 - next action;
 - safety boundary.
@@ -156,22 +162,24 @@ Append/replace only with evidence-backed state. Never fabricate passes.
 
 ## 10. CURRENT CHECKPOINT
 
-**Timestamp:** 2026-09-15T07:25+05:30
+**Timestamp:** 2026-09-15T07:26+05:30
 
-**Atomic task:** P19-RC-01 — replacement lifecycle policy/fixture alignment.
+**Atomic task:** P19-RC-02 — close the durable replacement-record/storage boundary exposed by CI #249/#252.
 
-**Finding:** Run #249 reduced the prior replacement cluster to two errors plus one incorrectly targeted boundary assertion. The two errors were caused by an invalid unused call in replacement coordination, not by replacement-policy semantics. The boundary assertion did not isolate the Governor layer.
+**Finding:** The replacement coordinator had advanced beyond the durable record/storage layer. The active code referenced `TransactionRecord.from_replacement()` and `SQLiteExecutionStore.persist_signed_replacement()`, while neither primitive existed in the active branch. CI #252 therefore remained non-green even after the earlier fee-policy corrections.
 
-**Corrective action:** Removed the unused invalid `build_signed_record(..., replacement_of=...)` call and isolated the Governor ceiling test with a deliberately broader test-only replacement-policy bound. Production Governor and replacement-policy safety limits were not weakened.
+**Corrective action:**
+- `a72ebc2efb61bf742b3a0374657693e72839bd28` implemented immutable replacement-record construction with exact source hash, intent, identity, nonce, authorization, Governor and preflight validation.
+- `abb5aaa9576dff6f7b9de115107c50a2db8238fe` implemented atomic replacement persistence: source must be `DROPPED`/`REPLACED`; replacement must be `SIGNED`; source and replacement identity/nonce/reservation must match; current durable nonce must be explicitly replaceable and point to the source hash; replacement record is inserted; source becomes `REPLACED`; nonce becomes `SIGNED` and points to the new replacement hash; all within one SQLite transaction.
 
-**Current HEAD:** `b5255d6cfb3616f852bfe5edfd35e5fa652d2f05`
+**Current HEAD:** `abb5aaa9576dff6f7b9de115107c50a2db8238fe`
 
-**Current CI:** not yet available for this HEAD; next action is full Phase-19 workflow verification.
+**Current CI:** Run `#254` queued for this HEAD; terminal result not yet observed.
 
 **Safety boundary:** No live signing, public broadcast, live capital, or production execution authorization is granted.
 
-**Next atomic action:** obtain current-HEAD CI evidence, then either close remaining P19-RC-01 defects or certify the gate and proceed to the next highest-value execution-integrity gap.
+**Next atomic action:** verify run `#254`; if any failures remain, repair them at the narrowest correct abstraction layer and rerun full Phase-19 regression. After GREEN, perform focused adversarial replacement-chain audit before advancing.
 
 ---
 
-**MISSION: ACTIVE • LIVE CAPITAL: LOCKED • EVIDENCE STANDARD: STRICT • CONTINUITY: ENABLED**
+**MISSION: ACTIVE • LIVE CAPITAL: LOCKED • EVIDENCE STANDARD: STRICT • CONTINUITY: ENABLED • STATUS-SYNC: MANDATORY EVERY RESPONSE**
