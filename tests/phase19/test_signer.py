@@ -106,6 +106,10 @@ class SignerBoundaryTests(unittest.TestCase):
         self.assertEqual(len(self.signer.address), 42)
         self.assertEqual(self.signer.address, recover_eip1559_sender(self.signer.sign(self.envelope)))
 
+    def test_zero_private_key_is_rejected(self):
+        with self.assertRaisesRegex(SignerError, "private_key is invalid"):
+            EthereumEip1559Signer("0x" + "00" * 32)
+
     def test_wrong_signer_identity_is_blocked_before_signing(self):
         wrong = EthereumEip1559Signer("0x" + "02" * 32)
         with self.assertRaisesRegex(SignerError, "signer identity"):
