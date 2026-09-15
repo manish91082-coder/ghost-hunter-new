@@ -137,7 +137,7 @@ class RecoveredSettlementIntegrityTests(unittest.TestCase):
 
     def test_reorged_recovery_cannot_bypass_reobservation_or_settlement(self):
         self._enter_in_flight()
-        self._observe_included()
+        included = self._observe_included()
         reorged = persist_recovery_observation(
             store=self.store,
             intent=self.intent,
@@ -154,25 +154,11 @@ class RecoveredSettlementIntegrityTests(unittest.TestCase):
         )
         self.assertEqual(reorged.transaction_state, ExecutionState.REORGED)
         with self.assertRaises(ExecutionReconciliationError):
-            self._settle(
-                self._make_stale_included_observation(),
-                block_hash=BLOCK_HASH,
-                canonical_block_hash=BLOCK_HASH,
-            )
+            self._settle(included, block_hash=BLOCK_HASH, canonical_block_hash=BLOCK_HASH)
         self.assertEqual(
             self.store.get_transaction(self.prepared.transaction_record.record_hash()).state,
             ExecutionState.REORGED,
         )
-
-    def _make_stale_included_observation(self):
-        return type("PersistedObservation", (), {
-            "observation": ObservationDecision(
-                ChainObservationState.INCLUDED,
-                self.tx_hash,
-                None,
-                "stale inclusion evidence",
-            )
-        })()
 
     def test_recovery_cannot_create_second_submission_from_pending_state(self):
         self._enter_in_flight()
@@ -256,7 +242,7 @@ class RecoveredSettlementIntegrityTests(unittest.TestCase):
 
     def test_contradictory_reorg_evidence_is_rejected_without_lifecycle_change(self):
         self._enter_in_flight()
-        self._observe_included()
+        included = self._observe_included()
         with self.assertRaises(DurableRecoveryError):
             persist_recovery_observation(
                 store=self.store,
