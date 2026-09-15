@@ -5,8 +5,8 @@
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Latest project commit: `5d764cd30c181647e85c400540720297df831fa8`
-- Latest Phase-19 CI: run `35018490583` / workflow run `439` **GREEN** on parent commit `ebf794537c531a1241426a2bca9f355e205e44fc`; no workflow run is currently associated with the latest status-only head
+- Latest verified software/project commit: `364cc681a71c183d82408dbff53ee88e4ccb16a2`
+- Latest Phase-19 CI: run `35018490583` / workflow run `439` **GREEN** on software parent commit `ebf794537c531a1241426a2bca9f355e205e44fc`; subsequent branch commits are status-only synchronization commits and are ignored by the Phase-19 workflow path filter
 - Final executable implementation: `d018f8aea32d7db5aa012b02dcaacab87435af4c`
 - Recovered-settlement certification `#420`: **GREEN**
 - Production chain observation adapter: `77c3c457...`
@@ -69,7 +69,7 @@ The production private-relay assembly requires explicit HTTPS configuration and 
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-The current branch head is a status-only synchronization commit. No Phase-19 workflow run is associated with that status-only head because `.github/workflows/phase19-tests.yml` explicitly ignores `PROJECT_STATUS.md` for push and pull-request triggers. The latest available Phase-19 CI run is `35018490583` / workflow run `439`, which completed successfully on parent commit `ebf794537c531a1241426a2bca9f355e205e44fc`. The successful CI evidence therefore remains valid for the executable parent commit and is not being relabeled as a fresh run for the status-only head.
+Latest verified executable/project state is commit `364cc681a71c183d82408dbff53ee88e4ccb16a2`. That commit contains the controlled signer evidence intake status update. The branch now contains only subsequent `PROJECT_STATUS.md` synchronization commits from this continuity audit; these are documentation-only and the Phase-19 workflow explicitly ignores `PROJECT_STATUS.md`, so they do not create fresh executable CI evidence. The latest available Phase-19 CI run is `35018490583` / workflow run `439`, completed successfully on parent software commit `ebf794537c531a1241426a2bca9f355e205e44fc`.
 
 The controlled signer evidence intake specification defines the minimum non-secret proof package: fresh challenge, exact external signature, verifier-derived identities/hashes, verifier commit/certification reference, and external operator/witness/timestamp provenance. The validator recomputes the signature proof and challenge/evidence hashes without accepting any private-key material. The gate remains BLOCKED until an externally controlled package is actually produced and independently accepted.
 
