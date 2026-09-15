@@ -9,8 +9,8 @@
 - Repository: `manish91082-coder/ghost-hunter-new`
 - Default branch: `master`
 - Active implementation branch: `phase-19-e2e-harness`
-- Current branch HEAD: `abb5aaa9576dff6f7b9de115107c50a2db8238fe`
-- Current HEAD commit: `fix(P19-RC-02): implement atomic replacement persistence boundary`
+- Current branch HEAD: `05a9becc1542f6d588cbfc77691beacb8087f29b`
+- Current HEAD commit: `ci(P19-CI-01): decouple status sync commits from verification triggers`
 - Phase: Phase 19, execution-integrity / E2E policy harness
 - Live mainnet execution: **BLOCKED**
 - Live capital authorization: **BLOCKED**
@@ -90,7 +90,7 @@ Replacement persistence is a dedicated atomic boundary: a validated replacement 
 
 ## 6. LATEST VERIFIED CI EVIDENCE
 
-Latest completed Phase-19 verification observed before this checkpoint:
+Latest completed Phase-19 verification observed:
 
 - Run `#254` on commit `abb5aaa9576dff6f7b9de115107c50a2db8238fe`: **FAIL**
 - Solidity compile: PASS
@@ -98,15 +98,29 @@ Latest completed Phase-19 verification observed before this checkpoint:
 - Polygon protocol smoke: PASS, 3 tests
 - Polygon fork execution probe: PASS, 1 test
 - Python Phase-19 suite: FAIL, **402 tests: 1 failure, 401 passing**
+- The remaining failure was the stale expectation that a consumed source would stay `DROPPED`; implementation correctly persisted it as `REPLACED` after replacement installation.
 
-Forensic result from run #254:
+Current verification run:
 
-- All major EVM/fork gates passed.
-- Four replacement-coordinator tests passed, including the Governor ceiling boundary and private-submission path.
-- The only remaining failure is an assertion in `test_drop_state_is_consumed_into_new_signed_replacement`: after a successful replacement installation, the source transaction is correctly persisted as `REPLACED`, while the test still expected it to remain `DROPPED`.
-- This indicates the implementation and test semantics are now one lifecycle transition apart, not an unresolved fee/persistence API error.
+- Run `#258` on commit `05a9becc1542f6d588cbfc77691beacb8087f29b`: **IN PROGRESS** at checkpoint time.
+- This run includes the final replacement-state assertion correction plus the CI trigger isolation change.
+- **Status-sync-only commits are now excluded from the Phase-19 push trigger via `paths-ignore: PROJECT_STATUS.md`.** This prevents status recording from creating a self-referential CI loop.
+- A status-only commit therefore cannot masquerade as a new implementation verification event.
 
-## 7. COMPLETION / DISTANCE ASSESSMENT
+## 7. CI / STATE-SYNCHRONIZATION CONTROL FIX
+
+The screenshot evidence showed a real mismatch pattern: every `PROJECT_STATUS.md` synchronization created another Phase-19 workflow run because the workflow triggered on every push to the active branch. This produced repeated red runs and moved the branch HEAD even when no production/code behavior changed.
+
+The workflow has now been changed so ordinary Phase-19 verification triggers on implementation changes but ignores `PROJECT_STATUS.md`-only pushes. Manual `workflow_dispatch` remains available for deliberate full verification.
+
+This establishes two distinct truths:
+
+1. **Implementation verification:** tied to an implementation-bearing commit and CI run.
+2. **Continuity recording:** may advance the branch with status-only commits without triggering a duplicate verification cycle.
+
+The project must record both explicitly and must never treat a status-only HEAD as fresh test evidence unless the implementation SHA it describes has actually passed CI.
+
+## 8. COMPLETION / DISTANCE ASSESSMENT
 
 These percentages are engineering readiness estimates, not formal certification scores.
 
@@ -114,19 +128,19 @@ These percentages are engineering readiness estimates, not formal certification 
 - **Go-live evidence/certification:** approximately **45–55% complete**.
 - **Overall mission toward first controlled live hunt:** approximately **60–70% complete**.
 
-The remaining work is concentrated in proof and productionization rather than basic architecture. The current Phase-19 blocker is one semantic test expectation; after that, the project still requires a focused replacement-lifecycle adversarial audit, route/topology commitment hardening, production signer/network validation, private-relay validation, startup safety validation, and a controlled non-capital / shadow-to-live transition with reproducible evidence.
+These are not certification numbers. The project remains in proof/productionization rather than live-execution phase.
 
-## 8. CURRENT BLOCKERS
+## 9. CURRENT BLOCKERS
 
-1. Close the single remaining Phase-19 replacement lifecycle test failure and rerun the full 402-test suite.
-2. Perform focused adversarial replacement-chain and rollback audit before certifying Phase 19.
+1. Terminal result for current implementation run `#258` is not yet observed at this checkpoint.
+2. After `#258` is green, perform focused adversarial replacement-chain and rollback audit before certifying Phase 19.
 3. Continue hardening the route/topology cryptographic bridge and exact execution commitment.
 4. Production signer/network credentials remain intentionally absent and locked.
 5. Production private relay capability is not yet proven on mainnet.
 6. Realized live PnL evidence does not exist.
 7. Live mainnet capital deployment remains forbidden.
 
-## 9. GO-LIVE GATES
+## 10. GO-LIVE GATES
 
 All must be GREEN with reproducible evidence before live capital:
 
@@ -151,7 +165,7 @@ All must be GREEN with reproducible evidence before live capital:
 
 Any unchecked P0 gate means **LIVE CAPITAL = LOCKED**.
 
-## 10. FIRST LIVE HUNT CRITERIA
+## 11. FIRST LIVE HUNT CRITERIA
 
 The first live hunt is **not date-scheduled**. It becomes eligible only after every P0/go-live gate is GREEN with reproducible evidence and the shadow/staging transition proves the same immutable artifact chain end-to-end.
 
@@ -161,7 +175,7 @@ Therefore no honest calendar date can be certified yet. The earliest possible li
 
 `Phase-19 GREEN → full adversarial certification → production signer + private relay proof → startup safety proof → controlled shadow run → final go-live authorization → first live transaction with minimal capital`
 
-## 11. CONTINUITY RULE
+## 12. CONTINUITY RULE
 
 **STRICT EXECUTION RULE:** Every project response must end with a synchronized `PROJECT_STATUS.md` commit. No exceptions.
 
@@ -177,23 +191,26 @@ The synchronized checkpoint must contain:
 
 Append/replace only with evidence-backed state. Never fabricate passes.
 
-## 12. CURRENT CHECKPOINT
+## 13. CURRENT CHECKPOINT
 
-**Timestamp:** 2026-09-15T07:35+05:30
+**Timestamp:** 2026-09-15T07:57+05:30
 
-**Atomic task:** P19-RC-03 — close the final replacement-lifecycle semantic mismatch exposed by CI #254.
+**Atomic task:** P19-CI-01 — repair the status/verification feedback loop while closing the last known Phase-19 replacement lifecycle assertion.
 
-**Finding:** CI #254 verifies that the durable replacement persistence implementation is functioning through all four replacement coordinator lifecycle tests except for one stale assertion. The implementation changes a successfully consumed `DROPPED` source into `REPLACED`, while the test expected the old `DROPPED` state after replacement installation.
+**Evidence observed:**
+- Screenshots show repeated failures for status synchronization, Governor-boundary isolation, and replacement-persistence checkpoints.
+- Run #254 established that all EVM/fork gates passed and only one Python replacement-state assertion remained.
+- Current code correction changes that stale assertion to the intended `REPLACED` source state.
+- Current workflow correction adds `paths-ignore: PROJECT_STATUS.md`, so status-only commits no longer launch duplicate Phase-19 verification runs.
+- Run #258 is currently in progress for the implementation-bearing commit `05a9becc1542f6d588cbfc77691beacb8087f29b`.
 
-**Decision:** Correct the test expectation to the intended durable lifecycle (`source = REPLACED`, replacement = SIGNED, nonce = SIGNED on the new tx), then rerun the complete Phase-19 suite. Do not weaken lifecycle transitions.
+**Decision:** wait for terminal #258 evidence. If green, freeze/record Phase-19 replacement lifecycle as verified, run the focused adversarial replacement-chain audit, then advance to the next highest-value unresolved execution-integrity gap. If red, repair only the proven failing layer and rerun.
 
-**Current HEAD:** `abb5aaa9576dff6f7b9de115107c50a2db8238fe`
-
-**Latest CI:** Run #254 failed only on the stale source-state assertion described above.
+**Current HEAD:** `05a9becc1542f6d588cbfc77691beacb8087f29b`
 
 **Safety boundary:** No live signing, public broadcast, live capital, or production execution authorization is granted.
 
-**Next atomic action:** update the single stale lifecycle assertion, rerun full Phase-19 verification, then perform adversarial replacement-chain audit if green.
+**Next atomic action:** observe terminal Run #258 result, then act only on the evidence.
 
 ---
 
