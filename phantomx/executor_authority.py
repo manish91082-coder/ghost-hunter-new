@@ -120,6 +120,26 @@ def runtime_code_binding_hash(evidence: ExecutorAuthorityEvidence) -> str:
     return keccak256_hex(encoded)
 
 
+def verify_executor_authority_freshness(
+    evidence: ExecutorAuthorityEvidence,
+    *,
+    current_observed_block: int,
+    maximum_age_blocks: int,
+) -> None:
+    """Reject replay of authority evidence outside an explicit block-age window."""
+    if not isinstance(evidence, ExecutorAuthorityEvidence):
+        raise ExecutorAuthorityError("authority freshness requires executor authority evidence")
+    if not isinstance(current_observed_block, int) or isinstance(current_observed_block, bool) or current_observed_block < 0:
+        raise ExecutorAuthorityError("current observed block must be a non-negative integer")
+    if not isinstance(maximum_age_blocks, int) or isinstance(maximum_age_blocks, bool) or maximum_age_blocks <= 0:
+        raise ExecutorAuthorityError("maximum observation age must be a positive integer")
+    if evidence.observed_block > current_observed_block:
+        raise ExecutorAuthorityError("authority evidence is from the future relative to current observation")
+    age = current_observed_block - evidence.observed_block
+    if age > maximum_age_blocks:
+        raise ExecutorAuthorityError("stale executor authority evidence exceeds observation-age policy")
+
+
 def observe_executor_authority(provider: RPCProvider, executor: str) -> ExecutorAuthorityEvidence:
     """Observe owner and runtime code at one explicit Polygon block."""
     executor = _address(executor, "executor")
