@@ -6,12 +6,15 @@
 ## 0. CURRENT RESUME CARD
 - Project: `manish91082-coder/ghost-hunter-new`
 - Active branch: `phase-19-e2e-harness`
-- Latest implementation commit: `9489c047a8696db70213d0f0155a6d39f5c344f5`
+- Latest implementation commit: `e3040c24b8c5119a697847e7b3a4bfa01f8f2e5c`
 - External signer verifier: `4c65e6e6520e6a5003182af2fc58abeb25f8c073`
+- Signer identity operator CLI: `415d722e938650e869ba6d9bda450d35533c70ef`
+- Signer identity CLI tests: `e3040c24b8c5119a697847e7b3a4bfa01f8f2e5c`
 - Latest signer identity implementation: `fd34078fae864c02136484eeef3afd5f4a6c05a4`
 - Latest signer artifact repair: `148d9d01d0b6037312678d4af76ff1ade1a4e4e0`
 - Fresh authoritative repair CI: run `#349` GREEN for `148d9d01...`
 - Fresh PR-head CI: run `#354` GREEN for `9489c047...`
+- Fresh post-CLI CI: run `#357` GREEN for `e3040c24...`
 - Certification PR: `#1` (OPEN, base `master`)
 - Phase: Phase 19 execution-integrity / E2E policy harness
 - Live mainnet execution: **BLOCKED**
@@ -35,7 +38,7 @@ Initial scope: Polygon, Aave V3, QuickSwap V2, Uniswap V3, USDC/WETH/WMATIC/WBTC
 ## 3. VERIFIED IMPLEMENTATION CAPABILITIES
 Phase 19 includes strict realized-profit gating, deterministic all-in economics, Keccak hashing, immutable intent/auth/envelope binding, exact block-bound quotes, route simulation and topology commitment, loan optimization, EVM preflight, Governor, signer boundary, durable SQLite nonce/transaction state, atomic replacement/recovery coordination, private-only submission, chain/recovery/reorg/replacement handling, receipt reconciliation, Solidity executor controls, Polygon fork harness, and adversarial/regression coverage.
 
-Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, one-path coordinator artifact-chain certification, quorum-bound read-only executor authority attestation, nullable durable-nonce-hash replacement coverage, restart-audit coverage proving a pre-submission `SIGNED` nonce may legitimately remain hash-free while the durable transaction record remains authoritative, CI runtime modernization to Node 24-compatible action majors, pre-network blocking of repeated submission of an already-submitted durable artifact, explicit regression coverage that terminal `PROFIT_CONFIRMED`/`PROFIT_FAILED` states cannot be reopened by reorg recovery evidence, least-privilege/time-bounded CI execution, rejection of an all-zero signer private key, a non-secret signer identity challenge/proof boundary with cryptographic address recovery, restoration of the immutable signed-transaction artifact, and an external verifier that can independently validate challenge signatures without private-key access.
+Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, one-path coordinator artifact-chain certification, quorum-bound read-only executor authority attestation, nullable durable-nonce-hash replacement coverage, restart-audit coverage proving a pre-submission `SIGNED` nonce may legitimately remain hash-free while the durable transaction record remains authoritative, CI runtime modernization to Node 24-compatible action majors, pre-network blocking of repeated submission of an already-submitted durable artifact, explicit regression coverage that terminal `PROFIT_CONFIRMED`/`PROFIT_FAILED` states cannot be reopened by reorg recovery evidence, least-privilege/time-bounded CI execution, rejection of an all-zero signer private key, a non-secret signer identity challenge/proof boundary with cryptographic address recovery, restoration of the immutable signed-transaction artifact, an external verifier that can independently validate challenge signatures without private-key access, and an operator-safe CLI that generates fresh challenges and verifies externally returned signatures without private-key access.
 
 ## 4. CI CERTIFICATION PATH
 The Phase-19 workflow runs on branch pushes and pull requests to `master`, while ignoring status-only changes. It uses `actions/checkout@v5` and `actions/setup-python@v6`, grants only `contents: read`, enforces a 30-minute job timeout, then performs Foundry compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the Phase-19 unittest suite.
@@ -44,6 +47,8 @@ Fresh repair validation run `#349` tested `148d9d01...` and concluded **SUCCESS*
 
 Fresh PR-head validation run `#354` tested `9489c047...` and concluded **SUCCESS**. The job completed every workflow stage. Evidence from the job log: 14/14 EVM tests passed, 3/3 Polygon fork smoke tests passed, 1/1 Polygon fork execution probe passed, and the Phase-19 Python suite ran **430 tests with 0 failures**, including all five new external signer identity verifier tests.
 
+Fresh post-CLI validation run `#357` tested `e3040c24...` and concluded **SUCCESS**. The workflow job completed all stages successfully, including the Phase-19 Python suite. Its checked-in changes add the operator-safe signer identity CLI and five CLI safety/regression tests.
+
 Run `#348` remains historical failure evidence: it tested `fd34078f...`, passed compile/EVM/Polygon stages, then failed in Python because `SignedTransaction` had been removed during signer-proof hardening. The deterministic regression was repaired in `148d9d01...`, and the repair is now GREEN.
 
 Historical GREEN runs remain historical evidence only and do not substitute for current implementation proof.
@@ -51,7 +56,9 @@ Historical GREEN runs remain historical evidence only and do not substitute for 
 ## 5. CURRENT SIGNER IDENTITY GATE
 The concrete signer exposes a non-secret cryptographic challenge proof. The external verifier accepts a fresh 32-byte challenge and a 65-byte signature, recovers the Ethereum address, requires an exact match with the expected address, and rebuilds the immutable evidence record. The verifier requires no signer object and no private-key access.
 
-The mechanism and its independent verifier are now CI-certified. The **actual production signer identity gate remains NOT GREEN** because no actual production signer has yet supplied independently witnessed challenge evidence tied to the intended production address.
+The operator CLI now provides a safe execution boundary: `--generate-challenge` creates a fresh 32-byte challenge, while verification accepts only the expected address, exact challenge, and externally produced 65-byte signature. A successful verification prints deterministic JSON evidence; a mismatch prints only a BLOCKED error and returns a non-zero code. No private-key argument exists.
+
+The mechanism, independent verifier, and CLI are CI-certified. The **actual production signer identity gate remains NOT GREEN** because no actual production signer has yet supplied independently witnessed challenge evidence tied to the intended production address.
 
 ## 6. CURRENT BLOCKERS / P0 GATES
 1. **Controlled production signer identity proof** without exposing private key material.
@@ -73,7 +80,7 @@ These are explicit planning metrics, not claims of external evidence.
 ### A. Engineering foundation
 - Deterministic Phase-19 execution-integrity implementation: **substantially built**.
 - Practical assessment: **~85% engineering foundation complete**.
-- Fresh current implementation CI: **GREEN** on `9489c047...` via run `#354`.
+- Fresh current implementation CI: **GREEN** on `e3040c24...` via run `#357`.
 
 ### B. First real-life hunt readiness
 Required pre-hunt controls are fresh CI, controlled production signer identity, approved Polygon/provider authority, private relay, production-like startup/recovery + reorg, and identical-artifact shadow/staging evidence.
@@ -88,21 +95,19 @@ Required pre-hunt controls are fresh CI, controlled production signer identity, 
 ## 9. CURRENT CHECKPOINT
 **Timestamp:** 2026-09-15
 
-**Atomic task completed:** closed the signer-proof CI loop and added an independently callable external signer identity verifier.
+**Atomic task completed:** built and CI-certified the operator-facing non-secret signer identity evidence utility.
 
 **New evidence:**
-- Run `#354` for PR head `9489c047...` is **SUCCESS**.
+- Run `#357` for `e3040c24...` is **SUCCESS**.
 - All Phase-19 workflow stages completed successfully.
-- EVM: **14/14** passed.
-- Polygon fork smoke: **3/3** passed.
-- Polygon fork execution probe: **1/1** passed.
-- Python: **430/430** passed, including the external verifier test suite.
+- The CLI generates fresh 32-byte challenges without key material and verifies externally supplied 65-byte signatures against an expected address.
+- CLI regression coverage passed in the same authoritative suite.
 
-**Current verdict:** signer identity proof infrastructure is certified end-to-end in CI. Actual production signer identity remains unproven and therefore blocked.
+**Current verdict:** the complete signer identity infrastructure is now CI-certified, including the signer, verifier, and operator-safe evidence boundary. Actual production signer control remains unproven and therefore blocked.
 
 **Safety boundary:** no live signing, public broadcast, live capital, or production execution authorization.
 
-**Next atomic action:** prepare the controlled operator-facing production signer challenge procedure and evidence record schema. The actual challenge must be generated and signed by the externally held production signer against the intended production address. Then proceed to approved Polygon/provider authority evidence. Do not expose private key material.
+**Next atomic action:** execute the controlled production signer proof outside the repository using an externally held production signer: generate a fresh challenge, obtain exactly one signature over that challenge, independently verify the recovered address against the intended production signer address, and preserve the resulting evidence record. Do not expose or transmit private key material. After that, proceed to approved Polygon/provider authority evidence.
 
 ---
 
