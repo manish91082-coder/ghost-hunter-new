@@ -100,6 +100,28 @@ class ReplacementCoordinatorTests(unittest.TestCase):
         self.assertEqual(nonce.tx_hash, replacement.signed_transaction.transaction_hash)
         self.assertEqual(nonce.replacement_of, self.prepared.signed_transaction.transaction_hash)
 
+    def test_nullable_durable_nonce_tx_hash_is_accepted_for_replacement(self):
+        source = self.prepared.transaction_record
+        self._mark_source_dropped(source)
+
+        with self.store._connect() as db:
+            db.execute(
+                "UPDATE nonce_records SET tx_hash=NULL WHERE sender=? AND nonce=?",
+                (source.sender.lower(), source.nonce),
+            )
+
+        nonce_before = self.store.get_nonce(source.sender, source.nonce)
+        self.assertEqual(nonce_before.status, NonceStatus.DROPPED)
+        self.assertIsNone(nonce_before.tx_hash)
+        self.assertIsNone(nonce_before.replacement_of)
+
+        replacement = self._replacement(source=source)
+        self.assertEqual(replacement.transaction_record.replacement_of, source.tx_hash)
+        nonce_after = self.store.get_nonce(source.sender, source.nonce)
+        self.assertEqual(nonce_after.status, NonceStatus.SIGNED)
+        self.assertEqual(nonce_after.tx_hash, replacement.signed_transaction.transaction_hash)
+        self.assertEqual(nonce_after.replacement_of, source.tx_hash)
+
     def test_repeated_replacements_preserve_forensic_chain_and_active_owner(self):
         first = self._replacement()
         self.assertEqual(first.transaction_record.replacement_of, self.prepared.transaction_record.tx_hash)
