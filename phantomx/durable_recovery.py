@@ -205,7 +205,23 @@ def persist_recovery_observation(
             )
             sequence = int(db.execute("SELECT last_insert_rowid()").fetchone()[0])
             db.execute("UPDATE transaction_records SET state=? WHERE record_hash=? AND state=?", (target_tx.value, row[0].lower(), current_tx.value))
-            db.execute("UPDATE nonce_records SET status=? WHERE sender=? AND nonce=? AND status=?", (target_nonce.value, row[2], int(row[3]), current_nonce.value))
+            if observation.state is ChainObservationState.REPLACED:
+                db.execute(
+                    "UPDATE nonce_records SET status=?,tx_hash=?,replacement_of=? WHERE sender=? AND nonce=? AND status=?",
+                    (
+                        target_nonce.value,
+                        observation.replacement_tx_hash.lower(),
+                        observation.tx_hash.lower(),
+                        row[2],
+                        int(row[3]),
+                        current_nonce.value,
+                    ),
+                )
+            else:
+                db.execute(
+                    "UPDATE nonce_records SET status=? WHERE sender=? AND nonce=? AND status=?",
+                    (target_nonce.value, row[2], int(row[3]), current_nonce.value),
+                )
             db.execute("COMMIT")
         except Exception:
             if db.in_transaction:
