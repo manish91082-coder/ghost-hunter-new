@@ -1,237 +1,128 @@
 # PHANTOMX / FLASH LOAN GHOST HUNTER
 # PROJECT STATUS • MASTER CONTINUITY • MISSION CONTROL
 
-> Canonical project-state anchor. **STRICT RULE: synchronize this file on every assistant project response, without exception.** The synchronization must record the latest known branch HEAD/checkpoint, current phase/task, evidence actually observed, blockers, next action, and safety boundary. Never fabricate passes.
+> Canonical project-state anchor. Synchronize this file on every project response. Evidence first, fail closed, no fabricated passes.
 
 ## 0. CURRENT RESUME CARD
 
 - Project: `manish91082-coder/ghost-hunter-new`
-- Active implementation branch: `phase-19-e2e-harness`
-- Latest implementation-bearing commit: `2b1a762181ff7488d234110b5d1596343d5dbbf5` — complete execution artifact-chain certification test
-- Phase: Phase 19, execution-integrity / E2E policy harness
+- Active branch: `phase-19-e2e-harness`
+- Latest implementation-bearing commit: `408588c1a6a99c4cff545a6f5998c1500cce40ff`
+- Phase: Phase 19 execution-integrity / E2E policy harness
 - Live mainnet execution: **BLOCKED**
 - Live capital authorization: **BLOCKED**
 - Production readiness: **NOT ACHIEVED**
 - Economic invariant: realized net profit must be **strictly greater than $0.20 after all applicable costs**
 
-## 1. NON-NEGOTIABLE RULES
+## 1. NON-NEGOTIABLE SAFETY / CONTROL RULES
 
-Evidence first. Missing/contradictory evidence is UNKNOWN/BLOCKED.
-
-Fail closed. No execution when quote, proof, simulation, authorization, nonce, signer, relay, authority, or settlement evidence is missing or inconsistent.
-
-AI is advisory only and cannot override deterministic economics, EVM preflight, governance, authorization, or settlement truth.
-
-Private execution has no public fallback.
-
-Zero-cost means no mandatory paid infrastructure dependency. Gas and unavoidable execution costs remain real and must be modeled.
-
-Live capital remains locked until all P0 gates have reproducible evidence.
-
-**Status synchronization is mandatory on every project response.** A response is not considered complete until this file reflects the latest evidence-backed checkpoint.
+- Evidence first; contradictory or missing evidence is UNKNOWN/BLOCKED.
+- Fail closed on quote, proof, simulation, authorization, nonce, signer, relay, authority, or settlement inconsistency.
+- AI is advisory and cannot override deterministic economics, preflight, governance, authorization, or settlement.
+- Private execution has no public fallback.
+- Live capital remains locked until every P0 gate has reproducible evidence.
+- No live signing, public broadcast, production execution authorization, or live capital is granted during Phase 19 certification.
 
 ## 2. CANONICAL PRODUCTION SPINE
 
 `LIVE BLOCK → DATA/RPC QUORUM → EXACT QUOTES → ROUTE ENGINE → LOAN OPTIMIZER → EXACT COST MODEL → WORST-CASE NET PNL → AI RANKING → EVM PREFLIGHT → GOVERNOR → SIGNER → PRIVATE SUBMIT → ON-CHAIN EXECUTOR → RECEIPT AUDITOR → REALIZED NET PNL`
 
-Initial scope: Polygon, Aave V3, QuickSwap V2, Uniswap V3, assets USDC/WETH/WMATIC/WBTC, direct two-leg `A → B → A`.
+Initial scope: Polygon, Aave V3, QuickSwap V2, Uniswap V3, USDC/WETH/WMATIC/WBTC, direct two-leg `A → B → A`.
 
-## 3. IMPLEMENTATION STATE AT THIS CHECKPOINT
+## 3. VERIFIED IMPLEMENTATION CAPABILITIES
 
-Completed and under active integration/testing on Phase 19 include:
+Phase 19 currently includes strict realized-profit gating, all-in deterministic economics, Ethereum Keccak hashing, immutable intent/authorization/envelope binding, exact block-bound quotes, shared market-block handling, route simulation and topology commitment, loan optimization, EVM preflight, deterministic Governor, signer boundary, durable SQLite nonce/transaction state, atomic execution/replacement coordination, private-only submission, chain/recovery/reorg/replacement handling, receipt reconciliation, Solidity executor controls, Polygon fork harness, and adversarial/regression coverage.
 
-- strict realized-profit gate `net > $0.20`;
-- all-in economic proof and exact-cost accounting;
-- Ethereum Keccak-256 integrity hashing;
-- immutable ExecutionIntent and authorization binding;
-- transaction-envelope/calldata binding;
-- exact QuickSwap V2 and Uniswap V3 quote primitives with block-bound snapshots;
-- shared market-block handling;
-- exact sequential cross-venue route composition;
-- loan candidate optimizer;
-- EVM preflight and simulation-proof binding;
-- deterministic Governor and signer boundary;
-- durable SQLite nonce/transaction storage;
-- atomic execution coordinator;
-- private-only submission boundary with no public fallback;
-- chain observation and explicit PENDING/INCLUDED/REVERTED/DROPPED/REPLACED/REORGED handling;
-- durable recovery observation adapter;
-- receipt/settlement reconciliation;
-- Phase19 Solidity executor with allowlisted two-leg route topology, replay protection, callback checks, per-leg minimums, strict surplus, and withdrawal isolation;
-- Polygon fork protocol smoke and execution-probe harness;
-- adversarial/regression test coverage across the above boundaries;
-- durable replacement preparation and replacement-fee policy hardening;
-- explicit Governor-envelope isolation for replacement preparation in the Phase-19 test harness;
-- immutable replacement transaction-record construction;
-- atomic durable replacement persistence across transaction and nonce state;
-- CI control that excludes status-only `PROJECT_STATUS.md` commits from verification triggers;
-- exact observed-transaction binding for durable recovery;
-- recovery semantics that do not manufacture active nonce ownership for an unknown replacement hash;
-- repeated replacement-chain testing with restart persistence and stale-source rejection;
-- atomic rollback regression for failed replacement persistence;
-- intent-to-calldata commitment bridge regression proving that a semantic intent mutation makes the embedded execution commitment stale;
-- signer-boundary regression proving the final type-2 signed artifact exactly carries the governed chain, nonce, gas, executor, zero value, calldata, and empty access-list fields;
-- single-path execution artifact-chain certification regression spanning route/topology, economic proof, simulation proof, intent, authorization, preflight, Governor, executor authority, signed artifact, and durable transaction record.
+Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement-chain persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, and one-path coordinator artifact-chain certification.
 
-## 4. ROUTE COMMITMENT / CRYPTOGRAPHIC BRIDGE INTEGRITY
+## 4. CURRENT AUTHORITY-PROOF HARDENING
 
-The executable route has an explicit topology commitment joined with the quote-route commitment. Python and Solidity reference vectors are covered by EVM tests, and mutation tests reject changed route/topology/commitment values.
+`phantomx/executor_authority.py` now provides `observe_executor_authority_quorum(...)`.
 
-The bridge design intentionally excludes `calldata_hash` from the embedded execution commitment to avoid a cryptographic fixed-point cycle, while separately binding the completed calldata hash into the immutable `ExecutionIntent` and transaction envelope.
+The quorum observer:
+- verifies every configured provider identifies Polygon;
+- reads each provider's latest block and chooses one common block (`min(blocks)`);
+- reads executor `owner()` and runtime bytecode from every provider at that identical common block;
+- requires a unique provider consensus of at least the configured quorum on owner + runtime-code hash;
+- rejects duplicate provider identities, wrong-chain providers, insufficient agreement, and ambiguous split consensus;
+- returns the existing immutable `ExecutorAuthorityEvidence`, preserving compatibility with the existing signer/governor chain.
 
-Semantic mutation after calldata generation is covered, and the signer boundary proves that the serialized transaction bytes exactly preserve the governed envelope fields.
+This is a read-only authority attestation path. It does not sign or submit transactions.
 
-The new coordinator-level certification test now verifies the complete hand-off in one path: route hash and topology-derived route commitment → economic/simulation proofs → final intent and calldata binding → authorization → EVM preflight → Governor identity bindings → deployed executor authority evidence → signed transaction identity/hash → durable transaction record.
+## 5. VERIFIED CI EVIDENCE
 
-This remains a deterministic local certification path only. It does not submit a transaction to a live relay or broadcast network traffic.
+### Prior certified gates
 
-## 5. RECOVERY / DURABILITY STATE
+- Run `#258` on `05a9becc1542f6d588cbfc77691beacb8087f29b`: **GREEN**, 14 EVM + 3 Polygon smoke + 1 Polygon fork probe + **402/402 Python**.
+- Run `#261` on `8212bfd315d5aec11521bc40a3302d88f5bbc72c`: **GREEN**, 14 EVM + 3 Polygon smoke + 1 Polygon fork probe + **403/403 Python**.
+- Run `#262` on `3417387353a0866f50115e873ed5a5353a82fb0c`: **GREEN**, 14 EVM + 3 Polygon smoke + 1 Polygon fork probe + **403/403 Python**.
+- Run `#266` on `e0f8d4d52118ff9cdeae220038029d1baef2307b`: **GREEN**, 14 EVM + 3 Polygon smoke + 1 Polygon fork probe + **404/404 Python**.
+- Run `#268` on `ed3451f82c4c4934fe1c5bfe23623222a10d3a3b`: **GREEN**, 14/14 EVM + 3/3 Polygon smoke + 1/1 fork probe + **405/405 Python**.
+- Run `#269` on `de6eee477f0e1b8844c88de26be3e884cb8e9d4e`: **GREEN**, 14/14 EVM + 3/3 Polygon smoke + 1/1 fork probe + **406/406 Python**.
+- Run `#270` on `2cf90abcf8e613f09fefaa7ab35c4262be53e779`: **GREEN**, 14/14 EVM + 3/3 Polygon smoke + 1/1 fork probe + **407/407 Python**.
 
-Execution lifecycle vocabulary includes explicit `REORGED`, `REPLACED`, and `DROPPED` states.
+### Full artifact-chain gate
 
-Durable recovery records explicit evidence and does not itself sign, submit, create replacements, or release a nonce.
+- Run `#273` on `2b1a762181ff7488d234110b5d1596343d5dbbf5`: **GREEN**.
+- CI job `104304561949` completed successfully.
+- Verified **14/14 EVM** tests.
+- Verified **3/3 Polygon protocol smoke** tests, using `https://polygon.drpc.org/`.
+- Verified **1/1 Polygon fork execution probe**, using `https://polygon.drpc.org/`.
+- Verified **408/408 Python** tests, including `test_complete_artifact_chain_reaches_signed_artifact`.
+- The run checked out exactly `2b1a762181ff7488d234110b5d1596343d5dbbf5`.
 
-Reorg handling permits canonical re-observation after a durable reorg state.
+### Current implementation checkpoint
 
-Startup recovery audit detects inconsistent nonce/transaction mappings and preserves forensic diagnostics.
+- `408588c1a6a99c4cff545a6f5998c1500cce40ff`: quorum-bound executor authority observation implementation + tests.
+- Added coverage for common-block binding, owner/runtime consensus, ambiguous split consensus, insufficient quorum, duplicate provider names, and wrong-chain rejection.
+- A fresh Phase-19 CI run is expected from this implementation checkpoint; no result is claimed until observed.
 
-Replacement preparation is fail-closed on source state, sender/executor identity, nonce linkage, replacement fee policy, EVM preflight, Governor approval, signing, and durable persistence.
+## 6. CURRENT BLOCKERS / P0 GATES
 
-Replacement persistence is a dedicated atomic boundary: a validated replacement record is inserted only while the source is explicitly replaceable, the source is moved to `REPLACED`, and the same durable nonce is rebound to the new signed transaction in `SIGNED` state within one SQLite transaction.
+1. Terminal CI evidence for the new quorum-authority checkpoint.
+2. Controlled production signer identity proof without exposing private key material.
+3. Controlled production Polygon network/provider authority proof under approved endpoints.
+4. Production private relay capability with no public fallback.
+5. Startup/recovery safety under production-like conditions.
+6. Controlled shadow/staging evidence using the identical immutable artifact chain.
+7. Final realized live PnL evidence after all preceding gates are GREEN.
+8. Live mainnet capital deployment remains forbidden.
 
-Durable recovery lookup is bound to `intent_hash + observed tx_hash`, preventing replacement chains that reuse one intent from resolving to a historical transaction by intent alone.
+## 7. GO-LIVE RULE
 
-A chain-observed `REPLACED` event records the observed replacement hash as recovery evidence but does **not** manufacture durable nonce ownership for an unknown transaction. Active nonce ownership advances only through the atomic validated replacement-install boundary.
+Every P0 gate must be GREEN with reproducible evidence before live capital. Any unchecked gate means **LIVE CAPITAL = LOCKED**.
 
-Repeated replacement preparation preserves the forensic chain `tx0 → tx1 → tx2`, with historical records retained as `REPLACED` and only the newest durably installed transaction owning the nonce in `SIGNED` state before submission.
+The first live hunt is not date-scheduled. It becomes eligible only after deterministic artifact certification, production signer/network authority proof, private-relay proof, startup safety, controlled shadow execution, and final authorization all pass.
 
-Failed replacement insertion rolls back source and nonce mutations together, with regression coverage for exact pre-attempt snapshot restoration.
+## 8. COMPLETION / DISTANCE ASSESSMENT
 
-## 6. VERIFIED CI EVIDENCE
+Engineering readiness estimates only:
+- Core architecture + deterministic implementation: approximately **75–80%**.
+- Go-live evidence/certification: approximately **55–65%**.
+- Overall mission toward first controlled live hunt: approximately **68–72%**.
 
-### Baseline and recovery hardening
+These are not formal certification scores.
 
-- Run `#258` on `05a9becc1542f6d588cbfc77691beacb8087f29b`: **PASS / GREEN**, 14 EVM + 3 Polygon smoke + 1 Polygon fork probe + **402/402 Python**.
-- Run `#261` on `8212bfd315d5aec11521bc40a3302d88f5bbc72c`: **PASS / GREEN**, 14 EVM + 3 Polygon smoke + 1 Polygon fork probe + **403/403 Python**.
-- Run `#262` on `3417387353a0866f50115e873ed5a5353a82fb0c`: **PASS / GREEN**, 14 EVM + 3 Polygon smoke + 1 Polygon fork probe + **403/403 Python**.
-- Run `#266` on `e0f8d4d52118ff9cdeae220038029d1baef2307b`: **PASS / GREEN**, 14 EVM + 3 Polygon smoke + 1 Polygon fork probe + **404/404 Python**.
+## 9. CURRENT CHECKPOINT
 
-### Atomic rollback gate
+**Timestamp:** 2026-09-15T13:45+05:30
 
-- Run `#267` on `658ffe0cf686d62897f0551ea0ab9df70e930cdd`: **FAIL** only in the new rollback regression because the test assumed a pre-existing nonce tx hash that the fixture correctly had as `None`.
-- Corrected commit `ed3451f82c4c4934fe1c5bfe23623222a10d3a3b` changed the regression to snapshot exact pre-attempt durable nonce state and assert exact post-restart restoration.
-- Run `#268` on `ed3451f82c4c4934fe1c5bfe23623222a10d3a3b`: **PASS / GREEN**, Solidity compile PASS, **14/14 EVM**, **3/3 Polygon protocol smoke**, **1/1 Polygon fork execution probe**, **405/405 Python**.
-
-### Cryptographic bridge hardening
-
-- Commit `de6eee477f0e1b8844c88de26be3e884cb8e9d4e`: added semantic intent-mutation regression for the embedded execution commitment.
-- Run `#269` on `de6eee477f0e1b8844c88de26be3e884cb8e9d4e`: **PASS / GREEN**, Solidity compile PASS, **14/14 EVM**, **3/3 Polygon protocol smoke**, **1/1 Polygon fork execution probe**, **406/406 Python**. The new intent-mutation regression passed.
-
-### Signer-boundary certification
-
-- Commit `2cf90abcf8e613f09fefaa7ab35c4262be53e779`: added exact signed-artifact-to-governed-envelope regression to `tests/phase19/test_signer.py`.
-- Run `#270` on `2cf90abcf8e613f09fefaa7ab35c4262be53e779`: **PASS / GREEN**, Solidity compile PASS, **14/14 EVM**, **3/3 Polygon protocol smoke**, **1/1 Polygon fork execution probe**, **407/407 Python**. The new signed-artifact regression passed.
-
-### Full artifact-chain certification
-
-- Commit `2b1a762181ff7488d234110b5d1596343d5dbbf5`: added coordinator-level `test_complete_artifact_chain_reaches_signed_artifact`.
-- Current CI Run `#273` on `2b1a762181ff7488d234110b5d1596343d5dbbf5`: **QUEUED** at checkpoint time. No test result is claimed yet.
-
-A status-only commit does not trigger the Phase-19 verification workflow because `.github/workflows/phase19-tests.yml` ignores `PROJECT_STATUS.md`-only pushes.
-
-## 7. COMPLETION / DISTANCE ASSESSMENT
-
-These percentages are engineering readiness estimates, not formal certification scores.
-
-- **Core architecture + deterministic implementation:** approximately **75–80% complete**.
-- **Go-live evidence/certification:** approximately **55–65% complete**.
-- **Overall mission toward first controlled live hunt:** approximately **68–72% complete**.
-
-These remain engineering readiness estimates, not formal certification scores.
-
-## 8. CURRENT BLOCKERS
-
-1. Terminal evidence for Run #273.
-2. Controlled production signer/network authority proof.
-3. Controlled production private relay capability with no public fallback.
-4. Startup/recovery operational safety under production-like conditions.
-5. Controlled shadow/staging evidence using the same immutable artifact chain.
-6. Final realized live PnL evidence after all preceding P0 gates are GREEN.
-7. Live mainnet capital deployment remains forbidden.
-
-## 9. GO-LIVE GATES
-
-All must be GREEN with reproducible evidence before live capital:
-
-- exact live-block quote snapshots;
-- exact sequential route simulation;
-- exact loan-size optimization;
-- all-in worst-case economics;
-- strict realized `> $0.20`;
-- exact EVM preflight;
-- secure allowlisted executor;
-- proof/hash chain;
-- replay protection;
-- durable concurrency-safe nonce service;
-- production signer;
-- private-only relay with no public fallback;
-- transaction record/audit trail;
-- receipt reconciliation;
-- realized PnL proof;
-- fork/E2E evidence;
-- adversarial/regression evidence;
-- startup safety gates.
-
-Any unchecked P0 gate means **LIVE CAPITAL = LOCKED**.
-
-## 10. FIRST LIVE HUNT CRITERIA
-
-The first live hunt is **not date-scheduled**. It becomes eligible only after every P0/go-live gate is GREEN with reproducible evidence and the shadow/staging transition proves the same immutable artifact chain end-to-end.
-
-The first hunt must be a controlled production observation with the same quote block, economic proof, preflight, Governor, signer, private relay, on-chain receipt, settlement reconciliation, and realized-PnL evidence chain used for ordinary execution. Any uncertainty returns the system to BLOCKED.
-
-Therefore no honest calendar date can be certified yet. The earliest possible live hunt is after:
-
-`Phase-19 GREEN → full adversarial certification → production signer + private relay proof → startup safety proof → controlled shadow run → final go-live authorization → first live transaction with minimal capital`
-
-## 11. CONTINUITY RULE
-
-**STRICT EXECUTION RULE:** Every project response must end with a synchronized `PROJECT_STATUS.md` commit. No exceptions.
-
-The synchronized checkpoint must contain:
-- current timestamp/checkpoint;
-- current phase and atomic task;
-- changed files;
-- tests/evidence actually observed;
-- exact latest implementation commit SHA;
-- blockers/risks;
-- next action;
-- safety boundary.
-
-Append/replace only with evidence-backed state. Never fabricate passes.
-
-## 12. CURRENT CHECKPOINT
-
-**Timestamp:** 2026-09-15T13:40+05:30
-
-**Atomic task:** P19-SIGN-02 — single-path immutable execution artifact-chain certification.
+**Atomic task:** P19-AUTH-01 — controlled production signer/network authority proof, beginning with quorum-bound read-only executor authority attestation.
 
 **Changed files:**
-- `tests/phase19/test_execution_coordinator.py` — added complete route→proof→intent→authorization→preflight→Governor→authority→signed artifact→durable record chain regression.
-- `PROJECT_STATUS.md` — synchronized with Run #270 GREEN and new Run #273 queued state.
+- `phantomx/executor_authority.py` — added `observe_executor_authority_quorum` with one common block and fail-closed provider consensus.
+- `tests/phase19/test_executor_authority.py` — added adversarial quorum/consensus regression coverage.
+- `PROJECT_STATUS.md` — synchronized with Run #273 GREEN and the new authority-proof checkpoint.
 
-**Evidence observed:**
-- Run #270 is **GREEN**, establishing the signer-boundary exact-envelope regression on top of the already-green bridge and replacement/recovery gates.
-- The new coordinator test is implementation-level and connects the complete artifact chain in one preparation path without live submission.
-- Run #273 is **QUEUED** for the new checkpoint. No result is assumed.
+**Evidence actually observed:**
+- Run #273 is **GREEN** with 14/14 EVM, 3/3 Polygon smoke, 1/1 Polygon fork execution probe, and **408/408 Python**.
+- The new authority implementation has been committed but its CI result is not yet observed.
 
-**Decision:** remain in ACTIVE AUDIT pending Run #273 terminal evidence. A green #273 will close the deterministic off-chain-to-signed artifact-chain certification and permit the next phase: controlled production signer/network authority proof. A red #273 will trigger surgical repair based only on the observed failure.
+**Decision:** P19-SIGN-02 deterministic off-chain-to-signed artifact-chain gate is CLOSED GREEN by Run #273 evidence. Advance to P19-AUTH-01, but only as controlled read-only network authority proof. No production submission, no public broadcast, and no live capital.
 
-**Latest implementation checkpoint:** `2b1a762181ff7488d234110b5d1596343d5dbbf5`
+**Latest implementation checkpoint:** `408588c1a6a99c4cff545a6f5998c1500cce40ff`
 
-**Safety boundary:** No live signing, public broadcast, live capital, or production execution authorization is granted. The current test path uses deterministic local fixtures and signing only.
-
-**Next atomic action:** observe terminal Run #273 evidence.
+**Next atomic action:** observe CI for `408588c1a6a99c4cff545a6f5998c1500cce40ff`; on GREEN, perform the next controlled signer/network authority validation without exposing key material or authorizing execution.
 
 ---
 
