@@ -27,7 +27,6 @@ class QuorumExecutionObservationTests(unittest.TestCase):
         self.store = SQLiteExecutionStore(Path(self.tmp.name) / "execution.db")
 
     def tearDown(self):
-        self.store.close()
         self.tmp.cleanup()
 
     def _quorum(self, state=ChainObservationState.INCLUDED, replacement=None):
