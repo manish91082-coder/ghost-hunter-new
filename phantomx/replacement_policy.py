@@ -7,6 +7,9 @@ raise fees. The policy is deliberately independent of RPC/signing/broadcast.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
+
+from .hashing import keccak256_hex
 
 
 class ReplacementPolicyError(ValueError):
@@ -34,6 +37,18 @@ class ReplacementFeePolicy:
             raise ValueError("min_bump_bps must be within the allowed multiplier")
         if self.max_absolute_fee_per_gas <= 0 or self.max_priority_fee_per_gas < 0:
             raise ValueError("absolute fee bounds must be configured")
+
+    def canonical(self) -> dict[str, int]:
+        return {
+            "max_fee_multiplier_bps": self.max_fee_multiplier_bps,
+            "max_absolute_fee_per_gas": self.max_absolute_fee_per_gas,
+            "max_priority_fee_per_gas": self.max_priority_fee_per_gas,
+            "min_bump_bps": self.min_bump_bps,
+        }
+
+    def policy_hash(self) -> str:
+        payload = json.dumps(self.canonical(), sort_keys=True, separators=(",", ":")).encode("utf-8")
+        return keccak256_hex(payload)
 
     def authorize(self, old_max_fee: int, old_priority_fee: int, new_max_fee: int, new_priority_fee: int) -> None:
         if old_max_fee <= 0 or old_priority_fee < 0 or old_priority_fee > old_max_fee:
@@ -79,6 +94,8 @@ class ReplacementAuthorization:
             raise ReplacementPolicyError("replacement nonce must be non-negative")
         if not self.intent_hash or not self.authorization_hash or not self.policy_hash:
             raise ReplacementPolicyError("replacement authorization is incompletely bound")
+        if self.policy_hash.lower() != policy.policy_hash().lower():
+            raise ReplacementPolicyError("replacement authorization policy hash does not match policy")
         policy.authorize(
             self.old_max_fee_per_gas,
             self.old_max_priority_fee_per_gas,
