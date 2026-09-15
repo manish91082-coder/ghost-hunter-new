@@ -15,7 +15,7 @@ import rlp
 from eth_keys import keys
 from eth_keys.exceptions import BadSignature
 from .execution import Authorization, ExecutionIntent, TransactionEnvelope
-from .executor_authority import ExecutorAuthorityError, ExecutorAuthorityEvidence, runtime_code_binding_hash, verify_executor_authority
+from .executor_authority import ExecutorAuthorityEvidence, runtime_code_binding_hash
 from .governor import GovernorDecision
 from .hashing import keccak256_hex
 from .production_authority_evidence import AuthorityEvidenceReusePolicy, ProductionAuthorityEvidenceError, verify_reusable_production_authority_evidence
@@ -191,8 +191,8 @@ def prove_signer_identity(*, signer: ChallengeSigner, expected_address: str, cha
     return SignedChallenge(challenge_hash=challenge_hash, expected_address=expected, recovered_address=recovered, signature=signature, evidence_hash=evidence_hash)
 
 
-def sign_governed_transaction(*, signer: TransactionSigner, governor: GovernorDecision, intent: ExecutionIntent, authorization: Authorization, envelope: TransactionEnvelope, executor_authority: ExecutorAuthorityEvidence, now: int, authority_evidence_reuse_policy: AuthorityEvidenceReusePolicy | None = None) -> SignedTransaction:
-    """Sign only exact governed evidence with a fresh authority observation window."""
+def sign_governed_transaction(*, signer: TransactionSigner, governor: GovernorDecision, intent: ExecutionIntent, authorization: Authorization, envelope: TransactionEnvelope, executor_authority: ExecutorAuthorityEvidence, now: int, authority_evidence_reuse_policy: AuthorityEvidenceReusePolicy | None = None, current_observed_block: int | None = None) -> SignedTransaction:
+    """Sign exact governed evidence with a bounded authority observation window."""
     if not governor.approved:
         raise SignerError("governor did not approve signing")
     if now < 0:
@@ -211,14 +211,18 @@ def sign_governed_transaction(*, signer: TransactionSigner, governor: GovernorDe
         raise SignerError("governor simulation proof identity does not match intent")
     if not authorization.matches_envelope(envelope, now, intent):
         raise SignerError("authorization does not match exact signing envelope")
+    if governor.executor_authority_hash.lower() != executor_authority.evidence_hash.lower():
+        raise SignerError("governor executor authority evidence does not match signing evidence")
     policy = authority_evidence_reuse_policy or AuthorityEvidenceReusePolicy(maximum_age_blocks=1)
+    observation_block = governor.block_number if current_observed_block is None else current_observed_block
     try:
         verify_reusable_production_authority_evidence(
             executor_authority,
             expected_executor=intent.executor,
             expected_signer=intent.sender,
-            current_observed_block=governor.block_number,
+            current_observed_block=observation_block,
             policy=policy,
+            minimum_observed_block=governor.block_number,
         )
     except ProductionAuthorityEvidenceError as exc:
         raise SignerError("executor authority freshness or identity is invalid") from exc
