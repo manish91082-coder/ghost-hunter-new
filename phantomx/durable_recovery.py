@@ -75,7 +75,7 @@ def _tx_transition_allowed(current: ExecutionState, target: ExecutionState) -> b
 
 def _nonce_transition_allowed(current: NonceStatus, target: NonceStatus) -> bool:
     return target in {
-        NonceStatus.SIGNED: {NonceStatus.RELEASED, NonceStatus.SUBMITTED},
+        NonceStatus.SIGNED: {NonceStatus.RELEASED, NonceStatus.SUBMITTED, NonceStatus.DROPPED},
         NonceStatus.SUBMITTED: {NonceStatus.INCLUDED, NonceStatus.REPLACED, NonceStatus.DROPPED, NonceStatus.REORGED},
         NonceStatus.INCLUDED: {NonceStatus.REORGED},
         NonceStatus.REORGED: {NonceStatus.SUBMITTED, NonceStatus.DROPPED},
