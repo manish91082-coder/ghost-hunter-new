@@ -35,9 +35,9 @@ class ReplacementCoordinatorTests(unittest.TestCase):
             max_absolute_fee_per_gas=150,
             max_priority_fee_per_gas=50,
         )
-        # Replacement fees may legitimately exceed the original transaction's
-        # execution ceiling, but must remain inside a separately explicit,
-        # bounded Governor envelope. The production policy remains untouched.
+        # The replacement path gets an explicitly bounded Governor envelope.
+        # This is a test-only policy object; the production Governor policy is
+        # not widened by this fixture.
         self.replacement_governor_policy = replace(
             self.fixture.policy,
             max_fee_per_gas=125,
@@ -119,8 +119,14 @@ class ReplacementCoordinatorTests(unittest.TestCase):
             self._replacement(max_fee_per_gas=109, max_priority_fee_per_gas=33)
 
     def test_governor_ceiling_blocks_replacement_above_bounded_envelope(self):
+        governor_fixture = replace(self.replacement_governor_policy, max_fee_per_gas=125)
         with self.assertRaisesRegex(ReplacementCoordinatorError, "max fee per gas exceeds governor ceiling"):
-            self._replacement(max_fee_per_gas=126, max_priority_fee_per_gas=36)
+            self._replacement(
+                replacement_policy=replace(self.policy, max_fee_multiplier_bps=13000),
+                policy=governor_fixture,
+                max_fee_per_gas=126,
+                max_priority_fee_per_gas=36,
+            )
 
     def test_replacement_requires_source_to_be_in_explicit_drop_or_replaced_state(self):
         values = dict(
