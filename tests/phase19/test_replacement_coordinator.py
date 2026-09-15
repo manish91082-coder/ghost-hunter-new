@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import replace
 
 from phantomx.chain_observer import ChainObservationState, ObservationDecision
 from phantomx.durable_nonce import NonceStatus
@@ -32,6 +33,14 @@ class ReplacementCoordinatorTests(unittest.TestCase):
             min_bump_bps=11000,
             max_fee_multiplier_bps=12500,
             max_absolute_fee_per_gas=150,
+            max_priority_fee_per_gas=50,
+        )
+        # Replacement fees may legitimately exceed the original transaction's
+        # execution ceiling, but must remain inside a separately explicit,
+        # bounded Governor envelope. The production policy remains untouched.
+        self.replacement_governor_policy = replace(
+            self.fixture.policy,
+            max_fee_per_gas=125,
             max_priority_fee_per_gas=50,
         )
 
@@ -71,7 +80,7 @@ class ReplacementCoordinatorTests(unittest.TestCase):
             gas_limit=300_000,
             max_fee_per_gas=115,
             max_priority_fee_per_gas=35,
-            policy=self.fixture.policy,
+            policy=self.replacement_governor_policy,
             signer=_Signer("0x" + "01" * 32),
             now=self.fixture.now,
             current_block_number=5001,
@@ -108,6 +117,10 @@ class ReplacementCoordinatorTests(unittest.TestCase):
     def test_fee_bump_policy_blocks_insufficient_replacement_before_signing(self):
         with self.assertRaisesRegex(ReplacementCoordinatorError, "minimum bump"):
             self._replacement(max_fee_per_gas=109, max_priority_fee_per_gas=33)
+
+    def test_governor_ceiling_blocks_replacement_above_bounded_envelope(self):
+        with self.assertRaisesRegex(ReplacementCoordinatorError, "max fee per gas exceeds governor ceiling"):
+            self._replacement(max_fee_per_gas=126, max_priority_fee_per_gas=36)
 
     def test_replacement_requires_source_to_be_in_explicit_drop_or_replaced_state(self):
         values = dict(
