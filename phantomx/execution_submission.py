@@ -44,6 +44,15 @@ def submit_prepared_execution(
             raise ExecutionSubmissionError("submission authority evidence predates signing authority evidence")
         if runtime_code_binding_hash(submission_authority).lower() != prepared.signed_transaction.executor_runtime_binding_hash.lower():
             raise ExecutionSubmissionError("submission executor runtime identity differs from signed artifact")
+        if not prepared.governor.approved:
+            raise ExecutionSubmissionError("governor did not approve private submission")
+        if now < 0 or prepared.assembly.intent.deadline < now:
+            raise ExecutionSubmissionError("execution deadline has expired")
+        if not getattr(relay, "is_private", False):
+            raise ExecutionSubmissionError("configured relay is not explicitly private")
+        relay_name = getattr(relay, "name", None)
+        if not isinstance(relay_name, str) or not relay_name:
+            raise ExecutionSubmissionError("private relay identity is required")
 
         # Re-check the durable lifecycle immediately before network I/O. A caller
         # may retry a prepared object after a previous successful submission or
@@ -82,6 +91,8 @@ def submit_prepared_execution(
                 ),
             ).rowcount
             if updated != 1:
+                if db.in_transaction:
+                    db.execute("ROLLBACK")
                 raise ExecutionSubmissionError("durable transaction could not enter submission in-flight state")
             db.execute("COMMIT")
 
