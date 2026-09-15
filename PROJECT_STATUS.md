@@ -7,6 +7,7 @@
 - Project: `manish91082-coder/ghost-hunter-new`
 - Active branch: `phase-19-e2e-harness`
 - Latest regression-bearing commit: `fbf2fbbc9f37eb89c0b9a0ccff6a56b4d60ecf50`
+- Latest CI-hardening commit: `7f6aaeb331ea679738b01ce89ee6b44ed3ca5ee8`
 - Prior implementation-bearing commit: `164d4522abdf2b224e91a514a1d2bea065f30535`
 - Certification PR: `#1` (OPEN, ready for review, base `master`)
 - Phase: Phase 19 execution-integrity / E2E policy harness
@@ -31,17 +32,17 @@ Initial scope: Polygon, Aave V3, QuickSwap V2, Uniswap V3, USDC/WETH/WMATIC/WBTC
 ## 3. VERIFIED IMPLEMENTATION CAPABILITIES
 Phase 19 includes strict realized-profit gating, deterministic all-in economics, Keccak hashing, immutable intent/auth/envelope binding, exact block-bound quotes, route simulation and topology commitment, loan optimization, EVM preflight, Governor, signer boundary, durable SQLite nonce/transaction state, atomic replacement/recovery coordination, private-only submission, chain/recovery/reorg/replacement handling, receipt reconciliation, Solidity executor controls, Polygon fork harness, and adversarial/regression coverage.
 
-Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, one-path coordinator artifact-chain certification, quorum-bound read-only executor authority attestation, nullable durable-nonce-hash replacement coverage, restart-audit coverage proving a pre-submission `SIGNED` nonce may legitimately remain hash-free while the durable transaction record remains authoritative, CI runtime modernization to Node 24-compatible action majors, pre-network blocking of repeated submission of an already-submitted durable artifact, and explicit regression coverage that terminal `PROFIT_CONFIRMED`/`PROFIT_FAILED` states cannot be reopened by reorg recovery evidence.
+Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, one-path coordinator artifact-chain certification, quorum-bound read-only executor authority attestation, nullable durable-nonce-hash replacement coverage, restart-audit coverage proving a pre-submission `SIGNED` nonce may legitimately remain hash-free while the durable transaction record remains authoritative, CI runtime modernization to Node 24-compatible action majors, pre-network blocking of repeated submission of an already-submitted durable artifact, explicit regression coverage that terminal `PROFIT_CONFIRMED`/`PROFIT_FAILED` states cannot be reopened by reorg recovery evidence, and least-privilege/time-bounded CI execution.
 
 ## 4. CI CERTIFICATION PATH
-The Phase-19 workflow now runs on branch pushes and on pull requests to `master`, while ignoring status-only changes. It uses `actions/checkout@v5` and `actions/setup-python@v6`, then performs Foundry compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the Phase-19 unittest suite.
+The Phase-19 workflow runs on branch pushes and on pull requests to `master`, while ignoring status-only changes. It uses `actions/checkout@v5` and `actions/setup-python@v6`, grants only `contents: read`, enforces a 30-minute job timeout, then performs Foundry compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the Phase-19 unittest suite.
 
-PR `#1` is open and ready for review solely to expose current-head PR checks. The current connector still reports zero check-runs/workflow runs for the relevant head, so **no CI pass is claimed**.
+PR `#1` is open and ready for review solely to expose current-head PR checks. The current connector reports zero check-runs/workflow runs for the branch head, so **no CI pass is claimed**.
 
 Historical GREEN runs remain historical evidence only and are not current-head certification.
 
 ## 5. CURRENT REORG / SETTLEMENT INTEGRITY HARDENING
-`phantomx/recovery_coordinator.py` deliberately returns `BLOCK` for terminal `PROFIT_CONFIRMED` and `PROFIT_FAILED` states. The new regression coverage in `tests/phase19/test_recovery_coordinator.py` explicitly verifies that both terminal states remain blocked even when the incoming chain evidence is `REORGED`.
+`phantomx/recovery_coordinator.py` deliberately returns `BLOCK` for terminal `PROFIT_CONFIRMED` and `PROFIT_FAILED` states. Regression coverage explicitly verifies that both terminal states remain blocked even when incoming chain evidence is `REORGED`.
 
 This preserves the fail-closed property while a later phase designs any controlled settlement invalidation/re-observation mechanism required for real canonical-chain reorg handling. No automatic reopening or profit reversal has been introduced.
 
@@ -62,22 +63,23 @@ Every P0 gate must be GREEN with reproducible evidence before live capital. Any 
 ## 8. CURRENT CHECKPOINT
 **Timestamp:** 2026-09-15
 
-**Atomic task completed:** terminal settlement reorg recovery regression hardening.
+**Atomic task completed:** CI execution-boundary hardening while preserving fail-closed certification.
 
 **New work completed:**
-- Added regression coverage for `PROFIT_CONFIRMED + REORGED → BLOCK`.
-- Added regression coverage for `PROFIT_FAILED + REORGED → BLOCK`.
-- Confirmed the underlying recovery policy already fails closed and does not mutate terminal settlement state automatically.
-- Committed as `fbf2fbbc9f37eb89c0b9a0ccff6a56b4d60ecf50`.
-- Verified the duplicate-submission hardening commit `fe748b626060a7a2a63d79e309bb633becdefa17` is real and contains the intended regression test blocking relay I/O on repeat submission.
+- Added workflow-level `permissions: contents: read` to enforce least privilege.
+- Added a 30-minute job timeout so a wedged fork/provider/test job cannot run indefinitely.
+- Preserved the deterministic compile + EVM + Polygon fork smoke + Polygon fork execution probe + Python test sequence.
+- Committed as `7f6aaeb331ea679738b01ce89ee6b44ed3ca5ee8`.
+- Re-checked branch state: current branch head is `35c491e28427919978ec9b834154afbe799c727c`, whose parent is the regression-bearing `fbf2fbbc9f37eb89c0b9a0ccff6a56b4d60ecf50`.
+- Re-checked workflow visibility: connector still exposes no authoritative workflow run for the current head.
 
-**Certification state:** current-head CI remains **UNKNOWN / NOT GREEN** because no authoritative check-run is exposed by the current connector path.
+**Certification state:** current-head CI remains **UNKNOWN / NOT GREEN**. No pass is claimed.
 
-**Current verdict:** the reorg terminal-state boundary is now explicitly regression-tested. The repository still requires authoritative current-head CI and production-like network/signer/relay/shadow evidence before any production authority can be considered.
+**Current verdict:** CI's security/runtime boundary is stronger, but certification evidence is still incomplete. The next gate remains authoritative current-head CI evidence; after GREEN, proceed to the highest-value production-like control gate.
 
 **Safety boundary:** no live signing, public broadcast, live capital, or production execution authorization.
 
-**Next atomic action:** obtain authoritative current-head CI evidence; on GREEN, proceed to the next highest-value production-like gate. On FAILURE, freeze and perform forensic diagnosis before further feature work.
+**Next atomic action:** obtain authoritative current-head CI evidence. On GREEN, advance into controlled production-like signer/network/relay/shadow evidence. On FAILURE, freeze and perform forensic diagnosis before further feature work.
 
 ---
 
