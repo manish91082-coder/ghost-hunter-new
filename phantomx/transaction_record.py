@@ -94,6 +94,72 @@ class TransactionRecord:
             raise ValueError("transaction record gas envelope mismatch")
         if not _TX_HASH.fullmatch(self.tx_hash):
             raise ValueError("invalid transaction hash")
+        if self.replacement_of is not None and not _TX_HASH.fullmatch(self.replacement_of):
+            raise ValueError("invalid replacement source transaction hash")
+        if self.replacement_of is not None and self.replacement_of.lower() == self.tx_hash.lower():
+            raise ValueError("replacement transaction hash must differ from source")
+
+    @classmethod
+    def from_replacement(
+        cls,
+        *,
+        source: "TransactionRecord",
+        signed_transaction,
+        replacement_authorization,
+        governor,
+        preflight,
+        assembly,
+        bound_nonce: BoundNonce,
+    ) -> "TransactionRecord":
+        """Build the immutable signed record for one authorized replacement.
+
+        The source transaction is never mutated here. The returned record binds
+        the new signed artifact to the exact execution identity while retaining
+        an immutable link to the replaced transaction hash.
+        """
+        if source.state not in {ExecutionState.DROPPED, ExecutionState.REPLACED}:
+            raise ValueError("source transaction is not in a replaceable durable state")
+        if not _TX_HASH.fullmatch(source.tx_hash):
+            raise ValueError("invalid source transaction hash")
+        if replacement_authorization.original_tx_hash.lower() != source.tx_hash.lower():
+            raise ValueError("replacement authorization does not bind source transaction")
+        if replacement_authorization.replacement_tx_hash.lower() != signed_transaction.transaction_hash.lower():
+            raise ValueError("replacement authorization does not bind signed transaction")
+        if replacement_authorization.intent_hash.lower() != assembly.intent.intent_hash().lower():
+            raise ValueError("replacement authorization intent mismatch")
+        if replacement_authorization.nonce != source.nonce:
+            raise ValueError("replacement authorization nonce mismatch")
+        if bound_nonce.reservation_id != source.reservation_id or bound_nonce.nonce != source.nonce:
+            raise ValueError("replacement nonce binding mismatch")
+        if assembly.intent_hash.lower() != source.intent_hash.lower():
+            raise ValueError("replacement execution intent differs from source")
+        if assembly.envelope.sender.lower() != source.sender.lower() or assembly.envelope.executor.lower() != source.executor.lower():
+            raise ValueError("replacement identity differs from source")
+        if assembly.envelope.nonce != source.nonce:
+            raise ValueError("replacement nonce differs from source")
+        if governor.approved is not True:
+            raise ValueError("replacement governor decision is not approved")
+        if preflight.passed is not True:
+            raise ValueError("replacement preflight did not pass")
+
+        record = cls(
+            intent_hash=assembly.intent_hash,
+            authorization_hash=authorization_hash(assembly.authorization),
+            reservation_id=bound_nonce.reservation_id,
+            chain_id=assembly.envelope.chain_id,
+            sender=assembly.envelope.sender,
+            executor=assembly.envelope.executor,
+            nonce=assembly.envelope.nonce,
+            calldata_hash=assembly.envelope.calldata_hash,
+            gas_limit=assembly.envelope.gas_limit,
+            max_fee_per_gas=assembly.envelope.max_fee_per_gas,
+            max_priority_fee_per_gas=assembly.envelope.max_priority_fee_per_gas,
+            tx_hash=signed_transaction.transaction_hash,
+            state=ExecutionState.SIGNED,
+            replacement_of=source.tx_hash,
+        )
+        record.validate_binding(assembly.intent, assembly.authorization, assembly.envelope, bound_nonce)
+        return record
 
 
 def authorization_hash(authorization: Authorization) -> str:
