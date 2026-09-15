@@ -159,6 +159,18 @@ class ExecutionSubmissionTests(unittest.TestCase):
         self.assertEqual(nonce.status, NonceStatus.SUBMITTED)
         self.assertEqual(nonce.tx_hash, prepared.signed_transaction.transaction_hash)
 
+    def test_repeated_submission_of_already_submitted_artifact_is_blocked_before_network(self):
+        prepared = self._prepare()
+        first_relay = FakeRelay()
+        self._submit(prepared, relay=first_relay)
+        retry_relay = FakeRelay()
+        with self.assertRaisesRegex(ExecutionSubmissionError, "not in SIGNED state before private submission"):
+            self._submit(prepared, relay=retry_relay)
+        self.assertEqual(first_relay.calls, 1)
+        self.assertEqual(retry_relay.calls, 0)
+        self.assertEqual(self.store.get_transaction(prepared.transaction_record.record_hash()).state, ExecutionState.PRIVATE_SUBMITTED)
+        self.assertEqual(self.store.get_nonce(SENDER, 7).status, NonceStatus.SUBMITTED)
+
     def test_later_observation_with_same_runtime_identity_is_accepted(self):
         prepared = self._prepare()
         later = replace(self.authority, observed_block=self.authority.observed_block + 2, evidence_hash="")
