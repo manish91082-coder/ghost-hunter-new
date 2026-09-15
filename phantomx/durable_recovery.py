@@ -15,6 +15,8 @@ from .chain_observer import ChainObservationState, ObservationDecision
 from .durable_nonce import NonceStatus
 from .execution import ExecutionIntent, ExecutionState
 from .hashing import keccak256_hex
+from .production_chain_observation import QuorumChainObservation
+from .production_chain_observation_store import require_quorum_chain_observation
 from .recovery_coordinator import RecoveryAction, recover
 from .sqlite_execution_store import SQLiteExecutionStore
 
@@ -224,3 +226,52 @@ def persist_recovery_observation(
             raise
 
     return PersistedRecovery(sequence, row[0], observation, action, target_tx, target_nonce, evidence_hash)
+
+
+def persist_quorum_recovery_observation(
+    *,
+    store: SQLiteExecutionStore,
+    intent: ExecutionIntent,
+    quorum_observation: QuorumChainObservation,
+    observation: ObservationDecision,
+    tx_nonce: int,
+    current_observed_block: int,
+    maximum_age_blocks: int,
+    minimum_attesting_providers: int = 1,
+    pending_nonce: int | None = None,
+    block_hash: str | None = None,
+    block_number: int | None = None,
+    canonical_block_hash: str | None = None,
+) -> PersistedRecovery:
+    """Persist recovery state only after exact, fresh quorum admission."""
+    if not isinstance(quorum_observation, QuorumChainObservation):
+        raise DurableRecoveryError("quorum observation is required")
+    if observation.tx_hash.lower() != quorum_observation.tx_hash.lower():
+        raise DurableRecoveryError("quorum observation transaction hash mismatch")
+    if observation.state is not quorum_observation.decision.state:
+        raise DurableRecoveryError("quorum observation state mismatch")
+    if (observation.replacement_tx_hash or None) != (quorum_observation.decision.replacement_tx_hash or None):
+        raise DurableRecoveryError("quorum observation replacement binding mismatch")
+    try:
+        require_quorum_chain_observation(
+            store=store,
+            intent_hash=intent.intent_hash(),
+            observation=quorum_observation,
+            current_observed_block=current_observed_block,
+            maximum_age_blocks=maximum_age_blocks,
+            minimum_attesting_providers=minimum_attesting_providers,
+        )
+    except DurableRecoveryError:
+        raise
+    except Exception as exc:
+        raise DurableRecoveryError("recovery requires admitted fresh quorum evidence") from exc
+    return persist_recovery_observation(
+        store=store,
+        intent=intent,
+        observation=observation,
+        tx_nonce=tx_nonce,
+        pending_nonce=pending_nonce,
+        block_hash=block_hash,
+        block_number=block_number,
+        canonical_block_hash=canonical_block_hash,
+    )
