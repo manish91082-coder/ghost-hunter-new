@@ -7,7 +7,7 @@ from phantomx.execution import Authorization, ExecutionIntent, TransactionEnvelo
 from phantomx.executor_authority import ExecutorAuthorityEvidence, runtime_code_binding_hash
 from phantomx.governor import GovernorDecision
 from phantomx.hashing import keccak256_hex
-from phantomx.signer import EthereumEip1559Signer, SignerError, recover_eip1559_sender, sign_governed_transaction
+from phantomx.signer import EthereumEip1559Signer, SignerError, recover_eip1559_sender, sign_governed_transaction, prove_signer_identity
 
 
 TOKEN = "0x" + "aa" * 20
@@ -21,13 +21,19 @@ RUNTIME_CODE_HASH = "0x" + "55" * 32
 
 
 class BlindForeignSigner:
-    """Signer without an exposed address, forcing post-signature recovery to be authoritative."""
-
     def __init__(self, private_key):
         self._signer = EthereumEip1559Signer(private_key)
 
     def sign(self, envelope):
         return self._signer.sign(envelope)
+
+
+class BlindChallengeSigner:
+    def __init__(self, private_key):
+        self._signer = EthereumEip1559Signer(private_key)
+
+    def sign_challenge(self, challenge_hash):
+        return self._signer.sign_challenge(challenge_hash)
 
 
 class SignerBoundaryTests(unittest.TestCase):
@@ -106,6 +112,26 @@ class SignerBoundaryTests(unittest.TestCase):
         self.assertEqual(len(self.signer.address), 42)
         self.assertEqual(self.signer.address, recover_eip1559_sender(self.signer.sign(self.envelope)))
 
+    def test_signer_identity_challenge_proves_key_control_without_key_disclosure(self):
+        challenge = b"P" * 32
+        evidence = prove_signer_identity(signer=self.signer, expected_address=self.sender, challenge=challenge)
+        self.assertEqual(evidence.challenge_hash, keccak256_hex(challenge))
+        self.assertEqual(evidence.recovered_address, self.sender)
+        self.assertEqual(evidence.expected_address, self.sender)
+        self.assertEqual(len(evidence.signature), 65)
+        self.assertEqual(evidence.evidence_hash, keccak256_hex((evidence.challenge_hash + self.sender).encode("ascii")))
+
+    def test_blind_challenge_signer_is independently_verified_by_recovery(self):
+        challenge = b"Q" * 32
+        blind = BlindChallengeSigner(PRIVATE_KEY)
+        evidence = prove_signer_identity(signer=blind, expected_address=self.sender, challenge=challenge)
+        self.assertEqual(evidence.recovered_address, self.sender)
+
+    def test_wrong_challenge_signer_is_blocked(self):
+        wrong = BlindChallengeSigner("0x" + "02" * 32)
+        with self.assertRaisesRegex(SignerError, "challenge identity"):
+            prove_signer_identity(signer=wrong, expected_address=self.sender, challenge=b"R" * 32)
+
     def test_zero_private_key_is_rejected(self):
         with self.assertRaisesRegex(SignerError, "private_key is invalid"):
             EthereumEip1559Signer("0x" + "00" * 32)
@@ -141,19 +167,7 @@ class SignerBoundaryTests(unittest.TestCase):
             self.sign(governor=blocked)
 
     def test_governor_block_prevents_signer_call(self):
-        blocked = GovernorDecision(
-            approved=False,
-            reason="locked",
-            chain_id=self.governor.chain_id,
-            block_number=self.governor.block_number,
-            intent_hash=self.governor.intent_hash,
-            route_hash=self.governor.route_hash,
-            economic_proof_hash=self.governor.economic_proof_hash,
-            simulation_proof_hash=self.governor.simulation_proof_hash,
-            calldata_hash=self.governor.calldata_hash,
-            executor_authority_hash=self.governor.executor_authority_hash,
-            ai_rank=self.governor.ai_rank,
-        )
+        blocked = replace(self.governor, approved=False, reason="locked", decision_hash="")
         with self.assertRaises(SignerError):
             self.sign(governor=blocked)
 
@@ -181,7 +195,6 @@ class SignerBoundaryTests(unittest.TestCase):
     def test_invalid_signer_output_is_blocked(self):
         class BadSigner:
             address = self.sender
-
             def sign(self, envelope):
                 return b""
         with self.assertRaises(SignerError):
