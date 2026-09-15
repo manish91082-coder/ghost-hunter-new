@@ -105,7 +105,7 @@ class SignerBoundaryTests(unittest.TestCase):
 
     def test_authority_runtime_code_mutation_is_blocked(self):
         mutated = replace(self.authority, runtime_code_hash="0x" + "66" * 32, evidence_hash="")
-        with self.assertRaisesRegex(SignerError, "executor authority is invalid"):
+        with self.assertRaisesRegex(SignerError, "governor executor authority evidence"):
             self.sign(executor_authority=mutated)
 
     def test_stale_authority_observation_is_blocked(self):
