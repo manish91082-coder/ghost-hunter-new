@@ -110,6 +110,10 @@ class DurableRecoveryTests(unittest.TestCase):
                     payload["replacement_of"],
                 ),
             )
+            db.execute(
+                "UPDATE nonce_records SET status=?,tx_hash=?,replacement_of=? WHERE sender=? AND nonce=?",
+                (NonceStatus.SUBMITTED.value, replacement_hash, self.tx_hash, self.intent.sender.lower(), self.nonce),
+            )
             db.execute("COMMIT")
 
         result = persist_recovery_observation(
@@ -129,7 +133,7 @@ class DurableRecoveryTests(unittest.TestCase):
         nonce = self.store.get_nonce(self.intent.sender, self.nonce)
         self.assertEqual(nonce.status, NonceStatus.REPLACED)
         self.assertEqual(nonce.tx_hash, replacement_hash)
-        self.assertEqual(nonce.replacement_of, None)
+        self.assertEqual(nonce.replacement_of, self.tx_hash)
 
     def test_reorg_moves_included_record_to_reorged_and_reobservation_can_recover(self):
         persist_chain_observation(
