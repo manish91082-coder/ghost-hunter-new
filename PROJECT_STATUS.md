@@ -5,7 +5,7 @@
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Latest project commit: `b094038ca8144a828269d9dd42cbc3dc0623d148`
+- Latest project commit: `ebf794537c531a1241426a2bca9f355e205e44fc`
 - Final executable implementation: `d018f8aea32d7db5aa012b02dcaacab87435af4c`
 - Recovered-settlement certification `#420`: **GREEN**
 - Production chain observation adapter: `77c3c457...`
@@ -23,6 +23,8 @@
 - Final matrix certification `#436`: **GREEN**. The hardened final matrix workflow completed successfully across Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Phase-19 unittest suite.
 - Production-readiness gate audit: `PHASE19_PRODUCTION_READINESS_AUDIT.md`
 - Production-readiness audit certification `#437`: **GREEN**. The audit record was committed and the complete Phase-19 workflow passed on the audit commit.
+- Controlled signer evidence intake specification: `PHASE19_SIGNER_EVIDENCE_INTAKE.md`
+- Controlled signer evidence validator: `scripts/validate_signer_evidence.py` (`ebf794537c531a1241426a2bca9f355e205e44fc`)
 - Production readiness decision: **NOT ACHIEVED**
 - Controlled production signer identity: **BLOCKED**. No fresh externally held production-signer challenge signature and provenance record is present; the signer runbook explicitly states mechanism-level CI is insufficient for this gate.
 - Controlled production Polygon provider authority: **BLOCKED**. Explicitly approved HTTPS endpoints, quorum, intended executor, and expected signer inputs are required, but no controlled production observation evidence is present.
@@ -66,12 +68,12 @@ The production private-relay assembly requires explicit HTTPS configuration and 
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-`#437` is GREEN for the production-readiness gate-audit workflow. The workflow completed successfully on the audit commit, confirming that the audit record itself is integrated without breaking the certified Phase-19 test spine. fileciteturn1576file0L2-L2
+`#437` is GREEN for the production-readiness gate-audit workflow. The audit record itself is integrated and the full Phase-19 test spine remains certified. fileciteturn1576file0L2-L2
 
-The audit result remains **NOT ACHIEVED** because production authority is an external-evidence gate. Repository/CI/fork success cannot substitute for externally controlled signer identity, approved Polygon authority, private relay proof, shadow/staging evidence, or live realized PnL.
+The controlled signer evidence intake specification now defines the minimum non-secret proof package: fresh challenge, exact external signature, verifier-derived identities/hashes, verifier commit/certification reference, and external operator/witness/timestamp provenance. The validator recomputes the signature proof and challenge/evidence hashes without accepting any private-key material. The gate remains BLOCKED until an externally controlled package is actually produced and independently accepted.
 
 ## NEXT ATOMIC ACTION
-Begin P0 evidence closure with the controlled production signer-identity proof. Use a fresh challenge, obtain exactly one signature from the externally held production signer, independently verify the signature against the independently approved production address, preserve the non-secret evidence record with provenance, and keep every other production gate locked until this evidence is independently accepted.
+Close the controlled production signer-identity gate using the new intake contract: generate a fresh challenge, obtain exactly one signature from the externally held production signer, independently verify it against the independently approved production address, assemble the required provenance fields outside the repository, and submit that non-secret evidence package for independent acceptance. Keep every other production gate locked.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
