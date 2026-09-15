@@ -208,66 +208,29 @@ def prepare_replacement_execution(
             assembly.authorization,
             assembly.envelope,
             bound_record,
-            replacement_tx_hash,
-            now=now,
-        )
-        replacement_record = TransactionRecord(
-            **{**unsigned_record.canonical(), "state": ExecutionState.SIGNED, "replacement_of": source.tx_hash}
-        )
-        replacement_record.validate_binding(
-            assembly.intent,
-            assembly.authorization,
-            assembly.envelope,
-            bound_record,
+            signed_transaction,
+            replacement_of=source.tx_hash,
         )
     except Exception as exc:
         raise ReplacementCoordinatorError(str(exc)) from exc
 
+    replacement_record = TransactionRecord.from_replacement(
+        source=source,
+        signed_transaction=signed_transaction,
+        replacement_authorization=replacement_auth,
+        governor=governor,
+        preflight=preflight,
+        assembly=assembly,
+        bound_nonce=bound_record,
+    )
+
     try:
-        with store._connect() as db:
-            db.execute("BEGIN IMMEDIATE")
-            row = db.execute(
-                "SELECT record_hash,intent_hash,state,tx_hash,sender,nonce,reservation_id FROM transaction_records WHERE record_hash=?",
-                (source.record_hash(),),
-            ).fetchone()
-            if row is None:
-                raise ReplacementCoordinatorError("source transaction disappeared before replacement persistence")
-            if row[1].lower() != source.intent_hash.lower() or row[3].lower() != source.tx_hash.lower():
-                raise ReplacementCoordinatorError("source transaction identity changed before replacement persistence")
-            if ExecutionState(row[2]) not in {ExecutionState.DROPPED, ExecutionState.REPLACED}:
-                raise ReplacementCoordinatorError("source transaction is no longer replaceable")
-
-            nrow = db.execute(
-                "SELECT status,tx_hash,reservation_id,intent_hash FROM nonce_records WHERE sender=? AND nonce=?",
-                (source.sender.lower(), source.nonce),
-            ).fetchone()
-            if nrow is None or nrow[2] != source.reservation_id or nrow[3].lower() != source.intent_hash.lower():
-                raise ReplacementCoordinatorError("durable nonce identity changed before replacement persistence")
-            if nrow[1] is not None and nrow[1].lower() != source.tx_hash.lower():
-                raise ReplacementCoordinatorError("durable nonce active transaction changed before replacement persistence")
-            if nrow[0] not in {NonceStatus.DROPPED.value, NonceStatus.REPLACED.value}:
-                raise ReplacementCoordinatorError("durable nonce is no longer replaceable")
-            if db.execute("SELECT 1 FROM transaction_records WHERE tx_hash=?", (replacement_tx_hash.lower(),)).fetchone():
-                raise ReplacementCoordinatorError("replacement transaction hash is already recorded")
-
-            payload = replacement_record.canonical()
-            db.execute(
-                "INSERT INTO transaction_records(record_hash,intent_hash,authorization_hash,reservation_id,chain_id,sender,executor,nonce,calldata_hash,gas_limit,max_fee_per_gas,max_priority_fee_per_gas,tx_hash,state,replacement_of) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (
-                    replacement_record.record_hash(), payload["intent_hash"], payload["authorization_hash"],
-                    payload["reservation_id"], payload["chain_id"], payload["sender"], payload["executor"],
-                    payload["nonce"], payload["calldata_hash"], payload["gas_limit"], payload["max_fee_per_gas"],
-                    payload["max_priority_fee_per_gas"], payload["tx_hash"], payload["state"], payload["replacement_of"],
-                ),
-            )
-            db.execute(
-                "UPDATE nonce_records SET status=?,tx_hash=?,replacement_of=? WHERE sender=? AND nonce=?",
-                (NonceStatus.SIGNED.value, replacement_tx_hash.lower(), source.tx_hash.lower(), source.sender.lower(), source.nonce),
-            )
-            db.execute("COMMIT")
+        store.persist_signed_replacement(
+            source_record_hash=source_record_hash,
+            replacement_record=replacement_record,
+            replacement_nonce=nonce,
+        )
     except Exception as exc:
-        if isinstance(exc, ReplacementCoordinatorError):
-            raise
         raise ReplacementCoordinatorError(str(exc)) from exc
 
     return PreparedReplacement(
