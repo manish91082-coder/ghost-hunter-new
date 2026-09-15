@@ -15,6 +15,8 @@ from .chain_observer import ChainObservationState, ObservationDecision
 from .economics import CostBreakdown
 from .execution import ExecutionIntent, ExecutionState
 from .hashing import keccak256_hex
+from .production_chain_observation import QuorumChainObservation
+from .production_chain_observation_store import require_quorum_chain_observation
 from .settlement import ReceiptRecord, Reconciliation, reconcile
 from .sqlite_execution_store import SQLiteExecutionStore
 
@@ -182,10 +184,11 @@ def reconcile_included_execution(
     flash_repayment: Decimal | str | int | float,
     costs: CostBreakdown,
 ) -> ReconciledExecution:
-    """Atomically persist realized settlement and terminal profit state.
+    """Low-level settlement primitive for an already-admitted INCLUDED observation.
 
-    ``costs.gas`` must be the USD conversion of receipt.gasUsed multiplied by
-    receipt.effectiveGasPrice. The strict profit floor remains ``> $0.20``.
+    Production recovery-to-settlement callers must use
+    :func:`reconcile_quorum_included_execution`, which verifies persisted and
+    fresh quorum provenance before entering this primitive.
     """
     _ensure_schema(store)
     if observation.state is not ChainObservationState.INCLUDED:
@@ -306,4 +309,55 @@ def reconcile_included_execution(
         settlement_record=settlement_record,
         reconciliation=reconciliation,
         transaction_state=stored.state,
+    )
+
+
+def reconcile_quorum_included_execution(
+    *,
+    store: SQLiteExecutionStore,
+    intent: ExecutionIntent,
+    quorum_observation: QuorumChainObservation,
+    observation: ObservationDecision,
+    current_observed_block: int,
+    maximum_age_blocks: int,
+    minimum_attesting_providers: int = 1,
+    receipt: ReceiptRecord,
+    block_hash: str,
+    canonical_block_hash: str,
+    final_settlement: Decimal | str | int | float,
+    flash_repayment: Decimal | str | int | float,
+    costs: CostBreakdown,
+) -> ReconciledExecution:
+    """Cross the production settlement boundary only with fresh quorum evidence."""
+    if not isinstance(quorum_observation, QuorumChainObservation):
+        raise ExecutionReconciliationError("quorum observation is required")
+    if observation.tx_hash.lower() != quorum_observation.tx_hash.lower():
+        raise ExecutionReconciliationError("quorum observation transaction hash mismatch")
+    if observation.state is not quorum_observation.decision.state:
+        raise ExecutionReconciliationError("quorum observation state mismatch")
+    if (observation.replacement_tx_hash or None) != (quorum_observation.decision.replacement_tx_hash or None):
+        raise ExecutionReconciliationError("quorum observation replacement binding mismatch")
+    try:
+        require_quorum_chain_observation(
+            store=store,
+            intent_hash=intent.intent_hash(),
+            observation=quorum_observation,
+            current_observed_block=current_observed_block,
+            maximum_age_blocks=maximum_age_blocks,
+            minimum_attesting_providers=minimum_attesting_providers,
+        )
+    except ExecutionReconciliationError:
+        raise
+    except Exception as exc:
+        raise ExecutionReconciliationError("settlement requires admitted fresh quorum evidence") from exc
+    return reconcile_included_execution(
+        store=store,
+        intent=intent,
+        observation=observation,
+        receipt=receipt,
+        block_hash=block_hash,
+        canonical_block_hash=canonical_block_hash,
+        final_settlement=final_settlement,
+        flash_repayment=flash_repayment,
+        costs=costs,
     )
