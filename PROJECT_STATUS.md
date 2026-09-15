@@ -6,10 +6,9 @@
 ## 0. CURRENT RESUME CARD
 - Project: `manish91082-coder/ghost-hunter-new`
 - Active branch: `phase-19-e2e-harness`
-- Latest signer-regression commit: `919e72cf6099ccb4fc5f6ff8ac1151bd5ec51c8f`
-- Latest CI-hardening commit: `7f6aaeb331ea679738b01ce89ee6b44ed3ca5ee8`
+- Latest signer identity implementation commit: `fd34078fae864c02136484eeef3afd5f4a6c05a4`
+- Latest authoritative GREEN CI for implementation: run `#345` on `919e72cf6099ccb4fc5f6ff8ac1151bd5ec51c8f`
 - Certification PR: `#1` (OPEN, ready for review, base `master`)
-- Current PR head: `cce70188d6c743c245f5439d51217fd396523856`
 - Phase: Phase 19 execution-integrity / E2E policy harness
 - Live mainnet execution: **BLOCKED**
 - Live capital authorization: **BLOCKED**
@@ -32,32 +31,29 @@ Initial scope: Polygon, Aave V3, QuickSwap V2, Uniswap V3, USDC/WETH/WMATIC/WBTC
 ## 3. VERIFIED IMPLEMENTATION CAPABILITIES
 Phase 19 includes strict realized-profit gating, deterministic all-in economics, Keccak hashing, immutable intent/auth/envelope binding, exact block-bound quotes, route simulation and topology commitment, loan optimization, EVM preflight, Governor, signer boundary, durable SQLite nonce/transaction state, atomic replacement/recovery coordination, private-only submission, chain/recovery/reorg/replacement handling, receipt reconciliation, Solidity executor controls, Polygon fork harness, and adversarial/regression coverage.
 
-Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, one-path coordinator artifact-chain certification, quorum-bound read-only executor authority attestation, nullable durable-nonce-hash replacement coverage, restart-audit coverage proving a pre-submission `SIGNED` nonce may legitimately remain hash-free while the durable transaction record remains authoritative, CI runtime modernization to Node 24-compatible action majors, pre-network blocking of repeated submission of an already-submitted durable artifact, explicit regression coverage that terminal `PROFIT_CONFIRMED`/`PROFIT_FAILED` states cannot be reopened by reorg recovery evidence, least-privilege/time-bounded CI execution, and rejection of an all-zero signer private key.
+Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, one-path coordinator artifact-chain certification, quorum-bound read-only executor authority attestation, nullable durable-nonce-hash replacement coverage, restart-audit coverage proving a pre-submission `SIGNED` nonce may legitimately remain hash-free while the durable transaction record remains authoritative, CI runtime modernization to Node 24-compatible action majors, pre-network blocking of repeated submission of an already-submitted durable artifact, explicit regression coverage that terminal `PROFIT_CONFIRMED`/`PROFIT_FAILED` states cannot be reopened by reorg recovery evidence, least-privilege/time-bounded CI execution, rejection of an all-zero signer private key, and a non-secret signer identity challenge/proof boundary with cryptographic address recovery.
 
 ## 4. CI CERTIFICATION PATH
-The Phase-19 workflow runs on branch pushes and on pull requests to `master`, while ignoring status-only changes. It uses `actions/checkout@v5` and `actions/setup-python@v6`, grants only `contents: read`, enforces a 30-minute job timeout, then performs Foundry compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the Phase-19 unittest suite.
+The Phase-19 workflow runs on branch pushes and pull requests to `master`, while ignoring status-only changes. It uses `actions/checkout@v5` and `actions/setup-python@v6`, grants only `contents: read`, enforces a 30-minute job timeout, then performs Foundry compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the Phase-19 unittest suite.
 
-A fresh signer regression commit `919e72cf6099ccb4fc5f6ff8ac1151bd5ec51c8f` has now produced an authoritative GitHub Actions run: **run #345, conclusion SUCCESS**. The run checked out exactly that regression commit and completed all required gates: Solidity compile, **14/14 EVM tests**, **3/3 Polygon fork smoke tests**, **1/1 Polygon fork execution probe**, and **422/422 Python unittest tests**. No failures or skips were reported.
+Authoritative run `#345` tested signer-hardening commit `919e72cf6099ccb4fc5f6ff8ac1151bd5ec51c8f` and concluded **SUCCESS**: Solidity compile successful; **14/14 EVM**, **3/3 Polygon fork smoke**, **1/1 Polygon fork execution probe**, and **422/422 Python tests**, with **0 failures and 0 skips**. The subsequent signer-test syntax repair and identity-proof implementation are newer implementation commits and therefore require their own fresh CI certification before being considered certified.
 
-The current branch head `cce70188d6c743c245f5439d51217fd396523856` is a documentation-only commit on top of the tested implementation commit, so it is intentionally ignored by the workflow. Therefore the latest implementation-bearing code state is certified GREEN by run #345, while documentation-only changes are separately audited through Git history.
+## 5. CURRENT SIGNER IDENTITY GATE
+The concrete signer now exposes a non-secret cryptographic challenge proof: an external verifier can supply a fresh 32-byte challenge, receive only a 65-byte signature, recover the Ethereum address, and compare it with the expected production signer address. The private key itself remains inside the signer and is never placed in the repository, logs, or chat.
 
-Historical GREEN runs remain historical evidence only and are not being used as the certification basis here.
-
-## 5. CURRENT REORG / SETTLEMENT INTEGRITY HARDENING
-`phantomx/recovery_coordinator.py` deliberately returns `BLOCK` for terminal `PROFIT_CONFIRMED` and `PROFIT_FAILED` states. Regression coverage explicitly verifies that both terminal states remain blocked even when incoming chain evidence is `REORGED`.
-
-This preserves the fail-closed property while a later phase designs any controlled settlement invalidation/re-observation mechanism required for real canonical-chain reorg handling. No automatic reopening or profit reversal has been introduced.
+The gate is **not GREEN yet**. We have implemented the proof mechanism and regression tests, but we do not yet have controlled evidence from the actual intended production signer address/key. A test private key is not production identity evidence.
 
 ## 6. CURRENT BLOCKERS / P0 GATES
-1. **Controlled production signer identity proof** without exposing private key material.
-2. **Controlled production Polygon network/provider authority proof** using explicitly approved production endpoints and the deployed executor address.
-3. **Production private relay capability** with no public fallback.
-4. **Startup/recovery safety under production-like conditions**, including a production-grade settlement reorg policy.
-5. **Controlled shadow/staging evidence** using the identical immutable artifact chain.
-6. **Final realized live PnL evidence** after all preceding gates are GREEN.
-7. Live mainnet capital deployment remains forbidden.
+1. **Fresh CI certification of the signer identity-proof implementation**.
+2. **Controlled production signer identity proof** without exposing private key material.
+3. **Controlled production Polygon network/provider authority proof** using explicitly approved production endpoints and the deployed executor address.
+4. **Production private relay capability** with no public fallback.
+5. **Startup/recovery safety under production-like conditions**, including a production-grade settlement reorg policy.
+6. **Controlled shadow/staging evidence** using the identical immutable artifact chain.
+7. **Final realized live PnL evidence** after all preceding gates are GREEN.
+8. Live mainnet capital deployment remains forbidden.
 
-The former CI-certification blocker is now cleared for the latest implementation-bearing state by authoritative run #345. Required before real production authority attestation: approved Polygon RPC provider set, controlled confirmation of the intended deployed executor address, and expected signer address. Private key material stays outside repository code, fixtures, logs, and chat.
+Required before real production authority attestation: approved Polygon RPC provider set, controlled confirmation of the intended deployed executor address, and expected signer address. Private key material stays outside repository code, fixtures, logs, and chat.
 
 ## 7. GO-LIVE RULE
 Every P0 gate must be GREEN with reproducible evidence before live capital. Any unchecked gate means **LIVE CAPITAL = LOCKED**.
@@ -68,40 +64,38 @@ These are explicit planning metrics, not claims of external evidence.
 ### A. Engineering foundation
 - Deterministic Phase-19 execution-integrity implementation: **substantially built**.
 - Practical assessment: **~85% engineering foundation complete**.
-- Latest implementation-bearing CI certification: **GREEN**, based on authoritative run #345 for commit `919e72cf6099ccb4fc5f6ff8ac1151bd5ec51c8f`.
+- Latest authoritative implementation certification: **GREEN for commit `919e72cf...`**.
+- Newer signer identity-proof implementation: **awaiting fresh CI**.
 
 ### B. First real-life hunt readiness
-Required pre-hunt gates are controlled signer identity, approved Polygon/provider authority, private relay, production-like startup/recovery + reorg policy, identical-artifact shadow/staging evidence, followed by final controlled live PnL evidence.
-- Production prerequisites newly cleared by current CI: **1 gate**.
-- Remaining pre-hunt production-control gates: **5 / 6**.
+Required pre-hunt controls are fresh CI for the current implementation, controlled production signer identity, approved Polygon/provider authority, private relay, production-like recovery/reorg, and identical-artifact shadow/staging evidence.
+- Fresh current-implementation CI GREEN: **NO**.
+- Production-control gates GREEN: **0 / 5** after current CI.
 - First real-money hunt: **NOT READY**.
 
 ### C. Continuous hunting readiness
-Continuous hunting additionally requires verified realized PnL from the first hunt and safe repeatability across nonce lifecycle, replacement/drop, restart/recovery, reorg handling, and operational observability.
 - Verified live cycles: **0**.
 - Continuous hunting: **NOT ACHIEVED**.
-
-### D. One-line position
-**CI is now GREEN for the latest implementation state. First real-life hunt still has 5 remaining pre-hunt control gates. Continuous hunting has 0 verified live cycles.**
 
 ## 9. CURRENT CHECKPOINT
 **Timestamp:** 2026-09-15
 
-**Atomic task completed:** authoritative CI certification of the latest implementation-bearing signer-hardening state.
+**Atomic task completed:** signer identity proof mechanism added without disclosing key material.
 
 **New work completed:**
-- Retrieved the actual GitHub Actions workflow run for signer-regression commit `919e72cf6099ccb4fc5f6ff8ac1151bd5ec51c8f`.
-- Verified run `#345` concluded **SUCCESS**.
-- Verified the job checked out the exact tested SHA.
-- Verified compile success, 14/14 EVM tests, 3/3 Polygon fork smoke tests, 1/1 Polygon fork execution probe, and 422/422 Python tests, with 0 failures and 0 skips.
-- Verified the following branch commit is documentation-only, so it does not invalidate the tested implementation state.
-- Removed current-head CI from the active P0 blocker list for the implementation-bearing state.
+- Extended the concrete Ethereum signer with `sign_challenge()` for offline cryptographic key-control evidence.
+- Added `prove_signer_identity()` which validates a fresh 32-byte challenge, recovers the signer address from the returned signature, and produces immutable evidence hashes.
+- Added regressions for valid proof, blind-signer proof, and wrong-signer rejection.
+- Corrected the test file syntax and kept the zero-key regression.
+- No production key or production address was introduced.
 
-**Current verdict:** the first formal repository-certification gate is now genuinely GREEN. We have moved one step closer to live hunting; the remaining blockers are production-control and real-world evidence gates, not the deterministic unit/EVM certification path.
+**Certification state:** previous implementation state is GREEN by authoritative run #345, but the newer signer identity-proof implementation is **UNCERTIFIED until its own CI run is GREEN**.
+
+**Current verdict:** the production signer gate is now technically instrumented for safe proof, but it is not yet externally evidenced for the real production signer. The next action is fresh CI; after that, controlled production signer identity evidence.
 
 **Safety boundary:** no live signing, public broadcast, live capital, or production execution authorization.
 
-**Next atomic action:** controlled production signer identity proof without exposing private key material. Then approved Polygon/provider authority, private relay, production-like recovery/reorg, shadow/staging, and only then first controlled real-life hunt.
+**Next atomic action:** obtain fresh authoritative CI for the current signer-proof implementation; on GREEN, execute the controlled production signer identity proof protocol without exposing private key material.
 
 ---
 
