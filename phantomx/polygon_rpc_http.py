@@ -20,6 +20,8 @@ READ_ONLY_METHODS = frozenset(
         "eth_blockNumber",
         "eth_getBlockByNumber",
         "eth_getTransactionCount",
+        "eth_getTransactionByHash",
+        "eth_getTransactionReceipt",
         "eth_getCode",
         "eth_call",
     }
