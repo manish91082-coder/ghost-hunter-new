@@ -60,7 +60,7 @@ This is a read-only authority attestation path. It does not sign or submit trans
 - Run `#268` on `ed3451f82c4c4934fe1c5bfe23623222a10d3a3b`: **GREEN**, 14/14 EVM + 3/3 Polygon smoke + 1/1 fork probe + **405/405 Python**.
 - Run `#269` on `de6eee477f0e1b8844c88de26be3e884cb8e9d4e`: **GREEN**, 14/14 EVM + 3/3 Polygon smoke + 1/1 fork probe + **406/406 Python**.
 - Run `#270` on `2cf90abcf8e613f09fefaa7ab35c4262be53e779`: **GREEN**, 14/14 EVM + 3/3 Polygon smoke + 1/1 fork probe + **407/407 Python**.
-- Run `#273` on `2b1a762181ff7488d234110b5d1596343d5dbbf5`: **GREEN**, 14/14 EVM + 3/3 Polygon smoke + 1/1 fork execution probe + **408/408 Python**.
+- Run `#273` on `2b1a762181ff7488d234110b5d1596343d5dbbf5`: **GREEN**, 14/14 EVM + 3/3 Polygon smoke + 1/1 Polygon fork execution probe + **408/408 Python**.
 
 ### Authority-quorum checkpoint
 
@@ -106,27 +106,27 @@ These are not formal certification scores.
 
 ## 9. CURRENT CHECKPOINT
 
-**Timestamp:** 2026-09-15T14:38+05:30
+**Checkpoint:** P19-AUTH-02 production-input readiness audit / controlled authority gate.
 
-**Atomic task:** P19-AUTH-01 — quorum-bound controlled executor authority proof.
+**Baseline implementation:** `e8ded6459a8d7a070310f49481f335043617650e`.
 
-**Changed files:**
-- `phantomx/executor_authority.py` — quorum authority observer remains unchanged after certification.
-- `tests/phase19/test_executor_authority.py` — repaired brittle sorted-list assertion; repair is now CI-certified.
-- `PROJECT_STATUS.md` — synchronized with Run #276 GREEN and the next controlled validation gate.
+**Inputs actually observed:**
+- `common/active_rpc.txt` contains `https://ethereum-rpc.publicnode.com`, which is not a Polygon production authority source and must not be promoted into the production execution spine by inference.
+- Repository search for production signer/executor/RPC configuration returned no matching approved production input set.
+- `PHASE19_POLYGON_RPC_STATUS.md` explicitly keeps the production integration boundary separate: approved endpoints plus real transport are required before production authority attestation, and legacy/public RPC utilities are not promoted merely because they can connect.
 
-**Evidence actually observed:**
-- Run #273: **GREEN**, 408/408 Python plus all EVM/fork gates.
-- Run #275: **FAILURE**, isolated to the brittle quorum-test ordering assertion; exact traceback observed.
-- Run #276: **GREEN**, exact repair commit `e8ded6459a8d7a070310f49481f335043617650e`, 14/14 EVM, 3/3 Polygon smoke, 1/1 Polygon fork execution probe, and 413/413 Python.
+**Decision:** P19-AUTH-01 implementation/test certification remains **GREEN**. P19-AUTH-02 real production authority proof is **BLOCKED** because the non-secret production inputs required for attestation are absent from the repository-visible configuration. No guessed address, Ethereum endpoint, fork endpoint, or public endpoint will be substituted.
 
-**Decision:** P19-AUTH-01 test/implementation certification is now GREEN. Do not modify the authority algorithm merely to chase historical test noise. Advance to the real controlled authority proof only when the approved production inputs exist. That proof must remain read-only and must bind chain, executor, owner, runtime-code hash, and one common observation block across the configured provider quorum.
+**Required external inputs:**
+- approved Polygon mainnet RPC provider set with distinct provider identities;
+- deployed Polygon executor address;
+- expected production signer address.
 
-**Latest implementation checkpoint:** `e8ded6459a8d7a070310f49481f335043617650e`
+Once supplied through an approved configuration channel, the next operation is observation-only: verify Polygon chain identity, establish one common observation block, attest owner + runtime-code hash by quorum, and cross-check the expected signer identity. Private key material remains outside repository code, fixtures, logs, and chat.
 
-**Safety boundary:** No live signing, public broadcast, live capital, or production execution authorization is granted. Production authority work is still observation-only.
+**Safety boundary:** No live signing, public broadcast, live capital, or production execution authorization is granted. Production authority work remains read-only until every prerequisite gate is evidenced.
 
-**Next atomic action:** obtain/validate the approved production Polygon provider set, deployed executor address, and expected signer address, then perform read-only quorum attestation and signer-identity cross-check. If those inputs are unavailable, keep the gate BLOCKED rather than substituting public test endpoints.
+**Status-sync:** this checkpoint is synchronized in `PROJECT_STATUS.md`. Status-only synchronization does not itself constitute a new Phase 19 CI execution because the workflow excludes `PROJECT_STATUS.md`-only changes.
 
 ---
 
