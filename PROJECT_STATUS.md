@@ -5,7 +5,7 @@
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Latest implementation: `1cf1ac67586861a8f735d89f6eb6eeec87336540`
+- Latest implementation: `4e78efba5d502d812965d577e7081a87b7e768f5`
 - Recovered-settlement certification `#420`: **GREEN**
 - Production chain observation adapter: `77c3c457...`
 - Read-only transaction/receipt RPC allowlist: `64f96d8b...`
@@ -16,7 +16,10 @@
 - Quorum execution-observation contract tests: `86bb4786...`
 - Prior certification `#424`: **FAILED** because the branch head running that workflow referenced `phantomx.production_chain_observation_store` but that file was not actually present on the branch; five unittest modules failed at import time. Solidity/EVM and Polygon fork stages were GREEN.
 - Repair certification `#426`: **FAILED** during the Phase-19 unittest stage because the new test teardown called unsupported `SQLiteExecutionStore.close()`. The test suite reached the new quorum tests; the failure was test-fixture cleanup, not the quorum assertion itself.
-- Repair commit `1cf1ac67586861a8f735d89f6eb6eeec87336540`: removed the unsupported store `close()` call and retains temporary-directory cleanup. Fresh certification `#427`: **IN PROGRESS**.
+- Repair commit `1cf1ac67586861a8f735d89f6eb6eeec87336540`: removed the unsupported store `close()` call and retains temporary-directory cleanup.
+- Fresh certification `#427`: **GREEN**. All compile/EVM/Polygon stages and the Phase-19 unittest suite completed successfully.
+- End-to-end quorum recovery isolation fixture: `4e78efba5d502d812965d577e7081a87b7e768f5`
+- Fresh certification for the end-to-end quorum recovery isolation fixture: **IN PROGRESS** (`#429`)
 - Live mainnet execution: **BLOCKED**
 - Live capital: **LOCKED**
 - Production readiness: **NOT ACHIEVED**
@@ -39,7 +42,7 @@ The durable quorum admission boundary stores the exact intent/transaction bindin
 
 The execution-observation entry point exposes a dedicated quorum-gated persistence path. It first requires the exact, previously persisted and fresh quorum record, verifies transaction/state/replacement identity, and only then delegates to the existing durable chain-observation persistence. The full canonical block evidence remains supplied separately to preserve receipt canonicality validation. fileciteturn1465file0L2-L2
 
-The durable SQLite execution store opens per-operation connections and does not expose a `close()` lifecycle method; the corrected quorum test fixture now follows that actual store API. fileciteturn1476file0L2-L2
+The corrected quorum recovery integration fixture statically audits production modules so the plain lifecycle-persistence function has only its intentional definition/delegation site, and exercises a single-provider INCLUDED observation that is refused by the two-provider admission policy before any chain-observation lifecycle mutation. fileciteturn1494file0L2-L2
 
 ## P0 BLOCKERS
 1. Controlled production signer identity proof.
@@ -51,12 +54,12 @@ The durable SQLite execution store opens per-operation connections and does not 
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-`#423` is GREEN for the read-only production transaction/receipt quorum observer. The durable quorum evidence store is now physically present on the active branch, and the execution-observation quorum gate is also present there. The first attempt to certify that gate exposed a branch-integration defect: `#424` executed commit `2a02e911...`, whose import boundary referenced a store file that was not on that branch lineage.
+`#427` is GREEN for the repaired quorum-gated execution-observation contract layer. The fresh run completed all Solidity compilation, 14/14 EVM integration tests, Polygon fork protocol smoke, Polygon fork execution probe, and the Phase-19 unittest suite successfully. fileciteturn1482file0L2-L2
 
-The subsequent certification reached all Solidity/EVM and Polygon fork stages successfully, then exposed a deterministic fixture/API mismatch in the new quorum tests: `SQLiteExecutionStore` has no `close()` method. The repair in `1cf1ac67...` removes only that invalid teardown call and keeps the fixture isolated in a temporary directory. `#427` is now the authoritative fresh certification run for this repair. fileciteturn1480file0L2-L2
+`4e78efba...` adds the next structural gate: a production-surface audit plus an end-to-end fixture where a single-provider INCLUDED observation is durably recorded as quorum evidence but is rejected when the lifecycle path requires two attesting providers. The transaction remains in `SUBMISSION_IN_FLIGHT` and no `chain_observations` row is created in that blocked path. Fresh certification `#429` is now the authoritative run for this layer. fileciteturn1497file0L2-L2
 
 ## NEXT ATOMIC ACTION
-Complete fresh certification `#427` on `1cf1ac67586861a8f735d89f6eb6eeec87336540`. On GREEN, execute the recovery call-site structural audit, replace every production recovery observation-to-settlement path with the quorum-gated admission boundary, and add the end-to-end single-provider isolation fixture proving no durable settlement reconciliation occurs without policy-satisfying quorum evidence.
+Complete fresh certification `#429`. If GREEN, perform the next adversarial recovery/settlement audit across reorg, INCLUDED, REVERTED, DROP, and REPLACED evidence paths, ensuring every durable state mutation has policy-satisfying quorum provenance and that settlement reconciliation cannot consume unadmitted observation evidence.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
