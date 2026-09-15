@@ -7,7 +7,7 @@
 
 - Project: `manish91082-coder/ghost-hunter-new`
 - Active branch: `phase-19-e2e-harness`
-- Latest implementation-bearing commit: `408588c1a6a99c4cff545a6f5998c1500cce40ff`
+- Latest implementation-bearing commit: `e8ded6459a8d7a070310f49481f335043617650e`
 - Phase: Phase 19 execution-integrity / E2E policy harness
 - Live mainnet execution: **BLOCKED**
 - Live capital authorization: **BLOCKED**
@@ -33,19 +33,19 @@ Initial scope: Polygon, Aave V3, QuickSwap V2, Uniswap V3, USDC/WETH/WMATIC/WBTC
 
 Phase 19 currently includes strict realized-profit gating, all-in deterministic economics, Ethereum Keccak hashing, immutable intent/authorization/envelope binding, exact block-bound quotes, shared market-block handling, route simulation and topology commitment, loan optimization, EVM preflight, deterministic Governor, signer boundary, durable SQLite nonce/transaction state, atomic execution/replacement coordination, private-only submission, chain/recovery/reorg/replacement handling, receipt reconciliation, Solidity executor controls, Polygon fork harness, and adversarial/regression coverage.
 
-Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement-chain persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, and one-path coordinator artifact-chain certification.
+Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement-chain persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, one-path coordinator artifact-chain certification, and quorum-bound read-only executor authority attestation.
 
 ## 4. CURRENT AUTHORITY-PROOF HARDENING
 
-`phantomx/executor_authority.py` now provides `observe_executor_authority_quorum(...)`.
+`phantomx/executor_authority.py` provides `observe_executor_authority_quorum(...)`.
 
 The quorum observer:
 - verifies every configured provider identifies Polygon;
 - reads each provider's latest block and chooses one common block (`min(blocks)`);
 - reads executor `owner()` and runtime bytecode from every provider at that identical common block;
-- requires a unique provider consensus of at least the configured quorum on owner + runtime-code hash;
+- requires unique provider consensus of at least the configured quorum on owner + runtime-code hash;
 - rejects duplicate provider identities, wrong-chain providers, insufficient agreement, and ambiguous split consensus;
-- returns the existing immutable `ExecutorAuthorityEvidence`, preserving compatibility with the existing signer/governor chain.
+- returns the existing immutable `ExecutorAuthorityEvidence`, preserving compatibility with the signer/governor chain.
 
 This is a read-only authority attestation path. It does not sign or submit transactions.
 
@@ -60,26 +60,24 @@ This is a read-only authority attestation path. It does not sign or submit trans
 - Run `#268` on `ed3451f82c4c4934fe1c5bfe23623222a10d3a3b`: **GREEN**, 14/14 EVM + 3/3 Polygon smoke + 1/1 fork probe + **405/405 Python**.
 - Run `#269` on `de6eee477f0e1b8844c88de26be3e884cb8e9d4e`: **GREEN**, 14/14 EVM + 3/3 Polygon smoke + 1/1 fork probe + **406/406 Python**.
 - Run `#270` on `2cf90abcf8e613f09fefaa7ab35c4262be53e779`: **GREEN**, 14/14 EVM + 3/3 Polygon smoke + 1/1 fork probe + **407/407 Python**.
+- Run `#273` on `2b1a762181ff7488d234110b5d1596343d5dbbf5`: **GREEN**, 14/14 EVM + 3/3 Polygon smoke + 1/1 fork execution probe + **408/408 Python**.
 
-### Full artifact-chain gate
+### Authority-quorum checkpoint
 
-- Run `#273` on `2b1a762181ff7488d234110b5d1596343d5dbbf5`: **GREEN**.
-- CI job `104304561949` completed successfully.
-- Verified **14/14 EVM** tests.
-- Verified **3/3 Polygon protocol smoke** tests, using `https://polygon.drpc.org/`.
-- Verified **1/1 Polygon fork execution probe**, using `https://polygon.drpc.org/`.
-- Verified **408/408 Python** tests, including `test_complete_artifact_chain_reaches_signed_artifact`.
-- The run checked out exactly `2b1a762181ff7488d234110b5d1596343d5dbbf5`.
+- Commit `408588c1a6a99c4cff545a6f5998c1500cce40ff`: added quorum-bound executor authority observation and adversarial coverage.
+- Run `#275` for that commit: **FAILED** only in the Python unit-test step.
+- EVM compile/integration, Polygon fork smoke, and Polygon fork execution probe all passed before the Python gate failed.
+- Python result: **413 tests, 1 failure**.
+- Exact failure: `test_quorum_observation_uses_one_common_block_and_consensus_owner_and_code` asserted a sorted method list in non-sorted expected order. Actual sorted set was `['eth_blockNumber', 'eth_call', 'eth_chainId', 'eth_getCode']`; the test expected `['eth_call', 'eth_chainId', 'eth_getCode', 'eth_blockNumber']`.
+- Diagnosis: **test assertion defect, not an observed production-logic failure**. The quorum implementation reached the intended common-block/owner/code path; the brittle expectation incorrectly assumed a custom ordering after `sorted(...)`.
+- Commit `e8ded6459a8d7a070310f49481f335043617650e`: repaired the regression to compare the method set order-independently.
+- No blind rerun was used; the failure was first inspected and classified from the exact CI traceback.
 
-### Current implementation checkpoint
-
-- `408588c1a6a99c4cff545a6f5998c1500cce40ff`: quorum-bound executor authority observation implementation + tests.
-- Added coverage for common-block binding, owner/runtime consensus, ambiguous split consensus, insufficient quorum, duplicate provider names, and wrong-chain rejection.
-- A fresh Phase-19 CI run is expected from this implementation checkpoint; no result is claimed until observed.
+Node.js 20 deprecation messages remain warnings from the existing GitHub Actions action versions. They are not the cause of the failed test gate.
 
 ## 6. CURRENT BLOCKERS / P0 GATES
 
-1. Terminal CI evidence for the new quorum-authority checkpoint.
+1. Terminal CI evidence for repaired quorum-authority checkpoint `e8ded6459a8d7a070310f49481f335043617650e`.
 2. Controlled production signer identity proof without exposing private key material.
 3. Controlled production Polygon network/provider authority proof under approved endpoints.
 4. Production private relay capability with no public fallback.
@@ -105,24 +103,27 @@ These are not formal certification scores.
 
 ## 9. CURRENT CHECKPOINT
 
-**Timestamp:** 2026-09-15T13:45+05:30
+**Timestamp:** 2026-09-15T13:56+05:30
 
-**Atomic task:** P19-AUTH-01 — controlled production signer/network authority proof, beginning with quorum-bound read-only executor authority attestation.
+**Atomic task:** P19-AUTH-01 — quorum-bound controlled executor authority proof.
 
 **Changed files:**
-- `phantomx/executor_authority.py` — added `observe_executor_authority_quorum` with one common block and fail-closed provider consensus.
-- `tests/phase19/test_executor_authority.py` — added adversarial quorum/consensus regression coverage.
-- `PROJECT_STATUS.md` — synchronized with Run #273 GREEN and the new authority-proof checkpoint.
+- `phantomx/executor_authority.py` — quorum authority observer added in prior checkpoint.
+- `tests/phase19/test_executor_authority.py` — repaired brittle sorted-list assertion to an order-independent method-set assertion.
+- `PROJECT_STATUS.md` — synchronized with the exact Run #275 failure diagnosis and repair checkpoint.
 
 **Evidence actually observed:**
-- Run #273 is **GREEN** with 14/14 EVM, 3/3 Polygon smoke, 1/1 Polygon fork execution probe, and **408/408 Python**.
-- The new authority implementation has been committed but its CI result is not yet observed.
+- Run #273: **GREEN**, 408/408 Python plus all EVM/fork gates.
+- Run #275: **FAILURE**, but the only failure was the new authority-quorum test's incorrect expected ordering. The exact traceback and 413-test result were observed from CI logs.
+- Repair commit `e8ded6459a8d7a070310f49481f335043617650e` is now on the active branch. Its CI result is not yet observed.
 
-**Decision:** P19-SIGN-02 deterministic off-chain-to-signed artifact-chain gate is CLOSED GREEN by Run #273 evidence. Advance to P19-AUTH-01, but only as controlled read-only network authority proof. No production submission, no public broadcast, and no live capital.
+**Decision:** do **not** revert the quorum implementation. The observed failure is isolated to a test assertion. Preserve the authority design, repair only the brittle assertion, and require a fresh full CI GREEN before advancing to production-network authority validation.
 
-**Latest implementation checkpoint:** `408588c1a6a99c4cff545a6f5998c1500cce40ff`
+**Latest implementation checkpoint:** `e8ded6459a8d7a070310f49481f335043617650e`
 
-**Next atomic action:** observe CI for `408588c1a6a99c4cff545a6f5998c1500cce40ff`; on GREEN, perform the next controlled signer/network authority validation without exposing key material or authorizing execution.
+**Safety boundary:** No live signing, public broadcast, live capital, or production execution authorization is granted. Current authority work remains read-only and test-bound.
+
+**Next atomic action:** observe the CI result for `e8ded6459a8d7a070310f49481f335043617650e`. If GREEN, continue with controlled production signer/network authority validation. If RED, inspect the exact failing evidence before any further modification.
 
 ---
 
