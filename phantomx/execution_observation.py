@@ -9,6 +9,8 @@ import re
 from .chain_observer import ChainObservationState, ObservationDecision
 from .execution import ExecutionIntent, ExecutionState
 from .hashing import keccak256_hex
+from .production_chain_observation import QuorumChainObservation
+from .production_chain_observation_store import require_quorum_chain_observation
 from .sqlite_execution_store import SQLiteExecutionStore
 from .durable_nonce import NonceStatus
 
@@ -162,3 +164,54 @@ def persist_chain_observation(
             raise
 
     return PersistedObservation(sequence, row[0], observation, target_tx, target_nonce, evidence_hash)
+
+
+def persist_quorum_chain_observation(
+    *,
+    store: SQLiteExecutionStore,
+    intent: ExecutionIntent,
+    quorum_observation: QuorumChainObservation,
+    observation: ObservationDecision,
+    tx_nonce: int,
+    current_observed_block: int,
+    maximum_age_blocks: int,
+    minimum_attesting_providers: int = 1,
+    pending_nonce: int | None = None,
+    block_hash: str | None = None,
+    block_number: int | None = None,
+    canonical_block_hash: str | None = None,
+) -> PersistedObservation:
+    """Admit only a durable, fresh quorum observation before lifecycle mutation.
+
+    The supplied full chain evidence remains the source for canonical block
+    validation and hashing. The quorum admission record is an independent,
+    exact/fresh gate proving that the recovery observation originated from
+    persisted provider quorum evidence.
+    """
+    if not isinstance(quorum_observation, QuorumChainObservation):
+        raise ExecutionObservationError("quorum observation is required")
+    if observation.tx_hash.lower() != quorum_observation.tx_hash.lower():
+        raise ExecutionObservationError("quorum observation transaction hash mismatch")
+    if observation.state is not quorum_observation.decision.state:
+        raise ExecutionObservationError("quorum observation state mismatch")
+    if (observation.replacement_tx_hash or None) != (quorum_observation.decision.replacement_tx_hash or None):
+        raise ExecutionObservationError("quorum observation replacement binding mismatch")
+
+    require_quorum_chain_observation(
+        store=store,
+        intent_hash=intent.intent_hash(),
+        observation=quorum_observation,
+        current_observed_block=current_observed_block,
+        maximum_age_blocks=maximum_age_blocks,
+        minimum_attesting_providers=minimum_attesting_providers,
+    )
+    return persist_chain_observation(
+        store=store,
+        intent=intent,
+        observation=observation,
+        tx_nonce=tx_nonce,
+        pending_nonce=pending_nonce,
+        block_hash=block_hash,
+        block_number=block_number,
+        canonical_block_hash=canonical_block_hash,
+    )
