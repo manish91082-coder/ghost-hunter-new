@@ -33,9 +33,11 @@ def audit_store(store: SQLiteExecutionStore) -> RecoveryAudit:
 
     SIGNED is a legitimate pre-submission state: its durable transaction row
     already carries the transaction hash, while the nonce row may intentionally
-    remain hash-free until submission. SUBMITTED/INCLUDED require the nonce row
-    to carry the active transaction hash. REORGED/REPLACED/DROPPED are explicit
-    recovery states and also require the transaction identity to remain bound.
+    remain hash-free until submission. SUBMISSION_IN_FLIGHT is the crash-safe
+    uncertain relay state and requires the nonce to remain SIGNED with no active
+    submitted hash. SUBMITTED/INCLUDED require the nonce row to carry the active
+    transaction hash. REORGED/REPLACED/DROPPED are explicit recovery states and
+    also require the transaction identity to remain bound.
     """
     anomalies: list[str] = []
     with store._connect() as db:
@@ -61,10 +63,16 @@ def audit_store(store: SQLiteExecutionStore) -> RecoveryAudit:
                 anomalies.append(f"transaction {record_hash}: reservation mismatch")
             if nrow[1].lower() != intent_hash.lower():
                 anomalies.append(f"transaction {record_hash}: intent mismatch")
-            if nrow[3] is not None and nrow[3].lower() != tx_hash.lower():
+            if state == ExecutionState.SUBMISSION_IN_FLIGHT.value:
+                if nrow[2] != NonceStatus.SIGNED.value:
+                    anomalies.append(f"transaction {record_hash}: in-flight state requires SIGNED nonce lifecycle")
+                if nrow[3] is not None and nrow[3].lower() != tx_hash.lower():
+                    anomalies.append(f"transaction {record_hash}: in-flight nonce tx hash mismatch")
+            elif nrow[3] is not None and nrow[3].lower() != tx_hash.lower():
                 anomalies.append(f"transaction {record_hash}: nonce tx hash mismatch")
             expected = {
                 ExecutionState.SIGNED.value: NonceStatus.SIGNED.value,
+                ExecutionState.SUBMISSION_IN_FLIGHT.value: NonceStatus.SIGNED.value,
                 ExecutionState.PRIVATE_SUBMITTED.value: NonceStatus.SUBMITTED.value,
                 ExecutionState.PENDING.value: NonceStatus.SUBMITTED.value,
                 ExecutionState.INCLUDED.value: NonceStatus.INCLUDED.value,
@@ -78,6 +86,7 @@ def audit_store(store: SQLiteExecutionStore) -> RecoveryAudit:
                 ExecutionState.REORGED.value,
                 ExecutionState.REPLACED.value,
                 ExecutionState.DROPPED.value,
+                ExecutionState.SUBMISSION_IN_FLIGHT.value,
             } and not tx_hash:
                 anomalies.append(f"transaction {record_hash}: recovery state without transaction hash")
 
