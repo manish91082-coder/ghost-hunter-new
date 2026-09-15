@@ -14,7 +14,7 @@ from .economic_proof import EconomicProof
 from .execution import ExecutionState
 from .execution_assembly import ExecutionAssembly, assemble_execution
 from .evm_preflight import EVMPreflightResult, preflight_execution
-from .executor_authority import ExecutorAuthorityEvidence, ExecutorAuthorityError, verify_executor_authority
+from .executor_authority import ExecutorAuthorityEvidence, ExecutorAuthorityError
 from .governor import GovernorDecision, GovernorPolicy, govern_execution
 from .nonce_binding import BoundNonce, bind_nonce
 from .signer import SignedTransaction, TransactionSigner, sign_governed_transaction
@@ -102,12 +102,6 @@ def prepare_signed_execution(
             expected_signer=sender,
             current_observed_block=current_block_number,
             policy=authority_evidence_reuse_policy,
-        )
-        verify_executor_authority(
-            executor_authority,
-            chain_id=simulation.chain_id,
-            executor=executor,
-            sender=sender,
             minimum_observed_block=simulation.block_number,
         )
     except (ExecutorAuthorityError, ProductionAuthorityEvidenceError) as exc:
@@ -191,6 +185,7 @@ def prepare_signed_execution(
             executor_authority=executor_authority,
             now=now,
             authority_evidence_reuse_policy=authority_evidence_reuse_policy,
+            current_observed_block=current_block_number,
         )
         signed = True
 
