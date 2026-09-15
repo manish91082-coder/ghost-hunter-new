@@ -141,9 +141,9 @@ class ExecutionSubmissionTests(unittest.TestCase):
             reservation_id="res-submit",
         )
 
-    def _submit(self, prepared, relay=None, authority=None):
+    def _submit(self, prepared, relay=None, authority=None, store=None):
         return submit_prepared_execution(
-            store=self.store,
+            store=store or self.store,
             prepared=prepared,
             relay=relay or FakeRelay(),
             now=self.now,
@@ -173,6 +173,32 @@ class ExecutionSubmissionTests(unittest.TestCase):
         self.assertEqual(retry_relay.calls, 0)
         self.assertEqual(self.store.get_transaction(prepared.transaction_record.record_hash()).state, ExecutionState.PRIVATE_SUBMITTED)
         self.assertEqual(self.store.get_nonce(SENDER, 7).status, NonceStatus.SUBMITTED)
+
+    def test_ambiguous_relay_failure_is_durably_held_and_retry_is_blocked(self):
+        prepared = self._prepare()
+        failing_relay = FakeRelay(fail=True)
+        with self.assertRaisesRegex(ExecutionSubmissionError, "outcome is uncertain"):
+            self._submit(prepared, relay=failing_relay)
+        self.assertEqual(failing_relay.calls, 1)
+        self.assertEqual(
+            self.store.get_transaction(prepared.transaction_record.record_hash()).state,
+            ExecutionState.SUBMISSION_IN_FLIGHT,
+        )
+        reopened = SQLiteExecutionStore(self.store.path)
+        retry_relay = FakeRelay()
+        with self.assertRaisesRegex(ExecutionSubmissionError, "not in SIGNED state before private submission"):
+            self._submit(prepared, relay=retry_relay, store=reopened)
+        self.assertEqual(retry_relay.calls, 0)
+
+    def test_relay_hash_mismatch_is_durably_held_for_reconciliation(self):
+        prepared = self._prepare()
+        relay = FakeRelay(returned_hash="0x" + "99" * 32)
+        with self.assertRaisesRegex(ExecutionSubmissionError, "outcome is uncertain"):
+            self._submit(prepared, relay=relay)
+        self.assertEqual(
+            self.store.get_transaction(prepared.transaction_record.record_hash()).state,
+            ExecutionState.SUBMISSION_IN_FLIGHT,
+        )
 
     def test_later_observation_with_same_runtime_identity_is_accepted(self):
         prepared = self._prepare()
@@ -216,22 +242,6 @@ class ExecutionSubmissionTests(unittest.TestCase):
             self._submit(prepared, relay=relay)
         self.assertEqual(relay.calls, 0)
         self.assertEqual(self.store.get_transaction(prepared.transaction_record.record_hash()).state, ExecutionState.SIGNED)
-
-    def test_relay_hash_mismatch_is_rejected_and_state_stays_signed(self):
-        prepared = self._prepare()
-        relay = FakeRelay(returned_hash="0x" + "99" * 32)
-        with self.assertRaises(ExecutionSubmissionError):
-            self._submit(prepared, relay=relay)
-        self.assertEqual(self.store.get_transaction(prepared.transaction_record.record_hash()).state, ExecutionState.SIGNED)
-        self.assertEqual(self.store.get_nonce(SENDER, 7).status, NonceStatus.SIGNED)
-
-    def test_relay_failure_keeps_durable_record_signed_for_chain_reconciliation(self):
-        prepared = self._prepare()
-        relay = FakeRelay(fail=True)
-        with self.assertRaises(ExecutionSubmissionError):
-            self._submit(prepared, relay=relay)
-        self.assertEqual(self.store.get_transaction(prepared.transaction_record.record_hash()).state, ExecutionState.SIGNED)
-        self.assertEqual(self.store.get_nonce(SENDER, 7).status, NonceStatus.SIGNED)
 
 
 if __name__ == "__main__":
