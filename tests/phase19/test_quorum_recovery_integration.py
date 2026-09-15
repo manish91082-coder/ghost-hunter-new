@@ -1,23 +1,20 @@
 import ast
-import tempfile
 import unittest
 from pathlib import Path
 
 from phantomx.chain_observer import ChainObservationState, ObservationDecision
 from phantomx.execution import ExecutionState
 from phantomx.execution_observation import persist_quorum_chain_observation
+from phantomx.execution_submission import ExecutionSubmissionError, submit_prepared_execution
 from phantomx.production_chain_observation import QuorumChainObservation
 from phantomx.production_chain_observation_store import (
     ProductionChainObservationStoreError,
     persist_quorum_chain_observation as persist_quorum_evidence,
 )
-from phantomx.sqlite_execution_store import SQLiteExecutionStore
 
 from tests.phase19.test_execution_submission import ExecutionSubmissionTests, FakeRelay
 
 BLOCK_HASH = "0x" + "44" * 32
-TX = "0x" + "11" * 32
-INTENT = "0x" + "22" * 32
 
 
 class QuorumRecoveryIntegrationTests(unittest.TestCase):
@@ -44,8 +41,7 @@ class QuorumRecoveryIntegrationTests(unittest.TestCase):
             intent = prepared.assembly.intent
             tx_hash = prepared.signed_transaction.transaction_hash
 
-            with self.assertRaisesRegex(Exception, "outcome is uncertain"):
-                from phantomx.execution_submission import submit_prepared_execution
+            with self.assertRaisesRegex(ExecutionSubmissionError, "outcome is uncertain"):
                 submit_prepared_execution(
                     store=fixture.store,
                     prepared=prepared,
@@ -54,8 +50,9 @@ class QuorumRecoveryIntegrationTests(unittest.TestCase):
                     submission_authority=prepared.authority,
                 )
 
+            record_hash = prepared.transaction_record.record_hash()
             self.assertEqual(
-                fixture.store.get_transaction(prepared.transaction_record.record_hash()).state,
+                fixture.store.get_transaction(record_hash).state,
                 ExecutionState.SUBMISSION_IN_FLIGHT,
             )
 
@@ -99,7 +96,7 @@ class QuorumRecoveryIntegrationTests(unittest.TestCase):
                 )
 
             self.assertEqual(
-                fixture.store.get_transaction(prepared.transaction_record.record_hash()).state,
+                fixture.store.get_transaction(record_hash).state,
                 ExecutionState.SUBMISSION_IN_FLIGHT,
             )
             with fixture.store._connect() as db:
