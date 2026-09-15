@@ -72,6 +72,26 @@ class SignedChallenge:
 
 
 @dataclass(frozen=True)
+class SignedTransaction:
+    """Immutable signed artifact bound to exact governed evidence."""
+    intent_hash: str
+    governor_decision_hash: str
+    executor_runtime_binding_hash: str
+    transaction_hash: str
+    raw_transaction: bytes
+
+    def __post_init__(self) -> None:
+        for name in ("intent_hash", "governor_decision_hash", "executor_runtime_binding_hash", "transaction_hash"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or len(value) != 66 or not value.startswith("0x"):
+                raise SignerError(f"{name} must be a 32-byte 0x hash")
+        if not isinstance(self.raw_transaction, bytes) or not self.raw_transaction:
+            raise SignerError("signed transaction bytes are required")
+        if self.transaction_hash.lower() != keccak256_hex(self.raw_transaction).lower():
+            raise SignerError("signed transaction hash does not match raw transaction")
+
+
+@dataclass(frozen=True)
 class EthereumEip1559Signer:
     """Minimal network-free EIP-1559 signer with explicit Ethereum identity."""
     private_key: str
@@ -149,11 +169,7 @@ def recover_eip1559_sender(raw_transaction: bytes) -> str:
 
 
 def prove_signer_identity(*, signer: ChallengeSigner, expected_address: str, challenge: bytes) -> SignedChallenge:
-    """Prove control of an expected Ethereum signer without exposing key material.
-
-    The caller supplies fresh challenge bytes from an out-of-band verifier. The
-    signer returns only a signature; the private key never leaves the signer.
-    """
+    """Prove control of an expected Ethereum signer without exposing key material."""
     expected = expected_address.lower() if isinstance(expected_address, str) else expected_address
     _hex_address(expected, "expected_address")
     if not isinstance(challenge, bytes) or len(challenge) != 32:
@@ -170,13 +186,7 @@ def prove_signer_identity(*, signer: ChallengeSigner, expected_address: str, cha
         raise SignerError("signer challenge identity does not match expected address")
     challenge_hash = keccak256_hex(challenge)
     evidence_hash = keccak256_hex((challenge_hash + recovered).encode("ascii"))
-    return SignedChallenge(
-        challenge_hash=challenge_hash,
-        expected_address=expected,
-        recovered_address=recovered,
-        signature=signature,
-        evidence_hash=evidence_hash,
-    )
+    return SignedChallenge(challenge_hash=challenge_hash, expected_address=expected, recovered_address=recovered, signature=signature, evidence_hash=evidence_hash)
 
 
 def sign_governed_transaction(*, signer: TransactionSigner, governor: GovernorDecision, intent: ExecutionIntent, authorization: Authorization, envelope: TransactionEnvelope, executor_authority: ExecutorAuthorityEvidence, now: int) -> SignedTransaction:
@@ -214,8 +224,4 @@ def sign_governed_transaction(*, signer: TransactionSigner, governor: GovernorDe
     recovered_sender = recover_eip1559_sender(raw)
     if recovered_sender != intent.sender.lower():
         raise SignerError("recovered transaction sender does not match authorized intent sender")
-    return SignedTransaction(
-        intent_hash=intent.intent_hash(), governor_decision_hash=governor.decision_hash,
-        executor_runtime_binding_hash=runtime_code_binding_hash(executor_authority),
-        transaction_hash=keccak256_hex(raw), raw_transaction=raw,
-    )
+    return SignedTransaction(intent_hash=intent.intent_hash(), governor_decision_hash=governor.decision_hash, executor_runtime_binding_hash=runtime_code_binding_hash(executor_authority), transaction_hash=keccak256_hex(raw), raw_transaction=raw)
