@@ -5,6 +5,7 @@ from phantomx.executor_calldata import (
     EXECUTE_SIGNATURE,
     ExecutorCalldataError,
     build_executor_transaction,
+    decode_executor_calldata,
     executor_route_commitment,
     executor_selector,
     executor_topology_hash,
@@ -44,6 +45,14 @@ class ExecutorCalldataBindingTests(unittest.TestCase):
         self.assertEqual(bound.route_commitment, executor_route_commitment(route_hash=self.route_hash, topology_hash=bound.topology_hash))
         self.assertEqual(bound.bound_intent.minimum_surplus_token_amount, 5)
         self.assertNotEqual(bound.bound_intent.intent_hash(), self.intent.intent_hash())
+
+    def test_intent_mutation_invalidates_embedded_execution_commitment(self):
+        bound = self._build()
+        mutated = bound.bound_intent.with_field(deadline=bound.bound_intent.deadline + 1)
+        decoded = decode_executor_calldata(bound.calldata)
+        self.assertEqual(decoded.deadline, bound.bound_intent.deadline)
+        self.assertEqual(decoded.intent_commitment_hash, bound.intent_commitment_hash)
+        self.assertNotEqual(mutated.execution_commitment_hash(), decoded.intent_commitment_hash)
 
     def test_conflicting_intent_surplus_floor_is_rejected(self):
         with self.assertRaisesRegex(ExecutorCalldataError, "requested minimum surplus"):
