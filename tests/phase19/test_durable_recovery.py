@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import replace
 
 from phantomx.chain_observer import ChainObservationState, ObservationDecision
 from phantomx.durable_nonce import NonceStatus
@@ -28,10 +29,10 @@ class DurableRecoveryTests(unittest.TestCase):
         self.intent = self.prepared.assembly.intent
         self.nonce = self.intent.nonce
 
-    def _observation(self, state, *, replacement=None):
+    def _observation(self, state, *, replacement=None, tx_hash=None):
         return ObservationDecision(
             state=state,
-            tx_hash=self.tx_hash,
+            tx_hash=tx_hash or self.tx_hash,
             replacement_tx_hash=replacement,
             evidence_reason=f"test {state.value.lower()} evidence",
         )
@@ -74,6 +75,54 @@ class DurableRecoveryTests(unittest.TestCase):
         self.assertEqual(result.nonce_state, NonceStatus.REPLACED)
         self.assertEqual(self.store.get_transaction(self.prepared.transaction_record.record_hash()).state, ExecutionState.REPLACED)
         self.assertEqual(self.store.get_nonce(self.intent.sender, self.nonce).status, NonceStatus.REPLACED)
+
+    def test_recovery_binds_replacement_record_to_observed_transaction_hash(self):
+        replacement_hash = "0x" + "bb" * 32
+        replacement_record = replace(
+            self.prepared.transaction_record,
+            tx_hash=replacement_hash,
+            state=ExecutionState.PRIVATE_SUBMITTED,
+            replacement_of=self.prepared.transaction_record.tx_hash,
+        )
+        payload = replacement_record.canonical()
+        with self.store._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            db.execute(
+                "INSERT INTO transaction_records VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    replacement_record.record_hash(),
+                    payload["intent_hash"],
+                    payload["authorization_hash"],
+                    payload["reservation_id"],
+                    payload["chain_id"],
+                    payload["sender"],
+                    payload["executor"],
+                    payload["nonce"],
+                    payload["calldata_hash"],
+                    payload["gas_limit"],
+                    payload["max_fee_per_gas"],
+                    payload["max_priority_fee_per_gas"],
+                    payload["tx_hash"],
+                    payload["state"],
+                    payload["replacement_of"],
+                ),
+            )
+            db.execute("COMMIT")
+
+        result = persist_recovery_observation(
+            store=self.store,
+            intent=self.intent,
+            observation=self._observation(
+                ChainObservationState.REPLACED,
+                tx_hash=replacement_hash,
+                replacement="0x" + "cc" * 32,
+            ),
+            tx_nonce=self.nonce,
+            pending_nonce=self.nonce + 1,
+        )
+        self.assertEqual(result.transaction_record_hash, replacement_record.record_hash())
+        self.assertEqual(self.store.get_transaction(self.prepared.transaction_record.record_hash()).state, ExecutionState.SIGNED if False else ExecutionState.PRIVATE_SUBMITTED)
+        self.assertEqual(self.store.get_transaction(replacement_record.record_hash()).state, ExecutionState.REPLACED)
 
     def test_reorg_moves_included_record_to_reorged_and_reobservation_can_recover(self):
         persist_chain_observation(
