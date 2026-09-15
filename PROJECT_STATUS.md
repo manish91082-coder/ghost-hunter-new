@@ -8,7 +8,6 @@
 - Active branch: `phase-19-e2e-harness`
 - Latest regression-bearing commit: `fbf2fbbc9f37eb89c0b9a0ccff6a56b4d60ecf50`
 - Latest CI-hardening commit: `7f6aaeb331ea679738b01ce89ee6b44ed3ca5ee8`
-- Prior implementation-bearing commit: `164d4522abdf2b224e91a514a1d2bea065f30535`
 - Certification PR: `#1` (OPEN, ready for review, base `master`)
 - Phase: Phase 19 execution-integrity / E2E policy harness
 - Live mainnet execution: **BLOCKED**
@@ -60,26 +59,46 @@ Required before real production authority attestation: approved Polygon RPC prov
 ## 7. GO-LIVE RULE
 Every P0 gate must be GREEN with reproducible evidence before live capital. Any unchecked gate means **LIVE CAPITAL = LOCKED**.
 
-## 8. CURRENT CHECKPOINT
+## 8. DISTANCE-TO-GOAL SCORECARD
+This section separates code completion from real-life hunting readiness. The percentages below are explicit planning metrics, not claims of external evidence.
+
+### A. Engineering foundation
+- Deterministic Phase-19 execution-integrity implementation: **substantially built**.
+- Historical automated evidence exists, including prior GREEN Phase-19 runs, but these are not current-head certification.
+- Current-head certification: **0% certified**, because current connector visibility shows no authoritative current-head check-run/workflow result.
+- Practical assessment: **~85% engineering foundation complete**. This is a planning estimate based on the large set of already-implemented deterministic controls, not an independent test-derived percentage.
+
+### B. First real-life hunt readiness
+Required gates after the software foundation are: current-head CI, controlled signer identity, approved Polygon/provider authority, private relay, production-like startup/recovery + reorg policy, and identical-artifact shadow/staging evidence.
+- GREEN gates among these required pre-hunt gates today: **0 / 6**.
+- Therefore first real-money hunting readiness is **NOT READY**.
+- No exact calendar distance is asserted because the remaining gates depend on controlled external infrastructure/evidence that is not present in the repository.
+
+### C. Continuous hunting readiness
+Continuous hunting additionally requires the first hunt to produce verified realized PnL and then prove safe repeatability, restart/recovery, nonce lifecycle, replacement/drop handling, reorg handling, and operational observability under repeated cycles.
+- Continuous production evidence: **0 completed live cycles**.
+- Continuous hunting readiness: **NOT ACHIEVED**.
+
+### D. Simple answer in one line
+**Codebase: ~85% foundation complete. First real-life hunt: 0/6 production prerequisites GREEN, so not launchable yet. Continuous hunting: 0 verified live cycles, so not achieved.**
+
+## 9. CURRENT CHECKPOINT
 **Timestamp:** 2026-09-15
 
-**Atomic task completed:** CI execution-boundary hardening while preserving fail-closed certification.
+**Atomic task completed:** explicit distance-to-hunting readiness scorecard.
 
 **New work completed:**
-- Added workflow-level `permissions: contents: read` to enforce least privilege.
-- Added a 30-minute job timeout so a wedged fork/provider/test job cannot run indefinitely.
-- Preserved the deterministic compile + EVM + Polygon fork smoke + Polygon fork execution probe + Python test sequence.
-- Committed as `7f6aaeb331ea679738b01ce89ee6b44ed3ca5ee8`.
-- Re-checked branch state: current branch head is `35c491e28427919978ec9b834154afbe799c727c`, whose parent is the regression-bearing `fbf2fbbc9f37eb89c0b9a0ccff6a56b4d60ecf50`.
-- Re-checked workflow visibility: connector still exposes no authoritative workflow run for the current head.
+- Added a clear separation between engineering foundation, first-hunt readiness, and continuous-hunt readiness.
+- Recorded that current-head CI has **0% certification** because authoritative current-head check evidence is not exposed.
+- Recorded that **0/6** pre-hunt production prerequisites are GREEN today.
+- Recorded that continuous hunting has **0 verified live cycles**.
+- Preserved the live-capital lock and all existing safety boundaries.
 
-**Certification state:** current-head CI remains **UNKNOWN / NOT GREEN**. No pass is claimed.
-
-**Current verdict:** CI's security/runtime boundary is stronger, but certification evidence is still incomplete. The next gate remains authoritative current-head CI evidence; after GREEN, proceed to the highest-value production-like control gate.
+**Current verdict:** we are materially closer on the software/control foundation than on real-life launch. The remaining distance is dominated by controlled external evidence, not by adding random strategy features.
 
 **Safety boundary:** no live signing, public broadcast, live capital, or production execution authorization.
 
-**Next atomic action:** obtain authoritative current-head CI evidence. On GREEN, advance into controlled production-like signer/network/relay/shadow evidence. On FAILURE, freeze and perform forensic diagnosis before further feature work.
+**Next atomic action:** clear authoritative current-head CI first; then close signer identity, approved Polygon/provider authority, private relay, production-like recovery/reorg, and shadow/staging gates in that order. Only after those are GREEN can the first controlled real-life hunt be considered.
 
 ---
 
