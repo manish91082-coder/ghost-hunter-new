@@ -6,9 +6,12 @@
 ## 0. CURRENT RESUME CARD
 - Project: `manish91082-coder/ghost-hunter-new`
 - Active branch: `phase-19-e2e-harness`
-- Latest implementation commit: `76aa052b9b0087056d6b6da6aec924f89a507020`
-- Latest authority freshness implementation: `ea4e74dfb9a034c96faa9cd242055263c90bce0f`
+- Latest implementation commit: `c5708275680994243832dfa3d982eec10f57ce0e`
+- Latest signer freshness hardening: `66e2a2141e882bd191ff4373d575cd02713e9d9c`
+- Latest execution-coordinator freshness hardening: `c5708275680994243832dfa3d982eec10f57ce0e`
 - Latest authority freshness tests: `76aa052b9b0087056d6b6da6aec924f89a507020`
+- Latest coordinator freshness tests: `4bec83c21f85ca82e34bf86efb0f92a8f1d7ed3d`
+- Latest signer freshness tests: `9a4fd321e1725d1abece2d689a26cec60e379bf7`
 - Production Polygon authority assembly: `2492cd97c750bc3aa37b30d25e9bc9fcb2fb0864`
 - Production Polygon authority tests: `007789cabaa56b089ee89890b05596b7a1c18095`
 - Production authority operator audit CLI: `f02e6db75ca27a061372f956defbee90f2de0d97`
@@ -28,8 +31,12 @@
 - Production-authority CLI corrected boundary: run `#371` GREEN
 - Authority provenance implementation CI: run `#373` GREEN
 - Authority provenance certification: run `#376` GREEN for `fc0a1600...`
-- Authority provenance first implementation run `#375`: FAILED and superseded
-- Authority freshness/replay hardening: `ea4e74df...` implementation + `76aa052b...` tests; fresh CI pending
+- Authority freshness/replay run `#377`: FAILED, preserved as implementation/test contract evidence
+- Authority freshness implementation run `#378`: GREEN
+- Replay-resistant reuse policy run `#379`: GREEN
+- Reuse-boundary certification run `#380`: GREEN
+- Coordinator freshness integration: `c5708275...`; fresh CI pending
+- Signer freshness integration: `66e2a214...`; fresh CI pending
 - Certification PR: `#1` (OPEN, base `master`)
 - Phase: Phase 19 execution-integrity / E2E policy harness
 - Live mainnet execution: **BLOCKED**
@@ -53,7 +60,7 @@ Initial scope: Polygon, Aave V3, QuickSwap V2, Uniswap V3, USDC/WETH/WMATIC/WBTC
 ## 3. VERIFIED IMPLEMENTATION CAPABILITIES
 Phase 19 includes strict realized-profit gating, deterministic all-in economics, Keccak hashing, immutable intent/auth/envelope binding, exact block-bound quotes, route simulation and topology commitment, loan optimization, EVM preflight, Governor, signer boundary, durable SQLite nonce/transaction state, atomic replacement/recovery coordination, private-only submission, chain/recovery/reorg/replacement handling, receipt reconciliation, Solidity executor controls, Polygon fork harness, and adversarial/regression coverage.
 
-Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, one-path coordinator artifact-chain certification, quorum-bound read-only executor authority attestation, nullable durable-nonce-hash replacement coverage, restart-audit coverage proving a pre-submission `SIGNED` nonce may legitimately remain hash-free while the durable transaction record remains authoritative, CI runtime modernization to Node 24-compatible action majors, pre-network blocking of repeated submission of an already-submitted durable artifact, explicit regression coverage that terminal `PROFIT_CONFIRMED`/`PROFIT_FAILED` states cannot be reopened by reorg recovery evidence, least-privilege/time-bounded CI execution, rejection of an all-zero signer private key, a non-secret signer identity challenge/proof boundary with cryptographic address recovery, restoration of the immutable signed-transaction artifact, an external verifier that can independently validate challenge signatures without private-key access, an operator-safe signer CLI, a controlled production signer identity runbook, a strict read-only Polygon HTTP transport with an allowlisted method surface and no transaction submission path, an environment-driven production Polygon authority assembly boundary that accepts only explicitly supplied HTTPS endpoints, quorum, executor address, and expected signer address and feeds the existing read-only quorum/owner binding layer, an operator-facing production authority audit CLI that emits only canonical non-secret authority evidence and fails closed without echoing endpoint/provider exception detail, static production-authority surface checks, authority evidence that cryptographically records the names of the providers that actually attested the winning owner/runtime-code observation, and replay-resistant block-age freshness protection for authority evidence reuse.
+Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, one-path coordinator artifact-chain certification, quorum-bound read-only executor authority attestation, nullable durable-nonce-hash replacement coverage, restart-audit coverage proving a pre-submission `SIGNED` nonce may legitimately remain hash-free while the durable transaction record remains authoritative, CI runtime modernization to Node 24-compatible action majors, pre-network blocking of repeated submission of an already-submitted durable artifact, explicit regression coverage that terminal `PROFIT_CONFIRMED`/`PROFIT_FAILED` states cannot be reopened by reorg recovery evidence, least-privilege/time-bounded CI execution, rejection of an all-zero signer private key, a non-secret signer identity challenge/proof boundary with cryptographic address recovery, restoration of the immutable signed-transaction artifact, an external verifier that can independently validate challenge signatures without private-key access, an operator-safe signer CLI, a controlled production signer identity runbook, a strict read-only Polygon HTTP transport with an allowlisted method surface and no transaction submission path, an environment-driven production Polygon authority assembly boundary that accepts only explicitly supplied HTTPS endpoints, quorum, executor address, and expected signer address and feeds the existing read-only quorum/owner binding layer, an operator-facing production authority audit CLI that emits only canonical non-secret authority evidence and fails closed without echoing endpoint/provider exception detail, static production-authority surface checks, authority evidence that cryptographically records the names of the providers that actually attested the winning owner/runtime-code observation, replay-resistant block-age freshness protection for authority evidence reuse, and freshness enforcement at both the execution-coordinator and signer boundaries.
 
 ## 4. CI CERTIFICATION PATH
 The Phase-19 workflow runs on branch pushes and pull requests to `master`, while ignoring status-only changes. It uses `actions/checkout@v5` and `actions/setup-python@v6`, grants only `contents: read`, enforces a 30-minute job timeout, then performs Foundry compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the Phase-19 unittest suite.
@@ -70,7 +77,9 @@ Run `#368` validated the initial production authority CLI. Run `#369` exposed a 
 
 Run `#373` validated the provider-provenance implementation. Run `#374` validated the provenance test contract. Run `#375` exposed a genuine implementation/test mismatch. Run `#376` then completed successfully for `fc0a1600...`, certifying the provenance output layer.
 
-The newest authority freshness/replay hardening is implemented but fresh CI has not yet been observed. No GREEN claim is made for `ea4e74df...` / `76aa052b...` yet.
+The user supplied GitHub Actions evidence shows the authority freshness sequence: run `#377` failed on the first freshness implementation/test contract, while runs `#378`, `#379`, and `#380` completed successfully for the successive repairs/certification layers. These screenshots are accepted as user-observed CI evidence for those run numbers.
+
+The newer coordinator and signer integrations are not yet backed by an independently observable fresh CI result through the available status interface. Therefore no GREEN claim is made for `c5708275...` or `66e2a214...` yet.
 
 Historical GREEN runs remain historical evidence only and do not substitute for current implementation proof.
 
@@ -78,6 +87,8 @@ Historical GREEN runs remain historical evidence only and do not substitute for 
 The signer exposes a non-secret cryptographic challenge proof. The external verifier accepts a fresh 32-byte challenge and a 65-byte signature, recovers the Ethereum address, requires an exact match with the expected address, and rebuilds the immutable evidence record. The verifier requires no signer object and no private-key access.
 
 The operator CLI generates fresh challenges and verifies externally produced signatures. The checked-in runbook defines the controlled production procedure, acceptance criteria, provenance requirements, and fail-closed handling. The mechanism is CI-certified. The **actual production signer identity gate remains NOT GREEN** until real externally held production-signer evidence is supplied and independently verified.
+
+The transaction signer boundary now requires the supplied authority evidence to satisfy exact executor/signer binding and a bounded freshness window against the Governor decision block. A strict one-block default preserves safe behavior for existing callers; production coordinator callers pass the explicit policy object.
 
 ## 6. CURRENT POLYGON RPC / AUTHORITY GATE
 `phantomx/polygon_rpc.py` is the fail-closed read policy boundary: Polygon chain 137 is mandatory, provider identity is explicit, and quorum disagreement fails closed. `phantomx/polygon_rpc_http.py` is CI-certified as a separate network transport. It permits only read methods needed by the Phase-19 observation path; write/submission methods and unknown methods are blocked before network I/O.
@@ -88,7 +99,7 @@ The operator CLI generates fresh challenges and verifies externally produced sig
 
 `ExecutorAuthorityEvidence` records the provider names that attested the winning owner/runtime-code result. These names are included in the canonical evidence digest, so changing the attesting set changes evidence identity. Runtime code binding deliberately excludes provider names because it represents the deployed owner/code identity independent of transport provenance.
 
-`verify_executor_authority_freshness` rejects authority evidence from the future and evidence older than the explicit maximum block-age window. `AuthorityEvidenceReusePolicy` and `verify_reusable_production_authority_evidence` combine exact executor/signer binding with that freshness check and collapse reuse failures to a generic blocked outcome.
+`verify_executor_authority_freshness` rejects authority evidence from the future and evidence older than the explicit maximum block-age window. `AuthorityEvidenceReusePolicy` and `verify_reusable_production_authority_evidence` combine exact executor/signer binding with that freshness check and collapse reuse failures to a generic blocked outcome. The execution coordinator now invokes this production reuse boundary before nonce reservation, and passes the same explicit policy into the signer boundary.
 
 This is **configuration/orchestration/CLI/static-surface/provenance/freshness implementation certification, not production authority certification**. The actual P0 authority gate still requires real explicitly approved provider endpoints, a confirmed intended deployed executor address, the expected signer address, fresh multi-provider quorum evidence against that exact executor, and controlled provenance of the observing environment.
 
@@ -101,7 +112,7 @@ This is **configuration/orchestration/CLI/static-surface/provenance/freshness im
 6. **Final realized live PnL evidence** after all preceding gates are GREEN.
 7. Live mainnet capital deployment remains forbidden.
 
-Required before real production authority attestation: approved Polygon RPC provider set, controlled confirmation of the intended deployed executor address, expected signer address, fresh authority evidence with attesting-provider provenance, explicit evidence-reuse age policy, and controlled evidence retention. Private key material stays outside repository code, fixtures, logs, and chat.
+Required before real production authority attestation: approved Polygon RPC provider set, controlled confirmation of the intended deployed executor address, expected signer address, fresh authority evidence with attesting-provider provenance, explicit evidence-reuse age policy, controlled evidence retention, and fresh CI certification of every newly modified execution/signer consumer.
 
 ## 8. GO-LIVE RULE
 Every P0 gate must be GREEN with reproducible evidence before live capital. Any unchecked gate means **LIVE CAPITAL = LOCKED**.
@@ -117,10 +128,12 @@ These are explicit planning metrics, not claims of external evidence.
 - Production authority assembly/test layer: **GREEN** through run `#367`.
 - Operator authority observation CLI: **GREEN** through run `#371`.
 - Provider-provenance implementation/test layer: **GREEN** through run `#376` for the tested commits.
-- Authority freshness/replay protection: **implemented; fresh CI pending**.
+- Authority freshness/replay protection: **GREEN** through user-observed runs `#378`, `#379`, `#380`.
+- Execution-coordinator freshness integration: **implemented; fresh CI pending**.
+- Signer freshness integration: **implemented; fresh CI pending**.
 
 ### B. First real-life hunt readiness
-- Fresh current implementation CI GREEN: **NO, not yet established for the latest freshness hardening**.
+- Fresh current implementation CI GREEN: **NO, not yet established for latest coordinator/signer integration**.
 - Production-control gates GREEN: **0 / 5**.
 - First real-money hunt: **NOT READY**.
 
@@ -131,19 +144,21 @@ These are explicit planning metrics, not claims of external evidence.
 ## 10. CURRENT CHECKPOINT
 **Timestamp:** 2026-09-15
 
-**Atomic task completed:** added replay-resistant authority-evidence reuse protection based on the observed Polygon block. Evidence is now rejectable when it is from the future or exceeds the configured maximum block-age window, and the production-specific reuse helper requires exact executor/signer binding plus freshness validation.
+**Atomic task completed:** acted on the user-supplied freshness CI evidence, preserved the failed #377 contract discovery, recognized successful #378/#379/#380 certification, then propagated the explicit authority freshness policy through the execution coordinator and signer boundaries with targeted replay/future-evidence regression tests.
 
 **New evidence:**
-- Authority freshness implementation: `ea4e74df...`.
-- Authority freshness tests: `76aa052b...`.
-- User-supplied CI evidence: run `#376` GREEN for `fc0a1600...`.
-- Fresh CI for the newest freshness hardening: **NOT YET OBSERVED**.
+- User-observed freshness CI: `#377` FAILED, `#378` GREEN, `#379` GREEN, `#380` GREEN.
+- Coordinator integration: `c5708275...`.
+- Coordinator tests: `4bec83c2...`.
+- Signer integration: `66e2a214...`.
+- Signer tests: `9a4fd321...`.
+- Fresh CI for the newest coordinator/signer changes: **NOT YET OBSERVED**.
 
-**Current verdict:** provider provenance is CI-certified through user-observed run `#376`. Freshness/replay protection is implemented but awaits fresh CI certification. Actual production signer identity and actual production Polygon/provider authority remain unproven and therefore blocked.
+**Current verdict:** authority evidence now has bounded replay/freshness controls at the reusable-evidence layer, execution-coordinator boundary, and signer boundary. Production signer identity and production Polygon/provider authority remain unproven and therefore blocked. The newest consumer integrations await their own fresh CI certification.
 
 **Safety boundary:** no live signing, public broadcast, live capital, or production execution authorization.
 
-**Next atomic action:** obtain fresh CI certification for `ea4e74df...` / `76aa052...`; if GREEN, perform a deterministic replay/retention audit across authority evidence consumers and ensure every production reuse path requires an explicit freshness check before execution authorization.
+**Next atomic action:** certify `c5708275...` / `66e2a214...` in fresh CI; if a contract mismatch appears, preserve and repair it minimally. Once GREEN, perform the final authority-consumer static trace to verify there is no alternate production signing or authorization path that bypasses the freshness gate.
 
 ---
 
