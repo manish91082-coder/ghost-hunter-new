@@ -69,7 +69,9 @@ def persist_chain_observation(
     terminates the execution as PROFIT_FAILED and advances the nonce to
     INCLUDED. A transaction left in SUBMISSION_IN_FLIGHT by an uncertain relay
     outcome follows the same observation rules, but it can never be restored to
-    SIGNED by chain observation.
+    SIGNED by chain observation. A SIGNED nonce is therefore accepted only while
+    the transaction itself is SUBMISSION_IN_FLIGHT and is immediately advanced
+    to the evidence-proven submitted/included terminal lifecycle.
     Drop, replacement and reorg evidence use the dedicated recovery adapter.
     """
     _ensure_schema(store)
@@ -114,16 +116,27 @@ def persist_chain_observation(
                 raise ExecutionObservationError("durable nonce binding is missing")
             nonce_state = NonceStatus(nrow[0])
 
+            in_flight_signed_nonce = tx_state is ExecutionState.SUBMISSION_IN_FLIGHT and nonce_state is NonceStatus.SIGNED
+
             if observation.state is ChainObservationState.PENDING:
-                if tx_state not in {ExecutionState.PRIVATE_SUBMITTED, ExecutionState.SUBMISSION_IN_FLIGHT, ExecutionState.PENDING, ExecutionState.REORGED} or nonce_state not in {NonceStatus.SUBMITTED, NonceStatus.REORGED}:
+                allowed_nonce = {NonceStatus.SUBMITTED, NonceStatus.REORGED}
+                if in_flight_signed_nonce:
+                    allowed_nonce.add(NonceStatus.SIGNED)
+                if tx_state not in {ExecutionState.PRIVATE_SUBMITTED, ExecutionState.SUBMISSION_IN_FLIGHT, ExecutionState.PENDING, ExecutionState.REORGED} or nonce_state not in allowed_nonce:
                     raise ExecutionObservationError("PENDING evidence conflicts with durable lifecycle")
                 target_tx, target_nonce = ExecutionState.PENDING, NonceStatus.SUBMITTED
             elif observation.state is ChainObservationState.INCLUDED:
-                if tx_state not in {ExecutionState.PRIVATE_SUBMITTED, ExecutionState.SUBMISSION_IN_FLIGHT, ExecutionState.PENDING, ExecutionState.INCLUDED, ExecutionState.REORGED} or nonce_state not in {NonceStatus.SUBMITTED, NonceStatus.INCLUDED, NonceStatus.REORGED}:
+                allowed_nonce = {NonceStatus.SUBMITTED, NonceStatus.INCLUDED, NonceStatus.REORGED}
+                if in_flight_signed_nonce:
+                    allowed_nonce.add(NonceStatus.SIGNED)
+                if tx_state not in {ExecutionState.PRIVATE_SUBMITTED, ExecutionState.SUBMISSION_IN_FLIGHT, ExecutionState.PENDING, ExecutionState.INCLUDED, ExecutionState.REORGED} or nonce_state not in allowed_nonce:
                     raise ExecutionObservationError("INCLUDED evidence conflicts with durable lifecycle")
                 target_tx, target_nonce = ExecutionState.INCLUDED, NonceStatus.INCLUDED
             elif observation.state is ChainObservationState.REVERTED:
-                if tx_state not in {ExecutionState.PRIVATE_SUBMITTED, ExecutionState.SUBMISSION_IN_FLIGHT, ExecutionState.PENDING, ExecutionState.INCLUDED, ExecutionState.REORGED} or nonce_state not in {NonceStatus.SUBMITTED, NonceStatus.INCLUDED, NonceStatus.REORGED}:
+                allowed_nonce = {NonceStatus.SUBMITTED, NonceStatus.INCLUDED, NonceStatus.REORGED}
+                if in_flight_signed_nonce:
+                    allowed_nonce.add(NonceStatus.SIGNED)
+                if tx_state not in {ExecutionState.PRIVATE_SUBMITTED, ExecutionState.SUBMISSION_IN_FLIGHT, ExecutionState.PENDING, ExecutionState.INCLUDED, ExecutionState.REORGED} or nonce_state not in allowed_nonce:
                     raise ExecutionObservationError("REVERTED evidence conflicts with durable lifecycle")
                 target_tx, target_nonce = ExecutionState.PROFIT_FAILED, NonceStatus.INCLUDED
             else:
