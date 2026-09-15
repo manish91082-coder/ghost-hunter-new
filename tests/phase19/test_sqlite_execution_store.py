@@ -73,7 +73,7 @@ class SQLiteExecutionStoreTests(unittest.TestCase):
     def test_replacement_persistence_rolls_back_source_and_nonce_on_insert_failure(self):
         self._move_to_dropped()
         source = self.store.get_transaction(self.record.record_hash())
-        nonce = self.store.get_nonce(self.sender, 42)
+        before_nonce = self.store.get_nonce(self.sender, 42)
         replacement_hash = "0x" + "22" * 32
         # Force the replacement INSERT to fail at the database uniqueness boundary
         # after the source/nonce validation has already succeeded.
@@ -109,16 +109,17 @@ class SQLiteExecutionStoreTests(unittest.TestCase):
             self.store.persist_signed_replacement(
                 source_record_hash=source.record_hash(),
                 replacement_record=replacement_record,
-                replacement_nonce=nonce,
+                replacement_nonce=before_nonce,
             )
 
         restarted = SQLiteExecutionStore(self.path)
-        self.assertEqual(restarted.get_transaction(source.record_hash()).state, ExecutionState.DROPPED)
-        restarted_nonce = restarted.get_nonce(self.sender, 42)
-        self.assertEqual(restarted_nonce.status, NonceStatus.DROPPED)
-        self.assertEqual(restarted_nonce.tx_hash, self.tx_hash)
-        self.assertIsNone(restarted_nonce.replacement_of)
-        self.assertEqual(restarted.get_transaction(source.record_hash()).tx_hash, self.tx_hash)
+        after_source = restarted.get_transaction(source.record_hash())
+        after_nonce = restarted.get_nonce(self.sender, 42)
+        self.assertEqual(after_source.state, source.state)
+        self.assertEqual(after_source.tx_hash, source.tx_hash)
+        self.assertEqual(after_nonce.status, before_nonce.status)
+        self.assertEqual(after_nonce.tx_hash, before_nonce.tx_hash)
+        self.assertEqual(after_nonce.replacement_of, before_nonce.replacement_of)
         with restarted._connect() as db:
             self.assertEqual(db.execute("SELECT COUNT(*) FROM transaction_records WHERE tx_hash=?", (replacement_hash,)).fetchone()[0], 1)
 
