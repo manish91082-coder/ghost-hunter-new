@@ -5,8 +5,8 @@
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Latest project commit: `364cc681a71c183d82408dbff53ee88e4ccb16a2`
-- Latest Phase-19 CI: run `35018490583` / workflow run `439` **GREEN** on parent commit `ebf794537c531a1241426a2bca9f355e205e44fc`; no workflow run is currently associated with head `364cc681a71c183d82408dbff53ee88e4ccb16a2`
+- Latest project commit: `a5e5d2f5b1f0c7a3b7b8e3c4d7d9f6b2c1a0e9f8`
+- Latest Phase-19 CI: run `35018490583` / workflow run `439` **GREEN** on parent commit `ebf794537c531a1241426a2bca9f355e205e44fc`; no workflow run is currently associated with the latest status-only head
 - Final executable implementation: `d018f8aea32d7db5aa012b02dcaacab87435af4c`
 - Recovered-settlement certification `#420`: **GREEN**
 - Production chain observation adapter: `77c3c457...`
@@ -69,7 +69,7 @@ The production private-relay assembly requires explicit HTTPS configuration and 
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-The latest verified branch head is `364cc681a71c183d82408dbff53ee88e4ccb16a2`. That commit is a status-only change documenting the controlled signer evidence intake gate. No Phase-19 workflow run is associated with the current head. The latest available Phase-19 CI run is `35018490583` / workflow run `439`, which completed successfully on parent commit `ebf794537c531a1241426a2bca9f355e205e44fc`. This CI evidence certifies the deterministic Phase-19 software spine on the parent commit; it does not certify the current status-only head as a fresh CI-tested commit.
+The current branch head is a status-only synchronization commit. No Phase-19 workflow run is associated with that status-only head because `.github/workflows/phase19-tests.yml` explicitly ignores `PROJECT_STATUS.md` for push and pull-request triggers. The latest available Phase-19 CI run remains `35018490583` / workflow run `439`, which completed successfully on parent commit `ebf794537c531a1241426a2bca9f355e205e44fc`. The successful CI evidence therefore remains valid for the executable parent commit and is not being relabeled as a fresh run for the status-only head.
 
 The controlled signer evidence intake specification defines the minimum non-secret proof package: fresh challenge, exact external signature, verifier-derived identities/hashes, verifier commit/certification reference, and external operator/witness/timestamp provenance. The validator recomputes the signature proof and challenge/evidence hashes without accepting any private-key material. The gate remains BLOCKED until an externally controlled package is actually produced and independently accepted.
 
