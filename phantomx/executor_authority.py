@@ -1,10 +1,10 @@
 """Fail-closed executor authority attestation for Phase 19.
 
 This layer does not sign or submit transactions. It binds a deployed executor
-address, its observed owner, Polygon chain identity, observation block, and
-runtime code hash into immutable evidence. The execution coordinator can use
-this evidence to prove that the cryptographic signer address is also the actual
-owner/controller of the deployed executor instance.
+address, its observed owner, Polygon chain identity, observation block, runtime
+code hash, and provider provenance into immutable evidence. The execution
+coordinator can use this evidence to prove that the cryptographic signer
+address is also the actual owner/controller of the deployed executor instance.
 """
 from __future__ import annotations
 
@@ -63,6 +63,7 @@ class ExecutorAuthorityEvidence:
     owner: str
     observed_block: int
     runtime_code_hash: str
+    attesting_provider_names: tuple[str, ...] = ()
     evidence_hash: str = ""
 
     def __post_init__(self) -> None:
@@ -75,6 +76,13 @@ class ExecutorAuthorityEvidence:
         object.__setattr__(self, "executor", _address(self.executor, "executor"))
         object.__setattr__(self, "owner", _address(self.owner, "owner"))
         object.__setattr__(self, "runtime_code_hash", _hash(self.runtime_code_hash, "runtime_code_hash"))
+        if not isinstance(self.attesting_provider_names, tuple) or not all(
+            isinstance(name, str) and name.strip() for name in self.attesting_provider_names
+        ):
+            raise ExecutorAuthorityError("attesting provider names must be a tuple of non-empty strings")
+        if len(set(self.attesting_provider_names)) != len(self.attesting_provider_names):
+            raise ExecutorAuthorityError("attesting provider names must be unique")
+        object.__setattr__(self, "attesting_provider_names", tuple(self.attesting_provider_names))
         expected = self._digest()
         if self.evidence_hash:
             if self.evidence_hash.lower() != expected:
@@ -91,6 +99,7 @@ class ExecutorAuthorityEvidence:
             "owner": self.owner,
             "observed_block": self.observed_block,
             "runtime_code_hash": self.runtime_code_hash,
+            "attesting_provider_names": list(self.attesting_provider_names),
         }
         encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
         return keccak256_hex(encoded)
@@ -163,6 +172,7 @@ def observe_executor_authority(provider: RPCProvider, executor: str) -> Executor
         owner=owner,
         observed_block=block_number,
         runtime_code_hash=keccak256_hex(runtime_code),
+        attesting_provider_names=(provider.name,),
     )
 
 
@@ -251,6 +261,7 @@ def observe_executor_authority_quorum(
         owner=owner,
         observed_block=common_block,
         runtime_code_hash=runtime_hash,
+        attesting_provider_names=tuple(sorted(winner_providers)),
     )
 
 
