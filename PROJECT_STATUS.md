@@ -71,20 +71,23 @@ This is a read-only authority attestation path. It does not sign or submit trans
 - Exact failure: `test_quorum_observation_uses_one_common_block_and_consensus_owner_and_code` asserted a sorted method list in non-sorted expected order. Actual sorted set was `['eth_blockNumber', 'eth_call', 'eth_chainId', 'eth_getCode']`; the test expected `['eth_call', 'eth_chainId', 'eth_getCode', 'eth_blockNumber']`.
 - Diagnosis: **test assertion defect, not an observed production-logic failure**. The quorum implementation reached the intended common-block/owner/code path; the brittle expectation incorrectly assumed a custom ordering after `sorted(...)`.
 - Commit `e8ded6459a8d7a070310f49481f335043617650e`: repaired the regression to compare the method set order-independently.
-- No blind rerun was used; the failure was first inspected and classified from the exact CI traceback.
+- Run `#276` on `e8ded6459a8d7a070310f49481f335043617650e`: **GREEN**.
+- Run #276 checked out the exact repair commit and passed **14/14 EVM**, **3/3 Polygon fork smoke**, **1/1 Polygon fork execution probe**, and **413/413 Python** tests.
+- The corrected quorum regression passed in #276, confirming the repair without changing the quorum implementation.
 
-Node.js 20 deprecation messages remain warnings from the existing GitHub Actions action versions. They are not the cause of the failed test gate.
+Node.js 20 deprecation messages remain warnings from the existing GitHub Actions action versions. They are not a CI failure and are not the reason for any test-gate failure.
 
 ## 6. CURRENT BLOCKERS / P0 GATES
 
-1. Terminal CI evidence for repaired quorum-authority checkpoint `e8ded6459a8d7a070310f49481f335043617650e`.
-2. Controlled production signer identity proof without exposing private key material.
-3. Controlled production Polygon network/provider authority proof under approved endpoints.
-4. Production private relay capability with no public fallback.
-5. Startup/recovery safety under production-like conditions.
-6. Controlled shadow/staging evidence using the identical immutable artifact chain.
-7. Final realized live PnL evidence after all preceding gates are GREEN.
-8. Live mainnet capital deployment remains forbidden.
+1. Controlled production signer identity proof without exposing private key material.
+2. Controlled production Polygon network/provider authority proof using explicitly approved production endpoints and the deployed executor address.
+3. Production private relay capability with no public fallback.
+4. Startup/recovery safety under production-like conditions.
+5. Controlled shadow/staging evidence using the identical immutable artifact chain.
+6. Final realized live PnL evidence after all preceding gates are GREEN.
+7. Live mainnet capital deployment remains forbidden.
+
+**Required inputs before real production authority attestation:** an approved production Polygon RPC endpoint set, the deployed executor address, and the expected signer address. Private key material must remain outside repository code, logs, test fixtures, and chat.
 
 ## 7. GO-LIVE RULE
 
@@ -96,34 +99,34 @@ The first live hunt is not date-scheduled. It becomes eligible only after determ
 
 Engineering readiness estimates only:
 - Core architecture + deterministic implementation: approximately **75–80%**.
-- Go-live evidence/certification: approximately **55–65%**.
-- Overall mission toward first controlled live hunt: approximately **68–72%**.
+- Go-live evidence/certification: approximately **60–65%**.
+- Overall mission toward first controlled live hunt: approximately **69–73%**.
 
 These are not formal certification scores.
 
 ## 9. CURRENT CHECKPOINT
 
-**Timestamp:** 2026-09-15T13:56+05:30
+**Timestamp:** 2026-09-15T14:38+05:30
 
 **Atomic task:** P19-AUTH-01 — quorum-bound controlled executor authority proof.
 
 **Changed files:**
-- `phantomx/executor_authority.py` — quorum authority observer added in prior checkpoint.
-- `tests/phase19/test_executor_authority.py` — repaired brittle sorted-list assertion to an order-independent method-set assertion.
-- `PROJECT_STATUS.md` — synchronized with the exact Run #275 failure diagnosis and repair checkpoint.
+- `phantomx/executor_authority.py` — quorum authority observer remains unchanged after certification.
+- `tests/phase19/test_executor_authority.py` — repaired brittle sorted-list assertion; repair is now CI-certified.
+- `PROJECT_STATUS.md` — synchronized with Run #276 GREEN and the next controlled validation gate.
 
 **Evidence actually observed:**
 - Run #273: **GREEN**, 408/408 Python plus all EVM/fork gates.
-- Run #275: **FAILURE**, but the only failure was the new authority-quorum test's incorrect expected ordering. The exact traceback and 413-test result were observed from CI logs.
-- Repair commit `e8ded6459a8d7a070310f49481f335043617650e` is now on the active branch. Its CI result is not yet observed.
+- Run #275: **FAILURE**, isolated to the brittle quorum-test ordering assertion; exact traceback observed.
+- Run #276: **GREEN**, exact repair commit `e8ded6459a8d7a070310f49481f335043617650e`, 14/14 EVM, 3/3 Polygon smoke, 1/1 Polygon fork execution probe, and 413/413 Python.
 
-**Decision:** do **not** revert the quorum implementation. The observed failure is isolated to a test assertion. Preserve the authority design, repair only the brittle assertion, and require a fresh full CI GREEN before advancing to production-network authority validation.
+**Decision:** P19-AUTH-01 test/implementation certification is now GREEN. Do not modify the authority algorithm merely to chase historical test noise. Advance to the real controlled authority proof only when the approved production inputs exist. That proof must remain read-only and must bind chain, executor, owner, runtime-code hash, and one common observation block across the configured provider quorum.
 
 **Latest implementation checkpoint:** `e8ded6459a8d7a070310f49481f335043617650e`
 
-**Safety boundary:** No live signing, public broadcast, live capital, or production execution authorization is granted. Current authority work remains read-only and test-bound.
+**Safety boundary:** No live signing, public broadcast, live capital, or production execution authorization is granted. Production authority work is still observation-only.
 
-**Next atomic action:** observe the CI result for `e8ded6459a8d7a070310f49481f335043617650e`. If GREEN, continue with controlled production signer/network authority validation. If RED, inspect the exact failing evidence before any further modification.
+**Next atomic action:** obtain/validate the approved production Polygon provider set, deployed executor address, and expected signer address, then perform read-only quorum attestation and signer-identity cross-check. If those inputs are unavailable, keep the gate BLOCKED rather than substituting public test endpoints.
 
 ---
 
