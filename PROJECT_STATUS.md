@@ -14,7 +14,6 @@
 - Live mainnet execution: **BLOCKED**
 - Live capital: **LOCKED**
 - Production readiness: **NOT ACHIEVED**
-- Economic invariant: realized net profit must be **strictly greater than $0.20 after all applicable costs**
 
 ## SAFETY
 Evidence first. Contradictory or missing evidence is UNKNOWN/BLOCKED. Private execution has no public fallback. No live signing, public broadcast, production execution authorization, or live capital is granted during Phase 19 certification. Private keys and relay authentication material never enter repository code, fixtures, logs, or chat.
@@ -25,7 +24,9 @@ Evidence first. Contradictory or missing evidence is UNKNOWN/BLOCKED. Private ex
 ## VERIFIED CAPABILITIES
 Deterministic economics, immutable authorization/envelope binding, quote and simulation evidence, EVM preflight, Governor, signer verification, durable nonce/transaction state, private-only submission, recovery, receipt reconciliation, executor controls, and authority quorum/provenance/freshness controls are implemented. #420 certified the recovered-settlement repair.
 
-The new production chain observer is read-only. It verifies Polygon identity, gathers transaction/receipt/pending-nonce evidence, validates receipt block canonicality, groups provider observations deterministically, and requires a unique quorum-backed decision. It has no signing or submission dependency.
+The production chain observer is read-only. It verifies Polygon identity, gathers transaction/receipt/pending-nonce evidence, validates receipt block canonicality, groups provider observations deterministically, and requires a unique quorum-backed decision. It has no signing or submission dependency.
+
+The HTTP read-only transport permits transaction and receipt lookup methods required by the observer while submission/write methods remain blocked before network I/O.
 
 ## P0 BLOCKERS
 1. Controlled production signer identity proof.
@@ -37,7 +38,7 @@ The new production chain observer is read-only. It verifies Polygon identity, ga
 7. Live mainnet capital remains forbidden.
 
 ## CHECKPOINT
-#420 GREEN certified the recovered-settlement repair. `77c3c457...`, `64f96d8b...`, and `5c926b91...` add and test the read-only transaction/receipt quorum boundary. The adapter has not yet received fresh full-workflow certification.
+#420 GREEN certified the recovered-settlement repair. `77c3c457...`, `64f96d8b...`, and `5c926b91...` add and test the read-only transaction/receipt quorum boundary. No fresh full-workflow certification has yet been claimed for this adapter.
 
 ## NEXT ACTION
 Complete fresh Phase-19 certification for `5c926b91...`. On GREEN, integrate quorum-backed chain-observation evidence with durable persistence so recovered settlement cannot consume a single-provider observation.
