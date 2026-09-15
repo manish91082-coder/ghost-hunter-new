@@ -65,7 +65,7 @@ class ProductionAuthorityCliTests(unittest.TestCase):
         self.assertEqual(stderr.getvalue(), "BLOCKED: production authority observation failed closed\n")
         self.assertNotIn(SECRET_ENDPOINT, stderr.getvalue())
 
-    def test_authority_error_is_blocked_without_exception_leak(self):
+    def test_unexpected_runtime_error_is_blocked_without_exception_leak(self):
         stdout = StringIO()
         stderr = StringIO()
         with patch(
@@ -75,9 +75,9 @@ class ProductionAuthorityCliTests(unittest.TestCase):
             "scripts.observe_production_authority.observe_production_executor_authority",
             side_effect=RuntimeError(SECRET_ENDPOINT),
         ), redirect_stdout(stdout), redirect_stderr(stderr):
-            with self.assertRaises(RuntimeError):
-                main([])
+            self.assertEqual(main([]), 2)
         self.assertEqual(stdout.getvalue(), "")
+        self.assertEqual(stderr.getvalue(), "BLOCKED: production authority observation failed closed\n")
         self.assertNotIn(SECRET_ENDPOINT, stderr.getvalue())
 
     def test_cli_does_not_offer_submission_arguments(self):
