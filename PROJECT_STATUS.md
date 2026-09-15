@@ -9,8 +9,8 @@
 - Repository: `manish91082-coder/ghost-hunter-new`
 - Default branch: `master`
 - Active implementation branch: `phase-19-e2e-harness`
-- Current branch HEAD (latest implementation-bearing checkpoint): `3417387353a0866f50115e873ed5a5353a82fb0c`
-- Latest implementation commit: `test(P19-RA-01): verify replacement nonce ownership follows chain`
+- Current branch HEAD (latest implementation-bearing checkpoint): `e0f8d4d52118ff9cdeae220038029d1baef2307b`
+- Latest implementation commit: `test(P19-RA-01): certify repeated replacement chain ownership`
 - Phase: Phase 19, execution-integrity / E2E policy harness
 - Live mainnet execution: **BLOCKED**
 - Live capital authorization: **BLOCKED**
@@ -69,7 +69,8 @@ Completed and under active integration/testing on Phase 19 include:
 - atomic durable replacement persistence across transaction and nonce state;
 - CI control that excludes status-only `PROJECT_STATUS.md` commits from verification triggers;
 - exact observed-transaction binding for durable recovery;
-- durable nonce active-hash advancement when a replacement is observed.
+- recovery semantics that do not manufacture active nonce ownership for an unknown replacement hash;
+- repeated replacement-chain testing with restart persistence and stale-source rejection.
 
 ## 4. ROUTE COMMITMENT INTEGRITY
 
@@ -93,7 +94,9 @@ Replacement persistence is a dedicated atomic boundary: a validated replacement 
 
 Durable recovery lookup is bound to `intent_hash + observed tx_hash`, preventing replacement chains that reuse one intent from resolving to a historical transaction by intent alone.
 
-For an observed `REPLACED` event, the durable nonce now advances its active `tx_hash` to the replacement transaction and records the replaced hash in `replacement_of`, preserving one authoritative active transaction per nonce.
+A chain-observed `REPLACED` event records the observed replacement hash as recovery evidence but does **not** manufacture durable nonce ownership for an unknown transaction. Active nonce ownership advances only through the atomic validated replacement-install boundary.
+
+Repeated replacement preparation preserves the forensic chain `tx0 → tx1 → tx2`, with historical records retained as `REPLACED` and only the newest durably installed transaction owning the nonce in `SIGNED` state before submission.
 
 ## 6. VERIFIED CI EVIDENCE
 
@@ -106,14 +109,20 @@ For an observed `REPLACED` event, the durable nonce now advances its active `tx_
 - Polygon fork execution probe: PASS, 1 test
 - Python Phase-19 suite: PASS, **402/402**
 
-Run #258 is the authoritative completed GREEN proof for the pre-audit implementation state. It executed commit `05a9...`, not a status-only commit.
+### Post-GREEN recovery hardening gates
 
-### Post-GREEN adversarial audit in progress
+- Run `#261` on commit `8212bfd315d5aec11521bc40a3302d88f5bbc72c`: **PASS / GREEN**
+- Run `#261` evidence: 14/14 EVM tests, 3/3 Polygon smoke tests, 1/1 Polygon fork execution probe, and **403/403 Python tests**.
+- Run `#262` on commit `3417387353a0866f50115e873ed5a5353a82fb0c`: **PASS / GREEN**
+- Run `#262` evidence: 14/14 EVM tests, 3/3 Polygon smoke tests, 1/1 Polygon fork execution probe, and **403/403 Python tests**.
+- Run #262 explicitly passed the reused-intent exact-observed-transaction regression plus replacement coordinator, SQLite replacement linkage, recovery, signer, governance, and preflight suites.
 
-- Run `#261` on `8212bfd315d5aec11521bc40a3302d88f5bbc72c`: **IN PROGRESS** at checkpoint time.
-- `8212...` fixes durable recovery lookup to bind the exact observed transaction hash and updates the active durable nonce hash when a replacement is observed.
-- Run `#262` on `3417387353a0866f50115e873ed5a5353a82fb0c`: **QUEUED** at checkpoint time.
-- `341738...` adds the regression test proving a reused execution intent cannot cause recovery evidence for a replacement transaction to resolve against the historical source record.
+### Current repeated-replacement audit gate
+
+- Commit `f688a7205e21d3eab0d85cb633205814cc0ff040`: corrective implementation that keeps the durable nonce active hash unchanged during chain-only `REPLACED` evidence; the replacement hash remains forensic evidence until atomic replacement installation.
+- Commit `79772abdf3a71893643e3f2805e5a9f40bdd97ca`: recovery regression aligned with the active-nonce ownership invariant.
+- Commit `e0f8d4d52118ff9cdeae220038029d1baef2307b`: repeated replacement-chain test `tx0 → tx1 → tx2`, SQLite reopen persistence, newest-active-owner assertion, and stale-source recovery rejection.
+- Run `#266` on `e0f8d4d52118ff9cdeae220038029d1baef2307b`: **IN PROGRESS** at checkpoint time; compile and EVM/fork-smoke gates have passed, Polygon fork execution probe is still running, and Python suite has not yet started.
 
 A status-only commit does not trigger the Phase-19 verification workflow because `.github/workflows/phase19-tests.yml` ignores `PROJECT_STATUS.md`-only pushes.
 
@@ -125,18 +134,19 @@ These percentages are engineering readiness estimates, not formal certification 
 - **Go-live evidence/certification:** approximately **45–55% complete**.
 - **Overall mission toward first controlled live hunt:** approximately **60–70% complete**.
 
-The completed Phase-19 CI gate moves execution-integrity proof forward materially, but it does not establish production readiness or authorize live capital.
+The completed Phase-19 CI gate and post-GREEN recovery hardening materially improve execution-integrity proof, but they do not establish production readiness or authorize live capital.
 
 ## 8. CURRENT BLOCKERS
 
-1. Complete and pass the post-GREEN replacement recovery adversarial audit, including repeated replacement-chain semantics and rollback behavior.
-2. Establish final route/topology cryptographic bridge certification.
-3. Prove production signer/network authority under controlled conditions.
-4. Prove production private relay capability with no public fallback.
-5. Prove startup/recovery operational safety under production-like conditions.
-6. Produce controlled shadow/staging evidence using the same immutable artifact chain.
-7. Obtain realized live PnL evidence only after all preceding P0 gates are GREEN.
-8. Live mainnet capital deployment remains forbidden.
+1. Complete terminal evidence for Run #266 and verify the new multi-step replacement-chain test in the full gate.
+2. Complete atomic rollback/crash-boundary certification around repeated replacement installation and recovery.
+3. Establish final route/topology cryptographic bridge certification.
+4. Prove production signer/network authority under controlled conditions.
+5. Prove production private relay capability with no public fallback.
+6. Prove startup/recovery operational safety under production-like conditions.
+7. Produce controlled shadow/staging evidence using the same immutable artifact chain.
+8. Obtain realized live PnL evidence only after all preceding P0 gates are GREEN.
+9. Live mainnet capital deployment remains forbidden.
 
 ## 9. GO-LIVE GATES
 
@@ -191,23 +201,26 @@ Append/replace only with evidence-backed state. Never fabricate passes.
 
 ## 12. CURRENT CHECKPOINT
 
-**Timestamp:** 2026-09-15T08:02+05:30
+**Timestamp:** 2026-09-15T08:20+05:30
 
-**Atomic task:** P19-RA-01 — adversarial certification of replacement/recovery-chain integrity after Phase-19 GREEN.
+**Atomic task:** P19-RA-01 — repeated replacement-chain and recovery ownership certification after Phase-19 GREEN.
 
-**Finding:** Run #258 is a genuine GREEN implementation-bearing verification with 402/402 Python tests and all EVM/fork gates passing. Post-GREEN forensic audit then found two linked recovery-integrity weaknesses: recovery lookup was ambiguous when multiple transaction records shared one intent, and observed replacement evidence could update nonce lifecycle state without advancing the nonce's active transaction hash.
+**Evidence observed:**
+- Run #258 is a genuine GREEN implementation-bearing verification with 402/402 Python tests and all EVM/fork gates passing.
+- Run #261 is GREEN on `8212...` with 403/403 Python tests and all EVM/fork gates passing.
+- Run #262 is GREEN on implementation-bearing `341738...` with 403/403 Python tests and all EVM/fork gates passing.
+- The post-GREEN audit identified that chain-only replacement evidence must not create ownership of an unknown transaction hash in the durable nonce store.
+- `f688...` changes `REPLACED` recovery to preserve current nonce ownership until an atomic validated replacement record is installed.
+- `e0f8...` adds the repeated `tx0 → tx1 → tx2` chain, restart persistence, newest-owner assertions, and stale-source rejection.
+- Run #266 is currently in progress; no terminal result is yet claimed.
 
-**Corrective action:**
-- `8212bfd315d5aec11521bc40a3302d88f5bbc72c` binds durable recovery lookup to the exact observed transaction hash and advances the active nonce hash on `REPLACED` evidence.
-- `3417387353a0866f50115e873ed5a5353a82fb0c` adds a targeted regression test for reused-intent replacement-record selection and nonce ownership continuity.
+**Decision:** maintain Phase-19 certification in ACTIVE AUDIT state until Run #266 terminates. If #266 is green, perform the remaining crash/rollback adversarial boundary tests and then freeze the Phase-19 execution-integrity gate. If #266 is red, repair only the proven failing layer and rerun.
 
-**Current implementation checkpoint:** `3417387353a0866f50115e873ed5a5353a82fb0c`
-
-**Current CI:** Run #261 is in progress for `8212...`; Run #262 is queued for `341738...`. No post-audit GREEN claim is made until the implementation-bearing #262 terminal evidence is observed.
+**Current implementation checkpoint:** `e0f8d4d52118ff9cdeae220038029d1baef2307b`
 
 **Safety boundary:** No live signing, public broadcast, live capital, or production execution authorization is granted.
 
-**Next atomic action:** observe #261/#262 terminal evidence; if green, extend the replacement audit to multi-step replacement/recovery chains and atomic rollback, then certify the Phase-19 execution-integrity gate before moving to the next highest-value unresolved P0 gap.
+**Next atomic action:** observe terminal Run #266 evidence, then continue only from the result.
 
 ---
 
