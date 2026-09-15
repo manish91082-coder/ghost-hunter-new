@@ -40,26 +40,30 @@ def recover(record_hash: str, execution_state: ExecutionState, observation: Obse
         return RecoveryDecision(record_hash, RecoveryAction.BLOCK, "terminal transaction record requires no restart action")
 
     if chain is ChainObservationState.INCLUDED:
-        if state not in {ExecutionState.PENDING, ExecutionState.INCLUDED, ExecutionState.RECONCILED}:
+        if state not in {ExecutionState.PENDING, ExecutionState.SUBMISSION_IN_FLIGHT, ExecutionState.INCLUDED, ExecutionState.RECONCILED}:
             return RecoveryDecision(record_hash, RecoveryAction.BLOCK, "included transaction conflicts with durable lifecycle state")
         return RecoveryDecision(record_hash, RecoveryAction.RECONCILE_INCLUDED, "canonical successful receipt requires settlement reconciliation")
 
     if chain is ChainObservationState.REVERTED:
-        if state not in {ExecutionState.PENDING, ExecutionState.INCLUDED}:
+        if state not in {ExecutionState.PENDING, ExecutionState.SUBMISSION_IN_FLIGHT, ExecutionState.INCLUDED}:
             return RecoveryDecision(record_hash, RecoveryAction.BLOCK, "reverted chain evidence conflicts with durable lifecycle state")
         return RecoveryDecision(record_hash, RecoveryAction.MARK_REVERTED, "receipt proves execution reverted; no replacement is implied")
 
     if chain is ChainObservationState.REPLACED:
         if observation.replacement_tx_hash is None:
             return RecoveryDecision(record_hash, RecoveryAction.BLOCK, "replacement state lacks replacement transaction hash")
+        if state not in {ExecutionState.PENDING, ExecutionState.SUBMISSION_IN_FLIGHT}:
+            return RecoveryDecision(record_hash, RecoveryAction.BLOCK, "replacement evidence conflicts with durable lifecycle state")
         return RecoveryDecision(record_hash, RecoveryAction.REVIEW_REPLACEMENT, "explicit replacement evidence requires replacement-record reconciliation")
 
     if chain is ChainObservationState.DROPPED:
-        if state not in {ExecutionState.SIGNED, ExecutionState.PRIVATE_SUBMITTED, ExecutionState.PENDING}:
+        if state not in {ExecutionState.SIGNED, ExecutionState.PRIVATE_SUBMITTED, ExecutionState.SUBMISSION_IN_FLIGHT, ExecutionState.PENDING}:
             return RecoveryDecision(record_hash, RecoveryAction.BLOCK, "drop evidence conflicts with durable lifecycle state")
         return RecoveryDecision(record_hash, RecoveryAction.ELIGIBLE_FOR_REPLACEMENT_REVIEW, "nonce advancement proves drop; replacement still requires new authorization")
 
     if chain is ChainObservationState.REORGED:
+        if state not in {ExecutionState.SUBMISSION_IN_FLIGHT, ExecutionState.PENDING, ExecutionState.INCLUDED, ExecutionState.REORGED}:
+            return RecoveryDecision(record_hash, RecoveryAction.BLOCK, "reorg evidence conflicts with durable lifecycle state")
         return RecoveryDecision(record_hash, RecoveryAction.REOBSERVE, "reorg evidence requires fresh canonical-chain observation")
 
     if chain in {ChainObservationState.PENDING, ChainObservationState.NOT_FOUND, ChainObservationState.UNKNOWN}:
