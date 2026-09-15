@@ -22,6 +22,11 @@ from .sqlite_execution_store import SQLiteExecutionStore
 from .transaction_record import TransactionRecord, build_signed_record
 from .durable_nonce import DurableNonceInvariantError
 from .execution_nonce_binding import ExecutionNonceBinding
+from .production_authority_evidence import (
+    AuthorityEvidenceReusePolicy,
+    ProductionAuthorityEvidenceError,
+    verify_reusable_production_authority_evidence,
+)
 
 
 class ExecutionCoordinatorError(RuntimeError):
@@ -54,6 +59,7 @@ def prepare_signed_execution(
     executor: str,
     sender: str,
     executor_authority: ExecutorAuthorityEvidence,
+    authority_evidence_reuse_policy: AuthorityEvidenceReusePolicy,
     chain_pending_nonce: int,
     deadline: int,
     first_on_quickswap: bool,
@@ -78,10 +84,11 @@ def prepare_signed_execution(
     The nonce is allocated before the final intent is built, then the allocated
     reservation is atomically bound to that final intent hash. Executor owner
     evidence must prove that the authorized sender owns the exact deployed
-    executor and was observed no earlier than the proven route block. Any
-    failure before signing releases the still-uncommitted reservation. After
-    signing, persistence is mandatory and failures leave the reservation intact
-    for forensic recovery rather than silently recycling the nonce.
+    executor, satisfies the explicit authority-evidence freshness policy, and
+    was observed no earlier than the proven route block. Any failure before
+    signing releases the still-uncommitted reservation. After signing,
+    persistence is mandatory and failures leave the reservation intact for
+    forensic recovery rather than silently recycling the nonce.
     """
     if chain_pending_nonce < 0:
         raise ExecutionCoordinatorError("chain pending nonce cannot be negative")
@@ -89,6 +96,13 @@ def prepare_signed_execution(
         raise ExecutionCoordinatorError("time and block must be non-negative")
 
     try:
+        verify_reusable_production_authority_evidence(
+            executor_authority,
+            expected_executor=executor,
+            expected_signer=sender,
+            current_observed_block=current_block_number,
+            policy=authority_evidence_reuse_policy,
+        )
         verify_executor_authority(
             executor_authority,
             chain_id=simulation.chain_id,
@@ -96,7 +110,7 @@ def prepare_signed_execution(
             sender=sender,
             minimum_observed_block=simulation.block_number,
         )
-    except ExecutorAuthorityError as exc:
+    except (ExecutorAuthorityError, ProductionAuthorityEvidenceError) as exc:
         raise ExecutionCoordinatorError(str(exc)) from exc
 
     binding = ExecutionNonceBinding(store)
