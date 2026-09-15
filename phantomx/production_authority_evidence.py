@@ -36,15 +36,16 @@ def verify_reusable_production_authority_evidence(
     expected_signer: str,
     current_observed_block: int,
     policy: AuthorityEvidenceReusePolicy,
+    minimum_observed_block: int = 0,
 ) -> None:
-    """Require exact authority binding plus a bounded block-age freshness window."""
+    """Require exact authority binding, freshness, and an optional lower block bound."""
     try:
         verify_executor_authority(
             evidence,
             chain_id=137,
             executor=expected_executor,
             sender=expected_signer,
-            minimum_observed_block=0,
+            minimum_observed_block=minimum_observed_block,
         )
         verify_executor_authority_freshness(
             evidence,
