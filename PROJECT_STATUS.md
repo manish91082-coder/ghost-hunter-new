@@ -6,7 +6,7 @@
 ## 0. CURRENT RESUME CARD
 - Project: `manish91082-coder/ghost-hunter-new`
 - Active branch: `phase-19-e2e-harness`
-- Latest implementation commit: `dcbe6b7b78fb78abec8bec6c9d6cd5f2d8322507`
+- Latest implementation commit: `e18e06017a03436f72a8d2b8140d963abd816bd3`
 - Private-relay HTTP transport: `b7789d8da6c1eea70cc86e0ee5dd04dac3895694`
 - Relay secrecy/fallback-audit repair: `a1f76fcda0ff066b43a2dc0f19e08d682e98657b`
 - Durable submission fence: `4c748c058ae32af3074232bfc282dce0e5a71f84`
@@ -16,8 +16,10 @@
 - In-flight durable recovery integration: `4bf326ec13e08dbcf90567b9c5758b4cb6812499`
 - In-flight restart-audit hardening: `978047b57e19a802a14593bc9bb683106ee0c419`
 - In-flight signed-nonce observation repair: `4376a4692b07d1191d63ab3f13836417326a3252`
-- In-flight recovery regression tests: `dcbe6b7b78fb78abec8bec6c9d6cd5f2d8322507`
-- Fresh certification run `#416`: **IN PROGRESS** for `dcbe6b7...`
+- In-flight recovery regression tests: `e18e06017a03436f72a8d2b8140d963abd816bd3`
+- Fresh recovery certification run `#417`: **GREEN** for `e18e060...`
+- Recovered-settlement integrity regression tests: `080ffd5ac1093a2189fa60517900a6940b22363a`
+- Fresh certification for settlement-integrity tree: **PENDING**
 - Certification PR: `#1` OPEN, base `master`
 - Live mainnet execution: **BLOCKED**
 - Live capital authorization: **BLOCKED**
@@ -49,22 +51,24 @@ The dedicated private-relay transport accepts only non-empty raw signed transact
 
 The durable submission path establishes a committed `SUBMISSION_IN_FLIGHT` barrier immediately before network I/O. An uncertain relay outcome is never returned to retryable `SIGNED`; the exact durable transaction hash remains held for chain reconciliation.
 
-Chain observation accepts `SUBMISSION_IN_FLIGHT`. When the transaction is in-flight and its nonce record is still legitimately SIGNED/hash-free, explicit PENDING/INCLUDED/REVERTED evidence is allowed to advance the nonce to the corresponding post-network lifecycle. No observation path restores `SIGNED` after the in-flight fence.
+Chain observation accepts `SUBMISSION_IN_FLIGHT`. When the transaction is in-flight and its nonce record is still legitimately SIGNED/hash-free, explicit PENDING/INCLUDED/REVERTED evidence advances the nonce to the corresponding post-network lifecycle. No observation path restores `SIGNED` after the in-flight fence.
 
-Dedicated recovery accepts `DROPPED`, `REPLACED`, and `REORGED` evidence from applicable in-flight/submitted lifecycle states without reopening `SIGNED`. Direct reorg recovery still requires a prior canonical inclusion identity rather than manufacturing a reorg from an unconfirmed relay outcome.
+Dedicated recovery accepts `DROPPED`, `REPLACED`, and `REORGED` evidence from applicable in-flight/submitted lifecycle states without reopening `SIGNED`. Direct reorg recovery requires a prior canonical inclusion identity rather than manufacturing a reorg from an unconfirmed relay outcome.
 
 Startup recovery audit treats `SUBMISSION_IN_FLIGHT` with a SIGNED/hash-free nonce lifecycle as internally consistent, preserving the crash-safe fence across process restart.
 
+The settlement boundary requires canonical INCLUDED evidence plus a successful receipt before terminal profit accounting. Recovery states do not directly create settlement authority, and the existing realized-profit floor remains strictly greater than $0.20 after all applicable costs.
+
 ## 4. CI CERTIFICATION PATH
-Certified historical gates include signer repair `#349`, signer runbook `#360`, Polygon transport `#364`, production authority assembly `#367`, authority CLI `#371`, provenance `#373/#376`, freshness/reuse `#378/#379/#380`, execution/replacement/signer freshness `#393`, production execution surface `#395`, private-relay repair `#403`, and durable-fence certification `#408`.
+Certified historical gates include signer repair `#349`, signer runbook `#360`, Polygon transport `#364`, production authority assembly `#367`, authority CLI `#371`, provenance `#373/#376`, freshness/reuse `#378/#379/#380`, execution/replacement/signer freshness `#393`, production execution surface `#395`, private-relay repair `#403`, durable-fence certification `#408`, and recovery certification `#417`.
 
-Run `#406` remains explicit failure evidence for the pre-migration relay-state assertions. The workflow's compile, EVM, Polygon smoke, and Polygon execution stages passed; the Python stage correctly caught the two stale `SIGNED` expectations after the durable fence was introduced.
+Run `#406` remains explicit failure evidence for pre-migration relay-state assertions. Run `#414` remains explicit failure evidence for the first signed-nonce handoff implementation. Both failures led to targeted contract repairs rather than being suppressed.
 
-Run `#408` completed **GREEN** across all workflow stages: compile, 14/14 EVM tests, Polygon fork smoke, Polygon fork execution probe, and the full Python unittest stage. No live production endpoints or credentials were used for this certification.
+Run `#408` completed GREEN across compile, 14/14 EVM tests, Polygon fork smoke, Polygon fork execution probe, and the full Python stage.
 
-Run `#414` exposed the signed-nonce handoff mismatch in the first recovery integration. Its workflow compile, EVM, Polygon smoke, and Polygon execution stages passed, while the Python recovery stage failed. The defect was isolated to allowing `SUBMISSION_IN_FLIGHT` transaction state while still rejecting its intentionally SIGNED/hash-free nonce lifecycle.
+Run `#417` completed GREEN across the full workflow. Compile, 14/14 EVM integration tests, Polygon fork smoke, Polygon fork execution probe, and the Python unittest stage all completed successfully for the corrected recovery test tree. fileciteturn1212file0L2-L2
 
-Commit `4376a469...` repairs that contract and `dcbe6b7...` adds focused regression coverage for PENDING/INCLUDED/REVERTED resolution from the signed-nonce in-flight state. Fresh certification for this exact tree is currently `#416 IN PROGRESS`. No GREEN claim is made until the workflow completes.
+The recovered-settlement integrity adversarial suite is now added on top of the #417-certified recovery tree. Its fresh full-workflow certification is still pending.
 
 ## 5. CURRENT SIGNER IDENTITY GATE
 The signer exposes a non-secret cryptographic challenge proof. External verification recovers the Ethereum address and requires exact equality with the expected signer address without private-key access.
@@ -90,7 +94,7 @@ Current implementation certification remains separate from proof of an approved 
 1. Controlled production signer identity proof without exposing private-key material.
 2. Controlled production Polygon provider authority proof using approved endpoints and intended deployed executor.
 3. Controlled production private relay proof using an actually approved relay endpoint and authentication, with no public fallback.
-4. Production-like startup/recovery and settlement reorg evidence, including fresh certification of `SUBMISSION_IN_FLIGHT` resolution.
+4. Production-like startup/recovery and settlement reorg evidence, including certification of `SUBMISSION_IN_FLIGHT` resolution and recovered settlement-integrity controls.
 5. Controlled shadow/staging evidence using the identical immutable artifact chain.
 6. Final realized live PnL evidence after all preceding gates are GREEN.
 7. Live mainnet capital deployment remains forbidden.
@@ -99,18 +103,18 @@ Current implementation certification remains separate from proof of an approved 
 Every P0 gate must be GREEN with reproducible evidence before live capital. Any unchecked gate means **LIVE CAPITAL = LOCKED**.
 
 ## 9. CURRENT CHECKPOINT
-Atomic task: repair the signed-nonce handoff exposed by recovery CI, then recertify the full recovery lifecycle.
+Atomic task completed: certify recovery lifecycle, then add settlement-integrity and duplicate-submission adversarial coverage.
 
 Implementation:
-- `#408` GREEN certified durable submission fence
-- `4376a469...` allows exact SIGNED/hash-free nonce handoff only while transaction state is `SUBMISSION_IN_FLIGHT`
-- `dcbe6b7...` adds focused PENDING/INCLUDED/REVERTED lifecycle regression tests
-- `#416` fresh full certification is currently **IN PROGRESS**
+- `#417` GREEN certified the signed-nonce in-flight recovery lifecycle.
+- `080ffd5a...` adds recovered `PENDING/INCLUDED/REORGED/DROPPED` settlement and duplicate-authority adversarial tests.
+- Pending tests prove `PENDING` cannot enter realized settlement, canonical block mismatch cannot confirm profit, reorg requires re-observation, and recovered states cannot reuse the original immutable prepared artifact for a second submission.
+- The existing settlement layer remains the only route to terminal `PROFIT_CONFIRMED/PROFIT_FAILED` states.
 
-The recovery layer is implemented but not yet certified on the latest tree.
+The settlement-integrity test tree is implemented but not yet certified by a fresh full workflow run.
 
 ## 10. NEXT ATOMIC ACTION
-Inspect and certify `#416` for `dcbe6b7...`. On GREEN, move to the settlement-integrity gate: recovered `PENDING/INCLUDED/REORGED` outcomes must not bypass canonical receipt validation or realized-profit reconciliation, and recovery must never manufacture a second submission authority for the same immutable transaction.
+Trigger/inspect fresh full Phase-19 certification for `080ffd5a...`. On GREEN, harden the live chain-observation adapter itself so approved Polygon evidence collection is quorum-bound for transaction/receipt status, not only executor-authority status, before any recovered settlement decision can be trusted.
 
 **LIVE SIGNING = BLOCKED**  
 **PUBLIC BROADCAST = BLOCKED**  
