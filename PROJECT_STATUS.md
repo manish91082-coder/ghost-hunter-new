@@ -20,7 +20,8 @@
 - Quorum settlement reconciliation certification `#432`: **GREEN**. All compile/EVM/Polygon stages and the Phase-19 unittest suite completed successfully.
 - Quorum recovery provenance boundary: `03e2c93ee8b1116d38b81332f45f84265b4a5c3d`
 - Quorum recovery provenance tests: `73f29f3912376b2beeeb3d8a5d974385ef7534c7`
-- Fresh certification for quorum recovery provenance: **IN PROGRESS** on the current head.
+- Fresh certification `#435`: **GREEN**. The quorum recovery provenance matrix and production-surface bypass audit completed successfully.
+- Final Phase-19 adversarial recovery/settlement matrix: **NEXT**
 - Live mainnet execution: **BLOCKED**
 - Live capital: **LOCKED**
 - Production readiness: **NOT ACHIEVED**
@@ -47,9 +48,9 @@ The recovery isolation fixture statically constrains plain observation lifecycle
 
 The settlement layer exposes a dedicated quorum-gated reconciliation boundary. The low-level settlement primitive is an already-admitted path, while the production boundary validates exact transaction/state/replacement binding and requires persisted, fresh quorum provenance before any settlement record or terminal profit state can be created. fileciteturn1510file0L2-L2
 
-The durable recovery layer now exposes a matching quorum-gated boundary for DROP, REPLACED, and REORGED evidence. It validates exact state/transaction/replacement binding and fresh attester policy before calling the existing durable recovery mutation primitive. fileciteturn1527file0L2-L2
+The durable recovery layer exposes a matching quorum-gated boundary for DROP, REPLACED, and REORGED evidence. It validates exact state/transaction/replacement binding and fresh attester policy before calling the existing durable recovery mutation primitive. fileciteturn1527file0L2-L2
 
-The new recovery provenance matrix covers single-provider rejection, fresh two-provider DROP admission, stale replacement rejection, future REORG rejection, replacement binding mismatch, two-provider REORG admission, and a production-module static bypass audit. fileciteturn1530file0L2-L2
+The latest certified recovery provenance matrix covers single-provider rejection, fresh two-provider DROP admission, stale replacement rejection, future REORG rejection, replacement binding mismatch, two-provider REORG admission, and a production-module static bypass audit. fileciteturn1530file0L2-L2
 
 ## P0 BLOCKERS
 1. Controlled production signer identity proof.
@@ -61,12 +62,12 @@ The new recovery provenance matrix covers single-provider rejection, fresh two-p
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-`#432` is GREEN for the settlement reconciliation quorum boundary. The fresh run completed Solidity compilation, 14/14 EVM integration tests, Polygon fork protocol smoke, Polygon fork execution probe, and the full Phase-19 unittest suite successfully. fileciteturn1520file0L2-L2
+`#435` is GREEN. The fresh certification completed the quorum recovery provenance boundary and its adversarial matrix successfully, with the complete Phase-19 compile/EVM/Polygon and unittest workflow remaining GREEN. fileciteturn1536file0L2-L2
 
-Commit `03e2c93e...` then adds a quorum-gated durable recovery boundary covering DROP, REPLACED, and REORGED state mutation. Commit `73f29f39...` adds the provenance matrix and the production-surface bypass audit. The current certification for this new layer is running.
+The certified recovery boundary now rejects insufficient or stale/future quorum evidence before DROP, REPLACED, or REORGED state mutation, while permitting fresh two-provider evidence through the intended path. fileciteturn1530file0L2-L2
 
 ## NEXT ATOMIC ACTION
-Complete fresh certification for `73f29f3912376b2beeeb3d8a5d974385ef7534c7`. On GREEN, run the final Phase-19 recovery/settlement adversarial matrix across INCLUDED, REVERTED, PENDING, DROP, REPLACED, and REORGED, including stale/future/tampered evidence, canonical-block conflicts, settlement conflicts, duplicate evidence, and restart persistence. Then perform the production readiness gate audit for signer, provider authority, private relay, shadow/staging, and realized-PnL evidence.
+Run the final Phase-19 adversarial recovery/settlement matrix across INCLUDED, REVERTED, PENDING, DROP, REPLACED, and REORGED. Cover insufficient quorum, stale/future/tampered evidence, tx/state/replacement mismatches, canonical-block conflicts, duplicate/conflicting settlement evidence, and restart persistence. On GREEN, execute the production-readiness gate audit for controlled signer identity, approved Polygon provider authority, private relay, shadow/staging, and realized-PnL evidence.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
