@@ -70,6 +70,16 @@ class ExecutorAuthorityTests(unittest.TestCase):
             runtime_code_hash=CODE_HASH.upper().replace("0X", "0x"),
         )
         self.assertEqual(same.evidence_hash, self.evidence.evidence_hash)
+        changed_provenance = ExecutorAuthorityEvidence(
+            schema_version=1,
+            chain_id=137,
+            executor=EXECUTOR,
+            owner=OWNER,
+            observed_block=1000,
+            runtime_code_hash=CODE_HASH,
+            attesting_provider_names=("rpc-a",),
+        )
+        self.assertNotEqual(changed_provenance.evidence_hash, self.evidence.evidence_hash)
         with self.assertRaisesRegex(ExecutorAuthorityError, "evidence hash mismatch"):
             ExecutorAuthorityEvidence(
                 schema_version=1,
@@ -79,6 +89,18 @@ class ExecutorAuthorityTests(unittest.TestCase):
                 observed_block=1000,
                 runtime_code_hash=CODE_HASH,
                 evidence_hash="0x" + "99" * 32,
+            )
+
+    def test_attesting_provider_names_must_be_unique(self):
+        with self.assertRaisesRegex(ExecutorAuthorityError, "unique"):
+            ExecutorAuthorityEvidence(
+                schema_version=1,
+                chain_id=137,
+                executor=EXECUTOR,
+                owner=OWNER,
+                observed_block=1000,
+                runtime_code_hash=CODE_HASH,
+                attesting_provider_names=("rpc-a", "rpc-a"),
             )
 
     def test_observer_binds_owner_and_code_to_one_block(self):
@@ -103,6 +125,7 @@ class ExecutorAuthorityTests(unittest.TestCase):
         self.assertEqual(observed.owner, OWNER)
         self.assertEqual(observed.observed_block, 1000)
         self.assertEqual(observed.runtime_code_hash, CODE_HASH)
+        self.assertEqual(observed.attesting_provider_names, ("authority",))
 
     def test_quorum_observation_uses_one_common_block_and_consensus_owner_and_code(self):
         calls = []
@@ -135,10 +158,36 @@ class ExecutorAuthorityTests(unittest.TestCase):
         self.assertEqual(observed.observed_block, 1000)
         self.assertEqual(observed.owner, OWNER)
         self.assertEqual(observed.runtime_code_hash, CODE_HASH)
+        self.assertEqual(observed.attesting_provider_names, ("rpc-a", "rpc-b", "rpc-c"))
         self.assertEqual(
             {item[1] for item in calls},
             {"eth_call", "eth_chainId", "eth_getCode", "eth_blockNumber"},
         )
+
+    def test_quorum_provenance_contains_only_consensus_attesters(self):
+        def make_transport(owner: str):
+            def transport(method, *params):
+                if method == "eth_chainId":
+                    return {"result": "0x89"}
+                if method == "eth_blockNumber":
+                    return {"result": "0x3e8"}
+                if method == "eth_call":
+                    return {"result": "0x" + "00" * 12 + owner[2:]}
+                if method == "eth_getCode":
+                    return {"result": "0x" + CODE.hex()}
+                raise AssertionError(method)
+            return transport
+
+        observed = observe_executor_authority_quorum(
+            [
+                RPCProvider("rpc-a", make_transport(OWNER)),
+                RPCProvider("rpc-b", make_transport(OWNER)),
+                RPCProvider("rpc-c", make_transport(OTHER)),
+            ],
+            EXECUTOR,
+            quorum=2,
+        )
+        self.assertEqual(observed.attesting_provider_names, ("rpc-a", "rpc-b"))
 
     def test_quorum_rejects_ambiguous_split_consensus(self):
         def make_transport(owner: str):
