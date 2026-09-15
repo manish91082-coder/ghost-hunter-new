@@ -1,7 +1,7 @@
 import unittest
 from dataclasses import replace
 
-from phantomx.executor_authority import ExecutorAuthorityError, ExecutorAuthorityEvidence, observe_executor_authority, runtime_code_binding_hash, verify_executor_authority
+from phantomx.executor_authority import ExecutorAuthorityError, ExecutorAuthorityEvidence, observe_executor_authority, observe_executor_authority_quorum, runtime_code_binding_hash, verify_executor_authority
 from phantomx.hashing import keccak256_hex
 from phantomx.polygon_rpc import RPCProvider
 
@@ -103,6 +103,119 @@ class ExecutorAuthorityTests(unittest.TestCase):
         self.assertEqual(observed.owner, OWNER)
         self.assertEqual(observed.observed_block, 1000)
         self.assertEqual(observed.runtime_code_hash, CODE_HASH)
+
+    def test_quorum_observation_uses_one_common_block_and_consensus_owner_and_code(self):
+        calls = []
+
+        def make_transport(block: int, owner: str = OWNER, code: bytes = CODE):
+            def transport(method, *params):
+                calls.append((block, method, params))
+                if method == "eth_chainId":
+                    return {"result": "0x89"}
+                if method == "eth_blockNumber":
+                    return {"result": hex(block)}
+                if method == "eth_call":
+                    self.assertEqual(params[1], "0x3e8")
+                    return {"result": "0x" + "00" * 12 + owner[2:]}
+                if method == "eth_getCode":
+                    self.assertEqual(params[1], "0x3e8")
+                    return {"result": "0x" + code.hex()}
+                raise AssertionError(method)
+            return transport
+
+        observed = observe_executor_authority_quorum(
+            [
+                RPCProvider("rpc-a", make_transport(1000)),
+                RPCProvider("rpc-b", make_transport(1001)),
+                RPCProvider("rpc-c", make_transport(1002)),
+            ],
+            EXECUTOR,
+            quorum=2,
+        )
+        self.assertEqual(observed.observed_block, 1000)
+        self.assertEqual(observed.owner, OWNER)
+        self.assertEqual(observed.runtime_code_hash, CODE_HASH)
+        self.assertEqual(sorted({item[1] for item in calls}), ["eth_call", "eth_chainId", "eth_getCode", "eth_blockNumber"])
+
+    def test_quorum_rejects_ambiguous_split_consensus(self):
+        def make_transport(owner: str):
+            def transport(method, *params):
+                if method == "eth_chainId":
+                    return {"result": "0x89"}
+                if method == "eth_blockNumber":
+                    return {"result": "0x3e8"}
+                if method == "eth_call":
+                    return {"result": "0x" + "00" * 12 + owner[2:]}
+                if method == "eth_getCode":
+                    return {"result": "0x" + CODE.hex()}
+                raise AssertionError(method)
+            return transport
+
+        with self.assertRaisesRegex(ExecutorAuthorityError, "ambiguous"):
+            observe_executor_authority_quorum(
+                [
+                    RPCProvider("rpc-a", make_transport(OWNER)),
+                    RPCProvider("rpc-b", make_transport(OWNER)),
+                    RPCProvider("rpc-c", make_transport(OTHER)),
+                    RPCProvider("rpc-d", make_transport(OTHER)),
+                ],
+                EXECUTOR,
+                quorum=2,
+            )
+
+    def test_quorum_rejects_insufficient_agreement(self):
+        def make_transport(owner: str):
+            def transport(method, *params):
+                if method == "eth_chainId":
+                    return {"result": "0x89"}
+                if method == "eth_blockNumber":
+                    return {"result": "0x3e8"}
+                if method == "eth_call":
+                    return {"result": "0x" + "00" * 12 + owner[2:]}
+                if method == "eth_getCode":
+                    return {"result": "0x" + CODE.hex()}
+                raise AssertionError(method)
+            return transport
+
+        with self.assertRaisesRegex(ExecutorAuthorityError, "quorum not reached"):
+            observe_executor_authority_quorum(
+                [
+                    RPCProvider("rpc-a", make_transport(OWNER)),
+                    RPCProvider("rpc-b", make_transport(OTHER)),
+                    RPCProvider("rpc-c", make_transport(OTHER)),
+                ],
+                EXECUTOR,
+                quorum=3,
+            )
+
+    def test_quorum_rejects_duplicate_provider_names(self):
+        with self.assertRaisesRegex(ExecutorAuthorityError, "unique"):
+            observe_executor_authority_quorum(
+                [
+                    RPCProvider("same", lambda method, *params: {"result": "0x89"}),
+                    RPCProvider("same", lambda method, *params: {"result": "0x89"}),
+                ],
+                EXECUTOR,
+                quorum=1,
+            )
+
+    def test_quorum_rejects_wrong_chain_provider(self):
+        def transport(chain: str):
+            def inner(method, *params):
+                if method == "eth_chainId":
+                    return {"result": chain}
+                return {"result": "0x3e8"}
+            return inner
+
+        with self.assertRaisesRegex(ExecutorAuthorityError, "unexpected chain"):
+            observe_executor_authority_quorum(
+                [
+                    RPCProvider("polygon", transport("0x89")),
+                    RPCProvider("ethereum", transport("0x1")),
+                ],
+                EXECUTOR,
+                quorum=1,
+            )
 
     def test_observer_rejects_wrong_chain(self):
         def transport(method, *params):
