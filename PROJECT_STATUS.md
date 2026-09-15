@@ -8,7 +8,7 @@
 - Active branch: `phase-19-e2e-harness`
 - Latest signer identity implementation commit: `fd34078fae864c02136484eeef3afd5f4a6c05a4`
 - Latest repair commit: `148d9d01d0b6037312678d4af76ff1ade1a4e4e0`
-- Latest authoritative CI result: run `#345` GREEN for `919e72cf...`; subsequent signer-proof CI run `#348` FAILED on a concrete missing `SignedTransaction` definition/import break introduced during hardening.
+- Fresh authoritative CI: run `#349` GREEN for `148d9d01...`
 - Certification PR: `#1` (OPEN, ready for review, base `master`)
 - Phase: Phase 19 execution-integrity / E2E policy harness
 - Live mainnet execution: **BLOCKED**
@@ -37,26 +37,25 @@ Recent hardening includes exact observed-transaction recovery binding, no manufa
 ## 4. CI CERTIFICATION PATH
 The Phase-19 workflow runs on branch pushes and pull requests to `master`, while ignoring status-only changes. It uses `actions/checkout@v5` and `actions/setup-python@v6`, grants only `contents: read`, enforces a 30-minute job timeout, then performs Foundry compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the Phase-19 unittest suite.
 
-Authoritative run `#345` tested `919e72cf...` and concluded **SUCCESS**: Solidity compile successful; **14/14 EVM**, **3/3 Polygon fork smoke**, **1/1 Polygon fork execution probe**, and **422/422 Python tests**, with **0 failures and 0 skips**. fileciteturn736file0
+Fresh authoritative run `#349` tested repair commit `148d9d01...` and concluded **SUCCESS**. The workflow job `phase19-tests` completed successfully through Solidity compile, Phase-19 EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Phase-19 Python unittest stage. This fresh run is the certification evidence for the repaired signer implementation.
 
-The next signer-proof certification run `#348` tested `fd34078f...` and **FAILED** during the Python suite. Compile, EVM, Polygon smoke, and Polygon execution probe all passed, but multiple Python modules failed to import because `phantomx.signer` no longer defined the existing `SignedTransaction` artifact type; two direct signer tests also raised `NameError: SignedTransaction is not defined`. The failure was isolated and repaired in commit `148d9d01...`; fresh CI certification is required for that repair. fileciteturn752file0
+Run `#348` remains historical failure evidence: it tested `fd34078f...`, passed compile/EVM/Polygon stages, then failed in Python because `SignedTransaction` had been removed during signer-proof hardening. The deterministic regression was repaired in `148d9d01...` and the repair is now GREEN in `#349`.
 
-Historical GREEN runs remain historical evidence only and are not certification for the repaired current implementation.
+Historical GREEN runs remain historical evidence only and do not substitute for current-HEAD proof.
 
 ## 5. CURRENT SIGNER IDENTITY GATE
-The concrete signer now exposes a non-secret cryptographic challenge proof: an external verifier can supply a fresh 32-byte challenge, receive only a 65-byte signature, recover the Ethereum address, and compare it with the expected production signer address. The private key itself remains inside the signer and is never placed in the repository, logs, or chat.
+The concrete signer exposes a non-secret cryptographic challenge proof: an external verifier can supply a fresh 32-byte challenge, receive only a 65-byte signature, recover the Ethereum address, and compare it with the expected production signer address. The private key itself remains inside the signer and is never placed in the repository, logs, or chat.
 
-The gate is **NOT GREEN**. The mechanism exists and the failure was caught by authoritative CI, but the repair itself has not yet completed a GREEN certification run, and no actual production signer identity has been challenged and independently evidenced.
+The mechanism is now CI-certified, but the production signer identity gate is still **NOT GREEN** because no actual production signer identity has been independently challenged and evidenced yet.
 
 ## 6. CURRENT BLOCKERS / P0 GATES
-1. **Fresh CI certification after the `SignedTransaction` repair**.
-2. **Controlled production signer identity proof** without exposing private key material.
-3. **Controlled production Polygon network/provider authority proof** using explicitly approved production endpoints and the deployed executor address.
-4. **Production private relay capability** with no public fallback.
-5. **Startup/recovery safety under production-like conditions**, including a production-grade settlement reorg policy.
-6. **Controlled shadow/staging evidence** using the identical immutable artifact chain.
-7. **Final realized live PnL evidence** after all preceding gates are GREEN.
-8. Live mainnet capital deployment remains forbidden.
+1. **Controlled production signer identity proof** without exposing private key material.
+2. **Controlled production Polygon network/provider authority proof** using explicitly approved production endpoints and the deployed executor address.
+3. **Production private relay capability** with no public fallback.
+4. **Startup/recovery safety under production-like conditions**, including a production-grade settlement reorg policy.
+5. **Controlled shadow/staging evidence** using the identical immutable artifact chain.
+6. **Final realized live PnL evidence** after all preceding gates are GREEN.
+7. Live mainnet capital deployment remains forbidden.
 
 Required before real production authority attestation: approved Polygon RPC provider set, controlled confirmation of the intended deployed executor address, and expected signer address. Private key material stays outside repository code, fixtures, logs, and chat.
 
@@ -69,12 +68,12 @@ These are explicit planning metrics, not claims of external evidence.
 ### A. Engineering foundation
 - Deterministic Phase-19 execution-integrity implementation: **substantially built**.
 - Practical assessment: **~85% engineering foundation complete**.
-- Latest authoritative certification: **GREEN for pre-proof implementation**; newer signer-proof branch state is **BLOCKED pending fresh CI after repair**.
+- Fresh current implementation CI: **GREEN** on `148d9d01...` via run `#349`.
 
 ### B. First real-life hunt readiness
-Required pre-hunt controls are fresh CI for the current implementation, controlled production signer identity, approved Polygon/provider authority, private relay, production-like startup/recovery + reorg, and identical-artifact shadow/staging evidence.
-- Fresh current-implementation CI GREEN: **NO**.
-- Production-control gates GREEN: **0 / 5** after fresh CI.
+Required pre-hunt controls are fresh CI, controlled production signer identity, approved Polygon/provider authority, private relay, production-like startup/recovery + reorg, and identical-artifact shadow/staging evidence.
+- Fresh current-implementation CI GREEN: **YES**.
+- Production-control gates GREEN: **0 / 5**.
 - First real-money hunt: **NOT READY**.
 
 ### C. Continuous hunting readiness
@@ -84,23 +83,18 @@ Required pre-hunt controls are fresh CI for the current implementation, controll
 ## 9. CURRENT CHECKPOINT
 **Timestamp:** 2026-09-15
 
-**Atomic task completed:** forensic diagnosis and repair of the first fresh CI failure in signer-proof hardening.
+**Atomic task completed:** fresh authoritative CI certification after the `SignedTransaction` repair.
 
 **New evidence:**
-- Authoritative run `#348` failed exactly on the newly hardened signer branch.
-- The failure was not environmental noise: the test suite reached the Python phase and exposed a deterministic source regression, namely removal of the required `SignedTransaction` definition.
-- All earlier CI stages in that run passed before the Python import/runtime failure.
+- Run `#349` targeted repair commit `148d9d01...` and concluded **SUCCESS**.
+- The dedicated `phase19-tests` job completed all workflow stages successfully, including the Phase-19 Python unittest suite.
+- This closes the immediate CI blocker created by signer-proof hardening regression `#348`.
 
-**Repair completed:**
-- Restored the existing `SignedTransaction` immutable artifact in `phantomx/signer.py`.
-- Preserved the new `SignedChallenge`, `sign_challenge()`, `prove_signer_identity()`, and zero-key rejection controls.
-- Committed as `148d9d01d0b6037312678d4af76ff1ade1a4e4e0`.
-
-**Current verdict:** failure is understood and repaired. The signer-proof gate remains blocked until a fresh authoritative CI run proves the repaired implementation. This is exactly the fail-closed behavior we wanted from the certification pipeline.
+**Current verdict:** signer-proof implementation is CI-green. The signer identity mechanism is certified, but the actual production signer identity remains unproven and therefore blocked.
 
 **Safety boundary:** no live signing, public broadcast, live capital, or production execution authorization.
 
-**Next atomic action:** obtain fresh authoritative CI for `148d9d01...`; if GREEN, move to controlled production signer identity proof. If FAILURE, freeze and diagnose before any further gate progression.
+**Next atomic action:** close the certification-branch status-file merge conflict against `master`, then establish a controlled non-secret production signer identity proof using an externally held signer and expected production address. Do not expose private key material.
 
 ---
 
