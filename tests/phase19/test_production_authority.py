@@ -1,5 +1,6 @@
 import json
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from phantomx.production_authority import (
@@ -88,14 +89,23 @@ class ProductionAuthorityConfigTests(unittest.TestCase):
 
     def test_observation_uses_existing_quorum_and_owner_binding(self):
         config = load_production_authority_config_from_env(self._env())
-        fake_evidence = object()
+        fake_evidence = SimpleNamespace(observed_block=123)
         with patch("phantomx.production_authority.observe_executor_authority_quorum", return_value=fake_evidence) as observe, patch(
             "phantomx.production_authority.verify_executor_authority"
         ) as verify:
             result = observe_production_executor_authority(config)
         self.assertIs(result, fake_evidence)
         observe.assert_called_once()
-        verify.assert_called_once()
+        observe_call = observe.call_args
+        self.assertEqual(observe_call.args[1], EXECUTOR)
+        self.assertEqual(observe_call.kwargs["quorum"], 2)
+        verify.assert_called_once_with(
+            fake_evidence,
+            chain_id=137,
+            executor=EXECUTOR,
+            sender=SIGNER,
+            minimum_observed_block=123,
+        )
 
 
 if __name__ == "__main__":
