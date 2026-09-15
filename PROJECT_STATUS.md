@@ -5,7 +5,8 @@
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Latest project commit: `ebf794537c531a1241426a2bca9f355e205e44fc`
+- Latest project commit: `364cc681a71c183d82408dbff53ee88e4ccb16a2`
+- Latest Phase-19 CI: run `35018490583` / workflow run `439` **GREEN** on parent commit `ebf794537c531a1241426a2bca9f355e205e44fc`; no workflow run is currently associated with head `364cc681a71c183d82408dbff53ee88e4ccb16a2`
 - Final executable implementation: `d018f8aea32d7db5aa012b02dcaacab87435af4c`
 - Recovered-settlement certification `#420`: **GREEN**
 - Production chain observation adapter: `77c3c457...`
@@ -64,13 +65,13 @@ The production private-relay assembly requires explicit HTTPS configuration and 
 3. Controlled production private relay proof using an actually approved relay endpoint and authentication, with no public fallback.
 4. Controlled shadow/staging evidence using the identical immutable artifact chain.
 5. Controlled realized live settlement/PnL evidence satisfying strict `net > $0.20` after all applicable costs.
-6. Independent re-audit after all preceding production gates are evidenced.
+6. Independent re-audit after all production gates are evidenced.
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-`#437` is GREEN for the production-readiness gate-audit workflow. The audit record itself is integrated and the full Phase-19 test spine remains certified. fileciteturn1576file0L2-L2
+The latest verified branch head is `364cc681a71c183d82408dbff53ee88e4ccb16a2`. That commit is a status-only change documenting the controlled signer evidence intake gate. No Phase-19 workflow run is associated with the current head. The latest available Phase-19 CI run is `35018490583` / workflow run `439`, which completed successfully on parent commit `ebf794537c531a1241426a2bca9f355e205e44fc`. This CI evidence certifies the deterministic Phase-19 software spine on the parent commit; it does not certify the current status-only head as a fresh CI-tested commit.
 
-The controlled signer evidence intake specification now defines the minimum non-secret proof package: fresh challenge, exact external signature, verifier-derived identities/hashes, verifier commit/certification reference, and external operator/witness/timestamp provenance. The validator recomputes the signature proof and challenge/evidence hashes without accepting any private-key material. The gate remains BLOCKED until an externally controlled package is actually produced and independently accepted.
+The controlled signer evidence intake specification defines the minimum non-secret proof package: fresh challenge, exact external signature, verifier-derived identities/hashes, verifier commit/certification reference, and external operator/witness/timestamp provenance. The validator recomputes the signature proof and challenge/evidence hashes without accepting any private-key material. The gate remains BLOCKED until an externally controlled package is actually produced and independently accepted.
 
 ## NEXT ATOMIC ACTION
 Close the controlled production signer-identity gate using the new intake contract: generate a fresh challenge, obtain exactly one signature from the externally held production signer, independently verify it against the independently approved production address, assemble the required provenance fields outside the repository, and submit that non-secret evidence package for independent acceptance. Keep every other production gate locked.
