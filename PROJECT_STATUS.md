@@ -9,8 +9,8 @@
 - Repository: `manish91082-coder/ghost-hunter-new`
 - Default branch: `master`
 - Active implementation branch: `phase-19-e2e-harness`
-- Current branch HEAD: `ad04f49a2083e0de54949405016776753dea1fbb`
-- Current HEAD commit: `fix: allow signed drop before nonce tx hash is materialized`
+- Current branch HEAD: `b5255d6cfb3616f852bfe5edfd35e5fa652d2f05`
+- Current HEAD commit: `test(P19-RC-01): isolate Governor ceiling boundary`
 - Phase: Phase 19, execution-integrity / E2E policy harness
 - Live mainnet execution: **BLOCKED**
 - Live capital authorization: **BLOCKED**
@@ -60,7 +60,9 @@ Completed and under active integration/testing on Phase 19 include:
 - receipt/settlement reconciliation;
 - Phase19 Solidity executor with allowlisted two-leg route topology, replay protection, callback checks, per-leg minimums, strict surplus, and withdrawal isolation;
 - Polygon fork protocol smoke and execution-probe harness;
-- adversarial/regression test coverage across the above boundaries.
+- adversarial/regression test coverage across the above boundaries;
+- durable replacement preparation and replacement-fee policy hardening;
+- explicit Governor-envelope isolation for replacement preparation in the Phase-19 test harness.
 
 ## 4. ROUTE COMMITMENT INTEGRITY
 
@@ -78,26 +80,35 @@ Reorg handling permits canonical re-observation after a durable reorg state.
 
 Startup recovery audit detects inconsistent nonce/transaction mappings and preserves forensic diagnostics.
 
+Replacement preparation is fail-closed on source state, sender/executor identity, nonce linkage, replacement fee policy, EVM preflight, Governor approval, signing, and durable persistence.
+
 ## 6. LATEST VERIFIED CI EVIDENCE
 
-A recent CI run on the preceding active-branch revision (`81d95ec88b971f0b7a6391183b65ada86023d0dd`) showed:
+Latest completed Phase-19 run before this status checkpoint:
 
+- Run `#249` on commit `3636abe0fe2bc55b7d3b028600fa9d5efdb85130`: **FAIL**
 - Solidity compile: PASS
 - Phase-19 EVM harness: PASS, 14 tests
 - Polygon protocol smoke: PASS, 3 tests
 - Polygon fork execution probe: PASS, 1 test
-- Python Phase-19 suite: FAIL, 388 tests, 34 setup/errors
+- Python Phase-19 suite: FAIL, **402 tests: 1 failure, 2 errors**
 
-The failures were caused by a test/API synchronization issue introduced around `submission_authority` plus stale construction of hash-bound authority objects. The current branch HEAD `ad04f49...` contains a subsequent fix for signed-drop nonce state, but **no new full-suite green CI evidence is claimed yet for the current HEAD**.
+Forensic result from run #249:
 
-Therefore current evidence status is:
+1. Two valid replacement-lifecycle tests reached an invalid unused `build_signed_record(..., replacement_of=...)` call in `replacement_coordinator.py`. The public `build_signed_record()` API does not accept `replacement_of`; the resulting object was never used because the replacement record is correctly created later by `TransactionRecord.from_replacement()`.
+2. The Governor-ceiling boundary test used a replacement fee that the replacement-policy relative escalation bound rejected first, so it did not actually exercise the Governor ceiling.
 
-**Implementation: advanced. Full current-HEAD regression proof: NOT YET GREEN.**
+Corrections are now committed:
+
+- `ad66f948b76f2555baffdd5b125f18437cefc51e`: removed the invalid, unused replacement-record construction from production replacement preparation.
+- `b5255d6cfb3616f852bfe5edfd35e5fa652d2f05`: changed the Governor-ceiling test fixture so its replacement-policy bound deliberately permits the test fee while the explicit replacement Governor ceiling rejects it.
+
+**Current proof state:** the corrections are committed, but no CI result for current HEAD `b5255d6cfb3616f852bfe5edfd35e5fa652d2f05` is yet certified green.
 
 ## 7. CURRENT BLOCKERS
 
-1. Re-run and obtain green CI evidence for current HEAD after the latest recovery/submission fixes.
-2. Continue forensic repair of any authority/recovery fixture synchronization failures until full regression is green.
+1. Obtain current-HEAD CI evidence after the replacement-coordinator corrections.
+2. If regression is green, audit the replacement lifecycle for semantic completeness and adversarial cross-layer mutation cases before advancing Phase 19.
 3. Continue hardening the route/topology cryptographic bridge and exact execution commitment.
 4. Production signer/network credentials remain intentionally absent and locked.
 5. Production private relay capability is not yet proven on mainnet.
@@ -145,17 +156,21 @@ Append/replace only with evidence-backed state. Never fabricate passes.
 
 ## 10. CURRENT CHECKPOINT
 
-**Timestamp:** 2026-09-15T06:58+05:30
+**Timestamp:** 2026-09-15T07:25+05:30
 
-**Atomic task:** Project-status continuity audit and synchronization.
+**Atomic task:** P19-RC-01 — replacement lifecycle policy/fixture alignment.
 
-**Finding:** The status file had NOT been updated after multiple Phase-19 implementation steps. Its prior recorded commit was stale (`485a3e6aa8e794a4536a47db5385e64b40e1bb4d`) while the active branch had advanced substantially.
+**Finding:** Run #249 reduced the prior replacement cluster to two errors plus one incorrectly targeted boundary assertion. The two errors were caused by an invalid unused call in replacement coordination, not by replacement-policy semantics. The boundary assertion did not isolate the Governor layer.
 
-**Corrective action:** This file has now been synchronized to the active Phase-19 branch HEAD `ad04f49a2083e0de54949405016776753dea1fbb` and the latest observed CI evidence, including the current unresolved regression state.
+**Corrective action:** Removed the unused invalid `build_signed_record(..., replacement_of=...)` call and isolated the Governor ceiling test with a deliberately broader test-only replacement-policy bound. Production Governor and replacement-policy safety limits were not weakened.
+
+**Current HEAD:** `b5255d6cfb3616f852bfe5edfd35e5fa652d2f05`
+
+**Current CI:** not yet available for this HEAD; next action is full Phase-19 workflow verification.
 
 **Safety boundary:** No live signing, public broadcast, live capital, or production execution authorization is granted.
 
-**Next atomic action:** repair/re-run the current regression suite, then resume the highest-value unresolved execution-integrity gap only after green evidence.
+**Next atomic action:** obtain current-HEAD CI evidence, then either close remaining P19-RC-01 defects or certify the gate and proceed to the next highest-value execution-integrity gap.
 
 ---
 
