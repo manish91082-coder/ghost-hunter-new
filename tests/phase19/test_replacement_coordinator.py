@@ -1,6 +1,4 @@
-import tempfile
 import unittest
-from pathlib import Path
 
 from phantomx.chain_observer import ChainObservationState, ObservationDecision
 from phantomx.durable_nonce import NonceStatus
@@ -9,9 +7,18 @@ from phantomx.execution import ExecutionState
 from phantomx.execution_submission import submit_prepared_execution
 from phantomx.replacement_coordinator import ReplacementCoordinatorError, prepare_replacement_execution
 from phantomx.replacement_policy import ReplacementFeePolicy
-from phantomx.sqlite_execution_store import SQLiteExecutionStore
 
 from tests.phase19.test_execution_submission import ExecutionSubmissionTests, FakeRelay
+
+
+class _Signer:
+    def __init__(self, private_key):
+        from phantomx.signer import EthereumEip1559Signer
+        self._signer = EthereumEip1559Signer(private_key)
+        self.address = self._signer.address
+
+    def sign(self, envelope):
+        return self._signer.sign(envelope)
 
 
 class ReplacementCoordinatorTests(unittest.TestCase):
@@ -27,7 +34,7 @@ class ReplacementCoordinatorTests(unittest.TestCase):
             max_absolute_fee_per_gas=150,
             max_priority_fee_per_gas=50,
         )
-        self.dropped = persist_recovery_observation(
+        persist_recovery_observation(
             store=self.store,
             intent=self.prepared.assembly.intent,
             observation=ObservationDecision(
@@ -62,16 +69,12 @@ class ReplacementCoordinatorTests(unittest.TestCase):
             max_fee_per_gas=115,
             max_priority_fee_per_gas=35,
             policy=self.fixture.policy,
-            signer=self.fixture_signer,
+            signer=_Signer("0x" + "01" * 32),
             now=self.fixture.now,
             current_block_number=5001,
         )
         values.update(overrides)
         return prepare_replacement_execution(**values)
-
-    @property
-    def fixture_signer(self):
-        return self.fixture._prepare.__self__._ExecutionSubmissionTests__dict__.get("signer", None) if False else _Signer(self.fixture.PRIVATE_KEY if hasattr(self.fixture, "PRIVATE_KEY") else "0x" + "01" * 32)
 
     def test_drop_state_is_consumed_into_new_signed_replacement(self):
         replacement = self._replacement()
@@ -101,21 +104,21 @@ class ReplacementCoordinatorTests(unittest.TestCase):
 
     def test_fee_bump_policy_blocks_insufficient_replacement_before_signing(self):
         with self.assertRaisesRegex(ReplacementCoordinatorError, "minimum bump"):
-            self._replacement(max_max_fee_per_gas=101)
+            self._replacement(max_fee_per_gas=109, max_priority_fee_per_gas=33)
 
-    def test_replacement_requires_explicit_drop_or_replaced_source(self):
-        fresh = self.fixture._prepare()
-        with self.assertRaises(ReplacementCoordinatorError):
+    def test_replacement_requires_source_to_be_in_explicit_drop_or_replaced_state(self):
+        replacement = self._replacement()
+        with self.assertRaisesRegex(ReplacementCoordinatorError, "replaceable durable state"):
             prepare_replacement_execution(
                 store=self.store,
-                source_record_hash=fresh.transaction_record.record_hash(),
-                simulation=fresh.assembly.simulation,
-                economic_proof=fresh.assembly.economic_proof,
+                source_record_hash=replacement.transaction_record.record_hash(),
+                simulation=self.prepared.assembly.simulation,
+                economic_proof=self.prepared.assembly.economic_proof,
                 replacement_policy=self.policy,
-                executor=fresh.assembly.intent.executor,
-                sender=fresh.assembly.intent.sender,
-                executor_authority=fresh.authority,
-                deadline=fresh.assembly.intent.deadline,
+                executor=self.prepared.assembly.intent.executor,
+                sender=self.prepared.assembly.intent.sender,
+                executor_authority=self.prepared.authority,
+                deadline=self.prepared.assembly.intent.deadline,
                 first_on_quickswap=True,
                 amount_out_min_first=100,
                 amount_out_min_second=95,
@@ -124,23 +127,13 @@ class ReplacementCoordinatorTests(unittest.TestCase):
                 quickswap_router="0x" + "22" * 20,
                 uniswap_v3_router="0x" + "33" * 20,
                 gas_limit=300_000,
-                max_fee_per_gas=115,
-                max_priority_fee_per_gas=35,
+                max_fee_per_gas=130,
+                max_priority_fee_per_gas=40,
                 policy=self.fixture.policy,
                 signer=_Signer("0x" + "01" * 32),
                 now=self.fixture.now,
                 current_block_number=5001,
             )
-
-
-class _Signer:
-    def __init__(self, private_key):
-        from phantomx.signer import EthereumEip1559Signer
-        self._signer = EthereumEip1559Signer(private_key)
-        self.address = self._signer.address
-
-    def sign(self, envelope):
-        return self._signer.sign(envelope)
 
 
 if __name__ == "__main__":
