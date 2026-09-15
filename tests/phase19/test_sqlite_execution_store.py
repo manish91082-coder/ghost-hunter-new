@@ -45,6 +45,14 @@ class SQLiteExecutionStoreTests(unittest.TestCase):
             db.execute("UPDATE transaction_records SET state=? WHERE record_hash=?", (ExecutionState.PENDING.value, self.record.record_hash()))
             db.execute("COMMIT")
 
+    def _move_to_dropped(self):
+        self._move_to_pending()
+        with self.store._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            db.execute("UPDATE nonce_records SET status=? WHERE sender=? AND nonce=?", (NonceStatus.DROPPED.value, self.sender, 42))
+            db.execute("UPDATE transaction_records SET state=? WHERE record_hash=?", (ExecutionState.DROPPED.value, self.record.record_hash()))
+            db.execute("COMMIT")
+
     def test_reserve_and_sign_persist_as_one_durable_domain(self):
         self._seed_signed()
         restarted = SQLiteExecutionStore(self.path)
@@ -61,6 +69,58 @@ class SQLiteExecutionStoreTests(unittest.TestCase):
         with restarted._connect() as db:
             self.assertEqual(db.execute("SELECT next_nonce FROM nonce_cursors WHERE sender=?", (self.sender,)).fetchone()[0], 43)
         self.assertEqual(restarted.pending_journal(), [])
+
+    def test_replacement_persistence_rolls_back_source_and_nonce_on_insert_failure(self):
+        self._move_to_dropped()
+        source = self.store.get_transaction(self.record.record_hash())
+        nonce = self.store.get_nonce(self.sender, 42)
+        replacement_hash = "0x" + "22" * 32
+        # Force the replacement INSERT to fail at the database uniqueness boundary
+        # after the source/nonce validation has already succeeded.
+        with self.store._connect() as db:
+            db.execute(
+                "INSERT INTO transaction_records VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    "0x" + "33" * 32,
+                    "0x" + "44" * 32,
+                    "0x" + "55" * 32,
+                    "collision-reservation",
+                    137,
+                    "0x0000000000000000000000000000000000000004",
+                    self.executor,
+                    7,
+                    "0x" + "66" * 32,
+                    300_000,
+                    100,
+                    30,
+                    replacement_hash,
+                    ExecutionState.SIGNED.value,
+                    None,
+                ),
+            )
+
+        replacement_record = replace(
+            source,
+            tx_hash=replacement_hash,
+            state=ExecutionState.SIGNED,
+            replacement_of=source.tx_hash,
+        )
+        with self.assertRaises(Exception):
+            self.store.persist_signed_replacement(
+                source_record_hash=source.record_hash(),
+                replacement_record=replacement_record,
+                replacement_nonce=nonce,
+            )
+
+        restarted = SQLiteExecutionStore(self.path)
+        self.assertEqual(restarted.get_transaction(source.record_hash()).state, ExecutionState.DROPPED)
+        restarted_nonce = restarted.get_nonce(self.sender, 42)
+        self.assertEqual(restarted_nonce.status, NonceStatus.DROPPED)
+        self.assertEqual(restarted_nonce.tx_hash, self.tx_hash)
+        self.assertIsNone(restarted_nonce.replacement_of)
+        self.assertEqual(restarted.get_transaction(source.record_hash()).tx_hash, self.tx_hash)
+        with restarted._connect() as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM transaction_records WHERE tx_hash=?", (replacement_hash,)).fetchone()[0], 1)
 
     def test_recovery_updates_transaction_nonce_and_journal_in_one_commit(self):
         self._move_to_pending()
