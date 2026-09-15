@@ -6,7 +6,7 @@
 ## 0. CURRENT RESUME CARD
 - Project: `manish91082-coder/ghost-hunter-new`
 - Active branch: `phase-19-e2e-harness`
-- Latest implementation commit: `cf40920b098eb161112b551438be804aefcba4d1`
+- Latest implementation commit: `dcbe6b7b78fb78abec8bec6c9d6cd5f2d8322507`
 - Private-relay HTTP transport: `b7789d8da6c1eea70cc86e0ee5dd04dac3895694`
 - Relay secrecy/fallback-audit repair: `a1f76fcda0ff066b43a2dc0f19e08d682e98657b`
 - Durable submission fence: `4c748c058ae32af3074232bfc282dce0e5a71f84`
@@ -15,8 +15,9 @@
 - In-flight observation integration: `ebb9d2cb95fa2f43176547daa5520f575fb24ead`
 - In-flight durable recovery integration: `4bf326ec13e08dbcf90567b9c5758b4cb6812499`
 - In-flight restart-audit hardening: `978047b57e19a802a14593bc9bb683106ee0c419`
-- In-flight recovery regression tests: `cf40920b098eb161112b551438be804aefcba4d1`
-- Fresh full certification for latest recovery tree: **PENDING**
+- In-flight signed-nonce observation repair: `4376a4692b07d1191d63ab3f13836417326a3252`
+- In-flight recovery regression tests: `dcbe6b7b78fb78abec8bec6c9d6cd5f2d8322507`
+- Fresh certification run `#416`: **IN PROGRESS** for `dcbe6b7...`
 - Certification PR: `#1` OPEN, base `master`
 - Live mainnet execution: **BLOCKED**
 - Live capital authorization: **BLOCKED**
@@ -48,7 +49,9 @@ The dedicated private-relay transport accepts only non-empty raw signed transact
 
 The durable submission path establishes a committed `SUBMISSION_IN_FLIGHT` barrier immediately before network I/O. An uncertain relay outcome is never returned to retryable `SIGNED`; the exact durable transaction hash remains held for chain reconciliation.
 
-Chain observation accepts `SUBMISSION_IN_FLIGHT` and resolves it to `PENDING`, `INCLUDED`, or `PROFIT_FAILED` on explicit chain evidence. Dedicated recovery accepts `DROPPED`, `REPLACED`, and `REORGED` evidence from the same state without reopening `SIGNED`.
+Chain observation accepts `SUBMISSION_IN_FLIGHT`. When the transaction is in-flight and its nonce record is still legitimately SIGNED/hash-free, explicit PENDING/INCLUDED/REVERTED evidence is allowed to advance the nonce to the corresponding post-network lifecycle. No observation path restores `SIGNED` after the in-flight fence.
+
+Dedicated recovery accepts `DROPPED`, `REPLACED`, and `REORGED` evidence from applicable in-flight/submitted lifecycle states without reopening `SIGNED`. Direct reorg recovery still requires a prior canonical inclusion identity rather than manufacturing a reorg from an unconfirmed relay outcome.
 
 Startup recovery audit treats `SUBMISSION_IN_FLIGHT` with a SIGNED/hash-free nonce lifecycle as internally consistent, preserving the crash-safe fence across process restart.
 
@@ -59,7 +62,9 @@ Run `#406` remains explicit failure evidence for the pre-migration relay-state a
 
 Run `#408` completed **GREEN** across all workflow stages: compile, 14/14 EVM tests, Polygon fork smoke, Polygon fork execution probe, and the full Python unittest stage. No live production endpoints or credentials were used for this certification.
 
-The latest recovery integration is intentionally not marked GREEN until a fresh workflow run certifies the new recovery tests and startup audit behavior.
+Run `#414` exposed the signed-nonce handoff mismatch in the first recovery integration. Its workflow compile, EVM, Polygon smoke, and Polygon execution stages passed, while the Python recovery stage failed. The defect was isolated to allowing `SUBMISSION_IN_FLIGHT` transaction state while still rejecting its intentionally SIGNED/hash-free nonce lifecycle.
+
+Commit `4376a469...` repairs that contract and `dcbe6b7...` adds focused regression coverage for PENDING/INCLUDED/REVERTED resolution from the signed-nonce in-flight state. Fresh certification for this exact tree is currently `#416 IN PROGRESS`. No GREEN claim is made until the workflow completes.
 
 ## 5. CURRENT SIGNER IDENTITY GATE
 The signer exposes a non-secret cryptographic challenge proof. External verification recovers the Ethereum address and requires exact equality with the expected signer address without private-key access.
@@ -94,20 +99,18 @@ Current implementation certification remains separate from proof of an approved 
 Every P0 gate must be GREEN with reproducible evidence before live capital. Any unchecked gate means **LIVE CAPITAL = LOCKED**.
 
 ## 9. CURRENT CHECKPOINT
-Atomic task completed: fresh certification of the durable relay fence, followed by implementation of `SUBMISSION_IN_FLIGHT` chain observation, dedicated recovery, and restart-audit resolution.
+Atomic task: repair the signed-nonce handoff exposed by recovery CI, then recertify the full recovery lifecycle.
 
 Implementation:
-- `0b1acae...` triggered durable-fence certification
-- Run `#408` GREEN
-- `ebb9d2cb...` integrates in-flight observation resolution
-- `4bf326ec...` integrates in-flight dedicated recovery resolution
-- `978047b57...` makes startup audit recognize the in-flight lifecycle
-- `cf40920b...` adds adversarial restart/recovery regression coverage
+- `#408` GREEN certified durable submission fence
+- `4376a469...` allows exact SIGNED/hash-free nonce handoff only while transaction state is `SUBMISSION_IN_FLIGHT`
+- `dcbe6b7...` adds focused PENDING/INCLUDED/REVERTED lifecycle regression tests
+- `#416` fresh full certification is currently **IN PROGRESS**
 
-The new recovery layer is implemented, but its latest full-workflow certification is still pending. No GREEN claim is made for `cf40920b...` until fresh CI evidence exists.
+The recovery layer is implemented but not yet certified on the latest tree.
 
 ## 10. NEXT ATOMIC ACTION
-Inspect the fresh full Phase-19 certification triggered by `cf40920b...`. On GREEN, proceed to the settlement-integrity gate: prove recovered `PENDING/INCLUDED/REORGED` paths cannot bypass canonical receipt and realized-profit reconciliation, and prove recovery cannot manufacture a second submission authority for the same immutable transaction.
+Inspect and certify `#416` for `dcbe6b7...`. On GREEN, move to the settlement-integrity gate: recovered `PENDING/INCLUDED/REORGED` outcomes must not bypass canonical receipt validation or realized-profit reconciliation, and recovery must never manufacture a second submission authority for the same immutable transaction.
 
 **LIVE SIGNING = BLOCKED**  
 **PUBLIC BROADCAST = BLOCKED**  
