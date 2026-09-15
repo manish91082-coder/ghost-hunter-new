@@ -67,6 +67,7 @@ def _tx_transition_allowed(current: ExecutionState, target: ExecutionState) -> b
     return target in {
         ExecutionState.SIGNED: {ExecutionState.DROPPED},
         ExecutionState.PRIVATE_SUBMITTED: {ExecutionState.DROPPED, ExecutionState.REPLACED, ExecutionState.PENDING, ExecutionState.PROFIT_FAILED},
+        ExecutionState.SUBMISSION_IN_FLIGHT: {ExecutionState.DROPPED, ExecutionState.REPLACED, ExecutionState.PENDING, ExecutionState.INCLUDED, ExecutionState.REORGED, ExecutionState.PROFIT_FAILED},
         ExecutionState.PENDING: {ExecutionState.DROPPED, ExecutionState.REPLACED, ExecutionState.REORGED, ExecutionState.INCLUDED, ExecutionState.PROFIT_FAILED},
         ExecutionState.INCLUDED: {ExecutionState.REORGED},
         ExecutionState.REORGED: {ExecutionState.PENDING, ExecutionState.DROPPED},
@@ -93,7 +94,14 @@ def persist_recovery_observation(
     block_number: int | None = None,
     canonical_block_hash: str | None = None,
 ) -> PersistedRecovery:
-    """Persist DROP, REPLACED or REORGED evidence exactly once per evidence hash."""
+    """Persist DROP, REPLACED or REORGED evidence exactly once per evidence hash.
+
+    An uncertain private relay outcome is represented durably as
+    SUBMISSION_IN_FLIGHT. Recovery evidence may resolve that state to DROPPED,
+    REPLACED, or REORGED, but ordinary chain observation should resolve it to
+    PENDING/INCLUDED/PROFIT_FAILED. No recovery path returns the transaction to
+    SIGNED after network I/O was possible.
+    """
     _ensure_schema(store)
     if observation.state not in {
         ChainObservationState.DROPPED,
@@ -176,9 +184,9 @@ def persist_recovery_observation(
             current_tx = ExecutionState(row[4])
             current_nonce = NonceStatus(nrow[2])
             valid_current_tx = {
-                ChainObservationState.DROPPED: {ExecutionState.SIGNED, ExecutionState.PRIVATE_SUBMITTED, ExecutionState.PENDING},
-                ChainObservationState.REPLACED: {ExecutionState.PRIVATE_SUBMITTED, ExecutionState.PENDING},
-                ChainObservationState.REORGED: {ExecutionState.PENDING, ExecutionState.INCLUDED, ExecutionState.REORGED},
+                ChainObservationState.DROPPED: {ExecutionState.SIGNED, ExecutionState.PRIVATE_SUBMITTED, ExecutionState.SUBMISSION_IN_FLIGHT, ExecutionState.PENDING},
+                ChainObservationState.REPLACED: {ExecutionState.PRIVATE_SUBMITTED, ExecutionState.SUBMISSION_IN_FLIGHT, ExecutionState.PENDING},
+                ChainObservationState.REORGED: {ExecutionState.SUBMISSION_IN_FLIGHT, ExecutionState.PENDING, ExecutionState.INCLUDED, ExecutionState.REORGED},
             }[observation.state]
             valid_current_nonce = {
                 ChainObservationState.DROPPED: {NonceStatus.SIGNED, NonceStatus.SUBMITTED},
@@ -205,21 +213,10 @@ def persist_recovery_observation(
             )
             sequence = int(db.execute("SELECT last_insert_rowid()").fetchone()[0])
             db.execute("UPDATE transaction_records SET state=? WHERE record_hash=? AND state=?", (target_tx.value, row[0].lower(), current_tx.value))
-            if observation.state is ChainObservationState.REPLACED:
-                # The observation records which replacement appeared on-chain,
-                # but does not manufacture durable ownership of that hash. The
-                # active nonce hash advances only when a validated replacement
-                # TransactionRecord is atomically installed by the replacement
-                # persistence boundary.
-                db.execute(
-                    "UPDATE nonce_records SET status=? WHERE sender=? AND nonce=? AND status=?",
-                    (target_nonce.value, row[2], int(row[3]), current_nonce.value),
-                )
-            else:
-                db.execute(
-                    "UPDATE nonce_records SET status=? WHERE sender=? AND nonce=? AND status=?",
-                    (target_nonce.value, row[2], int(row[3]), current_nonce.value),
-                )
+            db.execute(
+                "UPDATE nonce_records SET status=? WHERE sender=? AND nonce=? AND status=?",
+                (target_nonce.value, row[2], int(row[3]), current_nonce.value),
+            )
             db.execute("COMMIT")
         except Exception:
             if db.in_transaction:
