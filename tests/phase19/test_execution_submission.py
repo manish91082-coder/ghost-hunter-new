@@ -17,6 +17,7 @@ from phantomx.signer import EthereumEip1559Signer
 from phantomx.sqlite_execution_store import SQLiteExecutionStore
 from phantomx.durable_nonce import NonceStatus
 from phantomx.route_simulator import simulate_two_leg
+from phantomx.production_authority_evidence import AuthorityEvidenceReusePolicy
 
 TOKEN_A = "0x" + "aa" * 20
 TOKEN_B = "0x" + "bb" * 20
@@ -85,6 +86,7 @@ class ExecutionSubmissionTests(unittest.TestCase):
             observed_block=block + 1,
             runtime_code_hash=RUNTIME_CODE_HASH,
         )
+        self.authority_reuse_policy = AuthorityEvidenceReusePolicy(maximum_age_blocks=2)
         self.proof = build_economic_proof(
             route_hash=self.simulation.route_hash,
             quote_hashes=tuple(leg.quote_hash for leg in self.simulation.legs),
@@ -119,6 +121,7 @@ class ExecutionSubmissionTests(unittest.TestCase):
             executor=EXECUTOR,
             sender=SENDER,
             executor_authority=self.authority,
+            authority_evidence_reuse_policy=self.authority_reuse_policy,
             chain_pending_nonce=7,
             deadline=self.now + 60,
             first_on_quickswap=True,
