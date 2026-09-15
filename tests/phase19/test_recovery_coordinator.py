@@ -52,6 +52,14 @@ class RecoveryCoordinatorTests(unittest.TestCase):
         d = recover("record", ExecutionState.PENDING, self.decision(ChainObservationState.REPLACED))
         self.assertEqual(d.action, RecoveryAction.BLOCK)
 
+    def test_terminal_profit_confirmed_blocks_reorg_actions(self):
+        d = recover("record", ExecutionState.PROFIT_CONFIRMED, self.decision(ChainObservationState.REORGED))
+        self.assertEqual(d.action, RecoveryAction.BLOCK)
+
+    def test_terminal_profit_failed_blocks_reorg_actions(self):
+        d = recover("record", ExecutionState.PROFIT_FAILED, self.decision(ChainObservationState.REORGED))
+        self.assertEqual(d.action, RecoveryAction.BLOCK)
+
     def test_terminal_state_blocks_restart_actions(self):
         d = recover("record", ExecutionState.PROFIT_CONFIRMED, self.decision(ChainObservationState.DROPPED))
         self.assertEqual(d.action, RecoveryAction.BLOCK)
