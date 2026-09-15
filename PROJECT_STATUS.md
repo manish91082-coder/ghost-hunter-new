@@ -6,9 +6,9 @@
 ## 0. CURRENT RESUME CARD
 - Project: `manish91082-coder/ghost-hunter-new`
 - Active branch: `phase-19-e2e-harness`
-- Latest implementation-bearing commit: `fe748b626060a7a2a63d79e309bb633becdefa17`
-- Latest implementation-bearing hardening before this checkpoint: `839f8c30d8b764723135ed135e1f1320fdad682b`
-- Earlier implementation-bearing hardening: `6ff08b45e0250880e66e1545fa2f29691a9759ae`, `e40aa7b4abc86cce0bee0951717ab3b7aa651f70`
+- Latest implementation-bearing commit: `164d4522abdf2b224e91a514a1d2bea065f30535`
+- Prior implementation-bearing commits: `6ff08b45e0250880e66e1545fa2f29691a9759ae`, `e40aa7b4abc86cce0bee0951717ab3b7aa651f70`, `eb9ee0c6b62e349500f177b8fa761673ce1a999b`
+- Certification PR: `#1` (DRAFT, open, base `master`)
 - Phase: Phase 19 execution-integrity / E2E policy harness
 - Live mainnet execution: **BLOCKED**
 - Live capital authorization: **BLOCKED**
@@ -31,17 +31,14 @@ Initial scope: Polygon, Aave V3, QuickSwap V2, Uniswap V3, USDC/WETH/WMATIC/WBTC
 ## 3. VERIFIED IMPLEMENTATION CAPABILITIES
 Phase 19 includes strict realized-profit gating, deterministic all-in economics, Keccak hashing, immutable intent/auth/envelope binding, exact block-bound quotes, route simulation and topology commitment, loan optimization, EVM preflight, Governor, signer boundary, durable SQLite nonce/transaction state, atomic replacement/recovery coordination, private-only submission, chain/recovery/reorg/replacement handling, receipt reconciliation, Solidity executor controls, Polygon fork harness, and adversarial/regression coverage.
 
-Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, one-path coordinator artifact-chain certification, quorum-bound read-only executor authority attestation, nullable durable-nonce-hash replacement coverage, restart-audit coverage for pre-submission `SIGNED` state, CI runtime modernization, and duplicate-private-submission prevention before relay I/O.
+Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, one-path coordinator artifact-chain certification, quorum-bound read-only executor authority attestation, nullable durable-nonce-hash replacement coverage, restart-audit coverage proving a pre-submission `SIGNED` nonce may legitimately remain hash-free while the durable transaction record remains authoritative, CI runtime modernization to Node 24-compatible action majors, and pre-network blocking of repeated submission of an already-submitted durable artifact.
 
-## 4. MVP REPOSITORY CLEANUP / CONSISTENCY
-The active branch has been reduced to the targeted Phase-19 implementation/test spine.
+## 4. CI CERTIFICATION PATH
+The Phase-19 workflow now runs on branch pushes and on pull requests to `master`, while ignoring status-only changes. It uses `actions/checkout@v5` and `actions/setup-python@v6`, then performs Foundry compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the Phase-19 unittest suite.
 
-- Removed obsolete `v2/` and `v3/` runtime/AI/training/deployment/state stacks.
-- Removed legacy root `__init__.py` and obsolete secret-bearing `config/settings.json` configuration surface.
-- Rewrote `PROJECT_DETAILS.md` to describe the current Phase-19 MVP instead of deleted legacy launchers/runners/AI artifacts.
-- Preserved the Phase-19 Solidity contract, tests, `phantomx/` execution-integrity modules, workflow, requirements, and audit/continuity evidence.
+A draft certification PR `#1` was opened specifically to expose current-head PR-triggered checks without merging anything. The connector's commit-run filter still currently returns no PR workflow run for the latest head, so no CI pass is claimed.
 
-**Security note:** the removed legacy settings file contained a Telegram bot token. Deletion does not revoke a credential that may exist in Git history; revoke/rotate that credential externally.
+Historical run `#276` remains GREEN but predates the newest hardening and is not current-head certification.
 
 ## 5. CURRENT AUTHORITY-PROOF HARDENING
 `phantomx/executor_authority.py` provides `observe_executor_authority_quorum(...)`.
@@ -50,22 +47,7 @@ The quorum observer verifies Polygon chain identity on every configured provider
 
 This is read-only and cannot sign or submit transactions.
 
-## 6. VERIFIED CI EVIDENCE
-- Run `#258`: GREEN, 14 EVM + 3 Polygon smoke + 1 fork probe + 402/402 Python.
-- Run `#261`: GREEN, 14 EVM + 3 Polygon smoke + 1 fork probe + 403/403 Python.
-- Run `#262`: GREEN, 14 EVM + 3 Polygon smoke + 1 fork probe + 403/403 Python.
-- Run `#266`: GREEN, 14 EVM + 3 Polygon smoke + 1 fork probe + 404/404 Python.
-- Run `#268`: GREEN, 14/14 EVM + 3/3 Polygon smoke + 1/1 fork probe + 405/405 Python.
-- Run `#269`: GREEN, 14/14 EVM + 3/3 Polygon smoke + 1/1 fork probe + 406/406 Python.
-- Run `#270`: GREEN, 14/14 EVM + 3/3 Polygon smoke + 1/1 fork probe + 407/407 Python.
-- Run `#273`: GREEN, 14/14 EVM + 3/3 Polygon smoke + 1/1 Polygon fork execution probe + 408/408 Python.
-- Run `#275`: Python gate failed only on a brittle sorted-list assertion; 413 tests, 1 failure.
-- Repair commit `e8ded6459a8d7a070310f49481f335043617650e` corrected the assertion.
-- Run `#276`: GREEN, 14/14 EVM + 3/3 Polygon smoke + 1/1 Polygon fork execution probe + 413/413 Python.
-
-Historical runner logs also show a successful Phase-19 Python suite of 164/164 tests, but that run checked out an older SHA. Current implementation commits `839f8c30...` and `fe748b626...` have no exposed push-triggered run through the connector's commit-run filter, so no current-head GREEN claim is made.
-
-## 7. CURRENT BLOCKERS / P0 GATES
+## 6. CURRENT BLOCKERS / P0 GATES
 1. Controlled production signer identity proof without exposing private key material.
 2. Controlled production Polygon network/provider authority proof using explicitly approved production endpoints and the deployed executor address.
 3. Production private relay capability with no public fallback.
@@ -74,30 +56,27 @@ Historical runner logs also show a successful Phase-19 Python suite of 164/164 t
 6. Final realized live PnL evidence after all preceding gates are GREEN.
 7. Live mainnet capital deployment remains forbidden.
 
-Required before real production authority attestation: approved Polygon RPC provider set, controlled confirmation of the intended deployed executor address, and expected signer address. Private key material stays outside repository code, fixtures, and chat.
+Required before real production authority attestation: approved Polygon RPC provider set, controlled confirmation of the intended deployed executor address, and expected signer address. Private key material stays outside repository code, fixtures, logs, and chat.
 
-## 8. GO-LIVE RULE
+## 7. GO-LIVE RULE
 Every P0 gate must be GREEN with reproducible evidence before live capital. Any unchecked gate means **LIVE CAPITAL = LOCKED**.
 
-## 9. CURRENT CHECKPOINT
+## 8. CURRENT CHECKPOINT
 **Timestamp:** 2026-09-15
 
-**Atomic task:** lead-directed submission-path integration audit and duplicate-submission hardening.
+**Atomic task:** expose authoritative current-head CI through a controlled draft certification PR.
 
 **New work completed:**
-- `phantomx/execution_submission.py` now revalidates the durable transaction + nonce lifecycle immediately before private relay I/O and requires the prepared artifact to remain in exact `SIGNED` state.
-- A repeated call using an already `PRIVATE_SUBMITTED` prepared artifact is rejected before any second relay call.
-- `tests/phase19/test_execution_submission.py` now explicitly proves duplicate submission is blocked before network I/O and that durable state remains `PRIVATE_SUBMITTED`/`SUBMITTED` after the first successful submission.
+- Extended `.github/workflows/phase19-tests.yml` with a `pull_request` trigger targeting `master`, preserving the `PROJECT_STATUS.md` path ignore.
+- Opened draft PR `#1` from `phase-19-e2e-harness` to `master` solely to obtain independently observable PR CI evidence. The PR is explicitly non-merge and does not grant production authority.
+- Verified the latest implementation-bearing head is `164d4522abdf2b224e91a514a1d2bea065f30535`.
+- The available commit workflow-run filter still exposes no run for this current PR head, so certification remains **UNKNOWN / NOT GREEN**, not fabricated.
 
-**Current verdict:** the submission boundary is stronger against caller retries and stale prepared-object reuse. The change is not yet current-head CI-certified through the available connector; therefore no GREEN claim is made.
-
-**Authority/input finding:**
-- Production authority remains blocked pending approved Polygon provider quorum + intended executor identity + expected signer identity.
-- Historical public RPC endpoints are not promoted into production authority.
+**Current verdict:** the repository is structurally coherent and the CI path is now designed to expose current-head PR checks. Production execution remains blocked because fresh certification and all production P0 authority inputs are still outstanding.
 
 **Safety boundary:** no live signing, public broadcast, live capital, or production execution authorization.
 
-**Next atomic action:** obtain authoritative fresh CI for `fe748b626...`; if green, continue the startup/recovery and shadow/staging audit. If not green, perform failure forensics before further implementation work.
+**Next atomic action:** inspect the PR-triggered workflow once exposed; if GREEN, continue the highest-value remaining production-like gate. If the workflow fails, perform failure forensics before further feature work.
 
 ---
 
