@@ -19,7 +19,7 @@ from .nonce_binding import BoundNonce
 from .replacement_policy import ReplacementAuthorization, ReplacementFeePolicy
 from .signer import SignedTransaction, TransactionSigner, sign_governed_transaction
 from .sqlite_execution_store import SQLiteExecutionStore
-from .transaction_record import TransactionRecord, authorization_hash, build_signed_record
+from .transaction_record import TransactionRecord, authorization_hash
 
 
 class ReplacementCoordinatorError(RuntimeError):
@@ -200,18 +200,6 @@ def prepare_replacement_execution(
     try:
         replacement_auth.validate(policy=replacement_policy)
     except ValueError as exc:
-        raise ReplacementCoordinatorError(str(exc)) from exc
-
-    try:
-        unsigned_record = build_signed_record(
-            assembly.intent,
-            assembly.authorization,
-            assembly.envelope,
-            bound_record,
-            signed_transaction,
-            replacement_of=source.tx_hash,
-        )
-    except Exception as exc:
         raise ReplacementCoordinatorError(str(exc)) from exc
 
     replacement_record = TransactionRecord.from_replacement(
