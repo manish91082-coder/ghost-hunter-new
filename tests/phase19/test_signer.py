@@ -1,6 +1,8 @@
 import unittest
 from dataclasses import replace
 
+import rlp
+
 from phantomx.execution import Authorization, ExecutionIntent, TransactionEnvelope
 from phantomx.executor_authority import ExecutorAuthorityEvidence, runtime_code_binding_hash
 from phantomx.governor import GovernorDecision
@@ -83,6 +85,22 @@ class SignerBoundaryTests(unittest.TestCase):
         self.assertEqual(result.raw_transaction[:1], b"\x02")
         self.assertEqual(recover_eip1559_sender(result.raw_transaction), self.sender)
         self.assertEqual(result.executor_runtime_binding_hash, runtime_code_binding_hash(self.authority))
+
+    def test_signed_artifact_exactly_matches_governed_envelope(self):
+        result = self.sign()
+        fields = rlp.decode(result.raw_transaction[1:], strict=True)
+        self.assertEqual(len(fields), 12)
+        chain_id, nonce, max_priority, max_fee, gas_limit, to, value, data, access_list, _, _, _ = fields
+        self.assertEqual(int.from_bytes(chain_id, "big"), self.envelope.chain_id)
+        self.assertEqual(int.from_bytes(nonce, "big"), self.envelope.nonce)
+        self.assertEqual(int.from_bytes(max_priority, "big"), self.envelope.max_priority_fee_per_gas)
+        self.assertEqual(int.from_bytes(max_fee, "big"), self.envelope.max_fee_per_gas)
+        self.assertEqual(int.from_bytes(gas_limit, "big"), self.envelope.gas_limit)
+        self.assertEqual(to, bytes.fromhex(self.envelope.executor[2:]))
+        self.assertEqual(value, b"")
+        self.assertEqual(data, self.envelope.calldata)
+        self.assertEqual(access_list, [])
+        self.assertEqual(result.transaction_hash, keccak256_hex(result.raw_transaction))
 
     def test_signer_private_key_identity_is_explicit(self):
         self.assertEqual(len(self.signer.address), 42)
