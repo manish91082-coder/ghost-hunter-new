@@ -6,21 +6,12 @@
 ## 0. CURRENT RESUME CARD
 - Project: `manish91082-coder/ghost-hunter-new`
 - Active branch: `phase-19-e2e-harness`
-- Latest implementation commit: `125db946bfc2c8e6c3b98910e733818df46a22b4`
-- Recovered-settlement integrity repair: `125db946...`
-- Private-relay HTTP transport: `b7789d8da6c1eea70cc86e0ee5dd04dac3895694`
-- Relay secrecy/fallback-audit repair: `a1f76fcda0ff066b43a2dc0f19e08d682e98657b`
-- Durable submission fence: `4c748c058ae32af3074232bfc282dce0e5a71f84`
-- Fresh durable-fence certification run `#408`: **GREEN** for `0b1acae...`
-- In-flight observation integration: `ebb9d2cb95fa2f43176547daa5520f575fb24ead`
-- In-flight durable recovery integration: `4bf326ec13e08dbcf90567b9c5758b4cb6812499`
-- In-flight restart-audit hardening: `978047b57e19a802a14593bc9bb683106ee0c419`
-- In-flight signed-nonce observation repair: `4376a4692b07d1191d63ab3f13836417326a3252`
-- Fresh recovery certification run `#417`: **GREEN** for `e18e060...`
-- Recovered-settlement integrity regression tests: `080ffd5ac1093a2189fa60517900a6940b22363a`
-- Fresh certification run `#418`: **FAILED** on settlement-test observation-shape mismatch
-- Repair commit for #418: `125db946...`
-- Fresh repair certification run `#420`: **IN PROGRESS** for `125db946...`
+- Latest implementation commit: `6a3bbc63e1c4a99477136a6329e8f34cda0e705c`
+- Recovery-settlement repair: `125db946...`
+- Fresh recovery-settlement certification run `#420`: **GREEN**
+- Production chain observation adapter: `77c3c457...`
+- Read-only transaction/receipt RPC allowlist: `64f96d8b...`
+- Fresh certification for current chain-observation adapter: **PENDING**
 - Certification PR: `#1` OPEN, base `master`
 - Live mainnet execution: **BLOCKED**
 - Live capital authorization: **BLOCKED**
@@ -44,32 +35,20 @@ Initial scope: Polygon, Aave V3, QuickSwap V2, Uniswap V3, USDC/WETH/WMATIC/WBTC
 ## 3. VERIFIED IMPLEMENTATION CAPABILITIES
 Phase 19 contains deterministic economic gating, immutable intent/auth/envelope binding, exact quote and simulation evidence, EVM preflight, Governor, signer verification, durable nonce/transaction state, replacement/recovery, private-only submission, receipt/reconciliation logic, Solidity executor controls, Polygon fork harness, and authority quorum/provenance/freshness controls.
 
-The high-level private submission boundary accepts governed immutable signed artifacts, revalidates executor authority before network I/O, requires an explicitly private relay, and has no public fallback.
+The recovery lifecycle has a durable `SUBMISSION_IN_FLIGHT` barrier, no restoration to retryable `SIGNED`, and a settlement boundary that requires canonical INCLUDED evidence plus a successful receipt before terminal profit accounting.
 
-The Polygon read transport remains read-only; write/submission methods are blocked before network I/O.
+The high-level private submission boundary remains private-only with no public fallback.
 
-The dedicated private-relay transport accepts only non-empty raw signed transaction bytes, sends only `eth_sendRawTransaction`, requires HTTPS and explicit private assertion, separates authentication from endpoint configuration, and validates the returned transaction hash.
+Production chain observation now uses only the existing read-only provider abstraction. It verifies Polygon chain identity, gathers transaction/receipt/pending-nonce evidence, checks canonical block identity for receipts, groups provider observations deterministically, and requires a unique quorum-backed decision before recovered settlement can trust the observation.
 
-The durable submission path establishes a committed `SUBMISSION_IN_FLIGHT` barrier immediately before network I/O. An uncertain relay outcome is never returned to retryable `SIGNED`; the exact durable transaction hash remains held for chain reconciliation.
-
-Chain observation accepts `SUBMISSION_IN_FLIGHT`. When the transaction is in-flight and its nonce record is still legitimately SIGNED/hash-free, explicit PENDING/INCLUDED/REVERTED evidence advances the nonce to the corresponding post-network lifecycle. No observation path restores `SIGNED` after the in-flight fence.
-
-Dedicated recovery accepts `DROPPED`, `REPLACED`, and `REORGED` evidence from applicable in-flight/submitted lifecycle states without reopening `SIGNED`. Direct reorg recovery requires a prior canonical inclusion identity rather than manufacturing a reorg from an unconfirmed relay outcome.
-
-Startup recovery audit treats `SUBMISSION_IN_FLIGHT` with a SIGNED/hash-free nonce lifecycle as internally consistent, preserving the crash-safe fence across process restart.
-
-The settlement boundary requires canonical INCLUDED evidence plus a successful receipt before terminal profit accounting. Recovery states do not directly create settlement authority, and the existing realized-profit floor remains strictly greater than $0.20 after all applicable costs.
+The read-only HTTP transport now allowlists `eth_getTransactionByHash` and `eth_getTransactionReceipt` in addition to the existing read methods. Submission/write methods remain blocked before network I/O.
 
 ## 4. CI CERTIFICATION PATH
-Certified historical gates include signer repair `#349`, signer runbook `#360`, Polygon transport `#364`, production authority assembly `#367`, authority CLI `#371`, provenance `#373/#376`, freshness/reuse `#378/#379/#380`, execution/replacement/signer freshness `#393`, production execution surface `#395`, private-relay repair `#403`, durable-fence certification `#408`, and recovery certification `#417`.
+Certified historical gates include signer repair `#349`, signer runbook `#360`, Polygon transport `#364`, production authority assembly `#367`, authority CLI `#371`, provenance `#373/#376`, freshness/reuse `#378/#379/#380`, execution/replacement/signer freshness `#393`, production execution surface `#395`, private-relay repair `#403`, durable-fence certification `#408`, recovery certification `#417`, and recovered-settlement repair certification `#420`.
 
-Run `#406` remains explicit failure evidence for pre-migration relay-state assertions. Run `#414` remains explicit failure evidence for the first signed-nonce handoff implementation. Both failures led to targeted contract repairs rather than being suppressed.
+Run `#418` remains explicit failure evidence for the first recovered-settlement integrity certification attempt. The repair was independently certified by `#420`.
 
-Run `#417` completed GREEN across the full workflow. Compile, 14/14 EVM integration tests, Polygon fork smoke, Polygon fork execution probe, and the Python unittest stage all completed successfully for the corrected recovery test tree.
-
-Run `#418` is explicit failure evidence for the first recovered-settlement integrity certification attempt. Its failure was confined to the adversarial settlement tests passing the persisted observation wrapper where reconciliation requires the contained canonical `ObservationDecision`.
-
-Repair `#420` is now running against `125db946...`. No GREEN claim is made until the run completes successfully.
+Run `#420` completed successfully across compile, 14/14 EVM integration tests, Polygon fork smoke, Polygon fork execution probe, and the complete Python stage. No GREEN claim is made for the newer chain-observation adapter until its own fresh workflow completes.
 
 ## 5. CURRENT SIGNER IDENTITY GATE
 The signer exposes a non-secret cryptographic challenge proof. External verification recovers the Ethereum address and requires exact equality with the expected signer address without private-key access.
@@ -89,13 +68,13 @@ Authority evidence records actual attesting provider names in its canonical dige
 
 `phantomx/private_relay_http.py` is the dedicated low-level private-relay adapter and `phantomx/production_private_relay.py` is the explicit operator configuration assembly. No real production endpoint or relay credential has been introduced.
 
-Current implementation certification remains separate from proof of an approved or connected production relay.
+`phantomx/production_chain_observation.py` is the new transaction/receipt observation boundary. It has no signer or submission dependency and produces only non-secret quorum evidence.
 
 ## 7. CURRENT P0 BLOCKERS
 1. Controlled production signer identity proof without exposing private-key material.
 2. Controlled production Polygon provider authority proof using approved endpoints and intended deployed executor.
 3. Controlled production private relay proof using an actually approved relay endpoint and authentication, with no public fallback.
-4. Production-like startup/recovery and settlement reorg evidence, including certification of `SUBMISSION_IN_FLIGHT` resolution and recovered settlement-integrity controls.
+4. Production-like startup/recovery and settlement reorg evidence, including fresh certification of transaction/receipt quorum observation.
 5. Controlled shadow/staging evidence using the identical immutable artifact chain.
 6. Final realized live PnL evidence after all preceding gates are GREEN.
 7. Live mainnet capital deployment remains forbidden.
@@ -104,17 +83,18 @@ Current implementation certification remains separate from proof of an approved 
 Every P0 gate must be GREEN with reproducible evidence before live capital. Any unchecked gate means **LIVE CAPITAL = LOCKED**.
 
 ## 9. CURRENT CHECKPOINT
-Atomic task: repair the #418 settlement-integrity certification failure caused by persisted-observation wrapper/decision mismatch.
+Atomic task completed: certify the recovered-settlement repair and introduce a read-only, quorum-bound production transaction/receipt observation boundary for recovery decisions.
 
 Implementation:
-- `125db946...` normalizes `PersistedObservation.observation` before calling settlement reconciliation.
-- The reorg test now reuses the original persisted inclusion evidence as stale evidence after the durable lifecycle is moved to `REORGED`, avoiding fabricated test wrapper objects.
-- The deterministic settlement boundary itself remains unchanged and still requires canonical INCLUDED evidence and a successful receipt before terminal profit accounting.
+- `#420` GREEN certified the recovered-settlement repair.
+- `77c3c457...` added deterministic provider consensus for transaction/receipt/pending-nonce evidence.
+- `64f96d8b...` expanded the read-only HTTP allowlist only for transaction and receipt observation methods.
+- `6a3bbc63...` adds adversarial unit coverage for the new observation adapter.
 
-#420 is the fresh certification for this repair and is currently in progress.
+The new observation adapter is intentionally not connected to production live execution authorization yet. Its fresh full-workflow certification is pending.
 
 ## 10. NEXT ATOMIC ACTION
-Complete inspection of `#420`. On GREEN, move to hardening the live chain-observation adapter so approved Polygon transaction/receipt evidence collection is quorum-bound for recovered settlement decisions, with no production submission authority introduced.
+Complete fresh CI certification for `6a3bbc63...`. On GREEN, bind the quorum observation result into durable chain-observation persistence so `SUBMISSION_IN_FLIGHT` recovery can accept only a quorum-backed observation record, while preserving the existing fail-closed lifecycle transitions.
 
 **LIVE SIGNING = BLOCKED**  
 **PUBLIC BROADCAST = BLOCKED**  
