@@ -11,7 +11,7 @@ import os
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
-from .private_relay import PrivateRelayHTTPConfig, PrivateRelayHTTPTransport
+from .private_relay_http import PrivateRelayHTTPConfig, PrivateRelayHTTPTransport
 
 
 class ProductionPrivateRelayConfigError(ValueError):
