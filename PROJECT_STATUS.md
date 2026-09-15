@@ -45,7 +45,7 @@ The quorum observer:
 - reads executor `owner()` and runtime bytecode from every provider at that identical common block;
 - requires unique provider consensus of at least the configured quorum on owner + runtime-code hash;
 - rejects duplicate provider identities, wrong-chain providers, insufficient agreement, and ambiguous split consensus;
-- returns the existing immutable `ExecutorAuthorityEvidence`, preserving compatibility with the signer/governor chain.
+- returns the existing immutable `ExecutorAuthorityEvidence`, preserving signer/governor compatibility.
 
 This is a read-only authority attestation path. It does not sign or submit transactions.
 
@@ -69,13 +69,13 @@ This is a read-only authority attestation path. It does not sign or submit trans
 - EVM compile/integration, Polygon fork smoke, and Polygon fork execution probe all passed before the Python gate failed.
 - Python result: **413 tests, 1 failure**.
 - Exact failure: `test_quorum_observation_uses_one_common_block_and_consensus_owner_and_code` asserted a sorted method list in non-sorted expected order. Actual sorted set was `['eth_blockNumber', 'eth_call', 'eth_chainId', 'eth_getCode']`; the test expected `['eth_call', 'eth_chainId', 'eth_getCode', 'eth_blockNumber']`.
-- Diagnosis: **test assertion defect, not an observed production-logic failure**. The quorum implementation reached the intended common-block/owner/code path; the brittle expectation incorrectly assumed a custom ordering after `sorted(...)`.
+- Diagnosis: **test assertion defect, not an observed production-logic failure**.
 - Commit `e8ded6459a8d7a070310f49481f335043617650e`: repaired the regression to compare the method set order-independently.
 - Run `#276` on `e8ded6459a8d7a070310f49481f335043617650e`: **GREEN**.
-- Run #276 checked out the exact repair commit and passed **14/14 EVM**, **3/3 Polygon fork smoke**, **1/1 Polygon fork execution probe**, and **413/413 Python** tests.
-- The corrected quorum regression passed in #276, confirming the repair without changing the quorum implementation.
+- Run #276 passed **14/14 EVM**, **3/3 Polygon fork smoke**, **1/1 Polygon fork execution probe**, and **413/413 Python** tests.
+- The corrected quorum regression passed without changing the quorum implementation.
 
-Node.js 20 deprecation messages remain warnings from the existing GitHub Actions action versions. They are not a CI failure and are not the reason for any test-gate failure.
+Node.js 20 deprecation messages remain warnings from existing GitHub Actions action versions.
 
 ## 6. CURRENT BLOCKERS / P0 GATES
 
@@ -110,19 +110,25 @@ These are not formal certification scores.
 
 **Baseline implementation:** `e8ded6459a8d7a070310f49481f335043617650e`.
 
-**Inputs actually observed:**
-- `common/active_rpc.txt` contains `https://ethereum-rpc.publicnode.com`, which is not a Polygon production authority source and must not be promoted into the production execution spine by inference.
-- Repository search for production signer/executor/RPC configuration returned no matching approved production input set.
-- `PHASE19_POLYGON_RPC_STATUS.md` explicitly keeps the production integration boundary separate: approved endpoints plus real transport are required before production authority attestation, and legacy/public RPC utilities are not promoted merely because they can connect.
+**New continuity evidence from Library audit:**
+- A prior project artifact records `0x24056bCA6538693aE94Cc97E82f21Ee4EC7f128` as a historical `PhantomXV2FlashLoanExecutor` deployment candidate, with deployment transaction `0x92bc4dc8b3450332c281445fb4443f8725586b18e880a063e0892af2c28c595a`.
+- That same artifact explicitly states the address was **NOT YET PROVEN LIVE** and that address identity is not source identity. Required verification includes chain ID 137, bytecode presence/equivalence, interface probes, `owner()`, `DOMAIN_SEPARATOR()`, and canonical runtime-code hash.
+- Prior Library runtime notes also contain public Polygon endpoints such as `https://1rpc.io/matic` and `https://polygon-mainnet.matic.quiknode.pro`, but these are historical/runtime observations, not an approved production provider quorum.
+- Therefore the historical executor address and public endpoints are **candidates/evidence to validate**, not production authority inputs.
 
-**Decision:** P19-AUTH-01 implementation/test certification remains **GREEN**. P19-AUTH-02 real production authority proof is **BLOCKED** because the non-secret production inputs required for attestation are absent from the repository-visible configuration. No guessed address, Ethereum endpoint, fork endpoint, or public endpoint will be substituted.
+**Repository production-input audit remains:**
+- `common/active_rpc.txt` contains `https://ethereum-rpc.publicnode.com`, not a Polygon production authority source.
+- Repository search for an approved production signer/executor/RPC input set returned no matching configuration.
+- `PHASE19_POLYGON_RPC_STATUS.md` requires approved endpoints plus real transport before production authority attestation and explicitly prevents promotion of legacy/public RPC utilities merely because they connect.
 
-**Required external inputs:**
+**Decision:** P19-AUTH-01 implementation/test certification remains **GREEN**. P19-AUTH-02 real production authority proof remains **BLOCKED**. The newly found historical executor candidate does not satisfy the gate because it lacks current controlled on-chain verification and there is still no approved signer identity or approved provider quorum.
+
+**Required external/controlled inputs:**
 - approved Polygon mainnet RPC provider set with distinct provider identities;
-- deployed Polygon executor address;
+- controlled confirmation that the historical or another deployed executor address is the intended production target;
 - expected production signer address.
 
-Once supplied through an approved configuration channel, the next operation is observation-only: verify Polygon chain identity, establish one common observation block, attest owner + runtime-code hash by quorum, and cross-check the expected signer identity. Private key material remains outside repository code, fixtures, logs, and chat.
+Once those inputs are supplied through an approved configuration channel, the next operation is observation-only: verify Polygon chain identity, establish one common observation block, attest owner + runtime-code hash by quorum, verify the expected executor interface/domain, and cross-check the expected signer identity. Private key material remains outside repository code, fixtures, logs, and chat.
 
 **Safety boundary:** No live signing, public broadcast, live capital, or production execution authorization is granted. Production authority work remains read-only until every prerequisite gate is evidenced.
 
