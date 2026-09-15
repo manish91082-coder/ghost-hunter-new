@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from urllib.parse import urlsplit
 
 from .private_relay_http import PrivateRelayHTTPConfig, PrivateRelayHTTPTransport
@@ -25,7 +25,7 @@ class ProductionPrivateRelayConfig:
     name: str
     endpoint_url: str
     timeout_seconds: float = 5.0
-    auth_token: str | None = None
+    auth_token: str | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not self.name.strip():
