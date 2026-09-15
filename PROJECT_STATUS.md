@@ -92,34 +92,41 @@ Replacement persistence is a dedicated atomic boundary: a validated replacement 
 
 Latest completed Phase-19 verification observed before this checkpoint:
 
-- Run `#252` on commit `d21e42183759ed06905c91be98b1e425444dcfc4`: **FAIL**
+- Run `#254` on commit `abb5aaa9576dff6f7b9de115107c50a2db8238fe`: **FAIL**
 - Solidity compile: PASS
 - Phase-19 EVM harness: PASS, 14 tests
 - Polygon protocol smoke: PASS, 3 tests
 - Polygon fork execution probe: PASS, 1 test
-- Python Phase-19 suite: FAIL
+- Python Phase-19 suite: FAIL, **402 tests: 1 failure, 401 passing**
 
-Run `#253`/subsequent intermediate state is not used as certified evidence because no terminal full-suite result has been established here.
+Forensic result from run #254:
 
-Current implementation commits after that evidence:
+- All major EVM/fork gates passed.
+- Four replacement-coordinator tests passed, including the Governor ceiling boundary and private-submission path.
+- The only remaining failure is an assertion in `test_drop_state_is_consumed_into_new_signed_replacement`: after a successful replacement installation, the source transaction is correctly persisted as `REPLACED`, while the test still expected it to remain `DROPPED`.
+- This indicates the implementation and test semantics are now one lifecycle transition apart, not an unresolved fee/persistence API error.
 
-- `a72ebc2efb61bf742b3a0374657693e72839bd28`: added `TransactionRecord.from_replacement()` with strict source/authorization/identity/nonce/governor/preflight validation.
-- `abb5aaa9576dff6f7b9de115107c50a2db8238fe`: added `SQLiteExecutionStore.persist_signed_replacement()` as an atomic source-replace + nonce-rebind + replacement-insert operation.
+## 7. COMPLETION / DISTANCE ASSESSMENT
 
-A new CI run `#254` has been queued for `abb5aaa9576dff6f7b9de115107c50a2db8238fe`. No current-HEAD GREEN claim is made until that workflow reaches a terminal result.
+These percentages are engineering readiness estimates, not formal certification scores.
 
-## 7. CURRENT BLOCKERS
+- **Core architecture + deterministic implementation:** approximately **75–80% complete**.
+- **Go-live evidence/certification:** approximately **45–55% complete**.
+- **Overall mission toward first controlled live hunt:** approximately **60–70% complete**.
 
-1. Obtain terminal CI evidence for the replacement persistence implementation.
-2. Add/verify adversarial tests covering replacement record linkage, atomic rollback, and repeated replacement chains if any remain unproven.
-3. If the full regression becomes green, perform a focused Phase-19 replacement-lifecycle semantic audit before advancing to the next execution-integrity gap.
-4. Continue hardening the route/topology cryptographic bridge and exact execution commitment.
-5. Production signer/network credentials remain intentionally absent and locked.
-6. Production private relay capability is not yet proven on mainnet.
-7. Realized live PnL evidence does not exist.
-8. Live mainnet capital deployment remains forbidden.
+The remaining work is concentrated in proof and productionization rather than basic architecture. The current Phase-19 blocker is one semantic test expectation; after that, the project still requires a focused replacement-lifecycle adversarial audit, route/topology commitment hardening, production signer/network validation, private-relay validation, startup safety validation, and a controlled non-capital / shadow-to-live transition with reproducible evidence.
 
-## 8. GO-LIVE GATES
+## 8. CURRENT BLOCKERS
+
+1. Close the single remaining Phase-19 replacement lifecycle test failure and rerun the full 402-test suite.
+2. Perform focused adversarial replacement-chain and rollback audit before certifying Phase 19.
+3. Continue hardening the route/topology cryptographic bridge and exact execution commitment.
+4. Production signer/network credentials remain intentionally absent and locked.
+5. Production private relay capability is not yet proven on mainnet.
+6. Realized live PnL evidence does not exist.
+7. Live mainnet capital deployment remains forbidden.
+
+## 9. GO-LIVE GATES
 
 All must be GREEN with reproducible evidence before live capital:
 
@@ -144,7 +151,17 @@ All must be GREEN with reproducible evidence before live capital:
 
 Any unchecked P0 gate means **LIVE CAPITAL = LOCKED**.
 
-## 9. CONTINUITY RULE
+## 10. FIRST LIVE HUNT CRITERIA
+
+The first live hunt is **not date-scheduled**. It becomes eligible only after every P0/go-live gate is GREEN with reproducible evidence and the shadow/staging transition proves the same immutable artifact chain end-to-end.
+
+The first hunt must be a controlled production observation with the same quote block, economic proof, preflight, Governor, signer, private relay, on-chain receipt, settlement reconciliation, and realized-PnL evidence chain used for ordinary execution. Any uncertainty returns the system to BLOCKED.
+
+Therefore no honest calendar date can be certified yet. The earliest possible live hunt is after:
+
+`Phase-19 GREEN → full adversarial certification → production signer + private relay proof → startup safety proof → controlled shadow run → final go-live authorization → first live transaction with minimal capital`
+
+## 11. CONTINUITY RULE
 
 **STRICT EXECUTION RULE:** Every project response must end with a synchronized `PROJECT_STATUS.md` commit. No exceptions.
 
@@ -160,25 +177,23 @@ The synchronized checkpoint must contain:
 
 Append/replace only with evidence-backed state. Never fabricate passes.
 
-## 10. CURRENT CHECKPOINT
+## 12. CURRENT CHECKPOINT
 
-**Timestamp:** 2026-09-15T07:26+05:30
+**Timestamp:** 2026-09-15T07:35+05:30
 
-**Atomic task:** P19-RC-02 — close the durable replacement-record/storage boundary exposed by CI #249/#252.
+**Atomic task:** P19-RC-03 — close the final replacement-lifecycle semantic mismatch exposed by CI #254.
 
-**Finding:** The replacement coordinator had advanced beyond the durable record/storage layer. The active code referenced `TransactionRecord.from_replacement()` and `SQLiteExecutionStore.persist_signed_replacement()`, while neither primitive existed in the active branch. CI #252 therefore remained non-green even after the earlier fee-policy corrections.
+**Finding:** CI #254 verifies that the durable replacement persistence implementation is functioning through all four replacement coordinator lifecycle tests except for one stale assertion. The implementation changes a successfully consumed `DROPPED` source into `REPLACED`, while the test expected the old `DROPPED` state after replacement installation.
 
-**Corrective action:**
-- `a72ebc2efb61bf742b3a0374657693e72839bd28` implemented immutable replacement-record construction with exact source hash, intent, identity, nonce, authorization, Governor and preflight validation.
-- `abb5aaa9576dff6f7b9de115107c50a2db8238fe` implemented atomic replacement persistence: source must be `DROPPED`/`REPLACED`; replacement must be `SIGNED`; source and replacement identity/nonce/reservation must match; current durable nonce must be explicitly replaceable and point to the source hash; replacement record is inserted; source becomes `REPLACED`; nonce becomes `SIGNED` and points to the new replacement hash; all within one SQLite transaction.
+**Decision:** Correct the test expectation to the intended durable lifecycle (`source = REPLACED`, replacement = SIGNED, nonce = SIGNED on the new tx), then rerun the complete Phase-19 suite. Do not weaken lifecycle transitions.
 
 **Current HEAD:** `abb5aaa9576dff6f7b9de115107c50a2db8238fe`
 
-**Current CI:** Run `#254` queued for this HEAD; terminal result not yet observed.
+**Latest CI:** Run #254 failed only on the stale source-state assertion described above.
 
 **Safety boundary:** No live signing, public broadcast, live capital, or production execution authorization is granted.
 
-**Next atomic action:** verify run `#254`; if any failures remain, repair them at the narrowest correct abstraction layer and rerun full Phase-19 regression. After GREEN, perform focused adversarial replacement-chain audit before advancing.
+**Next atomic action:** update the single stale lifecycle assertion, rerun full Phase-19 verification, then perform adversarial replacement-chain audit if green.
 
 ---
 
