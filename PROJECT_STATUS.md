@@ -6,20 +6,21 @@
 ## 0. CURRENT RESUME CARD
 - Project: `manish91082-coder/ghost-hunter-new`
 - Active branch: `phase-19-e2e-harness`
-- Latest implementation commit: `e18e06017a03436f72a8d2b8140d963abd816bd3`
+- Latest implementation commit: `125db946bfc2c8e6c3b98910e733818df46a22b4`
+- Recovered-settlement integrity repair: `125db946...`
 - Private-relay HTTP transport: `b7789d8da6c1eea70cc86e0ee5dd04dac3895694`
 - Relay secrecy/fallback-audit repair: `a1f76fcda0ff066b43a2dc0f19e08d682e98657b`
 - Durable submission fence: `4c748c058ae32af3074232bfc282dce0e5a71f84`
-- Durable fence test correction: `f312fdf5de62a528b5d6ce09df19f107615e7acd`
 - Fresh durable-fence certification run `#408`: **GREEN** for `0b1acae...`
 - In-flight observation integration: `ebb9d2cb95fa2f43176547daa5520f575fb24ead`
 - In-flight durable recovery integration: `4bf326ec13e08dbcf90567b9c5758b4cb6812499`
 - In-flight restart-audit hardening: `978047b57e19a802a14593bc9bb683106ee0c419`
 - In-flight signed-nonce observation repair: `4376a4692b07d1191d63ab3f13836417326a3252`
-- In-flight recovery regression tests: `e18e06017a03436f72a8d2b8140d963abd816bd3`
 - Fresh recovery certification run `#417`: **GREEN** for `e18e060...`
 - Recovered-settlement integrity regression tests: `080ffd5ac1093a2189fa60517900a6940b22363a`
-- Fresh certification for settlement-integrity tree: **PENDING**
+- Fresh certification run `#418`: **FAILED** on settlement-test observation-shape mismatch
+- Repair commit for #418: `125db946...`
+- Fresh repair certification run `#420`: **IN PROGRESS** for `125db946...`
 - Certification PR: `#1` OPEN, base `master`
 - Live mainnet execution: **BLOCKED**
 - Live capital authorization: **BLOCKED**
@@ -64,11 +65,11 @@ Certified historical gates include signer repair `#349`, signer runbook `#360`, 
 
 Run `#406` remains explicit failure evidence for pre-migration relay-state assertions. Run `#414` remains explicit failure evidence for the first signed-nonce handoff implementation. Both failures led to targeted contract repairs rather than being suppressed.
 
-Run `#408` completed GREEN across compile, 14/14 EVM tests, Polygon fork smoke, Polygon fork execution probe, and the full Python stage.
+Run `#417` completed GREEN across the full workflow. Compile, 14/14 EVM integration tests, Polygon fork smoke, Polygon fork execution probe, and the Python unittest stage all completed successfully for the corrected recovery test tree.
 
-Run `#417` completed GREEN across the full workflow. Compile, 14/14 EVM integration tests, Polygon fork smoke, Polygon fork execution probe, and the Python unittest stage all completed successfully for the corrected recovery test tree. fileciteturn1212file0L2-L2
+Run `#418` is explicit failure evidence for the first recovered-settlement integrity certification attempt. Its failure was confined to the adversarial settlement tests passing the persisted observation wrapper where reconciliation requires the contained canonical `ObservationDecision`.
 
-The recovered-settlement integrity adversarial suite is now added on top of the #417-certified recovery tree. Its fresh full-workflow certification is still pending.
+Repair `#420` is now running against `125db946...`. No GREEN claim is made until the run completes successfully.
 
 ## 5. CURRENT SIGNER IDENTITY GATE
 The signer exposes a non-secret cryptographic challenge proof. External verification recovers the Ethereum address and requires exact equality with the expected signer address without private-key access.
@@ -103,18 +104,17 @@ Current implementation certification remains separate from proof of an approved 
 Every P0 gate must be GREEN with reproducible evidence before live capital. Any unchecked gate means **LIVE CAPITAL = LOCKED**.
 
 ## 9. CURRENT CHECKPOINT
-Atomic task completed: certify recovery lifecycle, then add settlement-integrity and duplicate-submission adversarial coverage.
+Atomic task: repair the #418 settlement-integrity certification failure caused by persisted-observation wrapper/decision mismatch.
 
 Implementation:
-- `#417` GREEN certified the signed-nonce in-flight recovery lifecycle.
-- `080ffd5a...` adds recovered `PENDING/INCLUDED/REORGED/DROPPED` settlement and duplicate-authority adversarial tests.
-- Pending tests prove `PENDING` cannot enter realized settlement, canonical block mismatch cannot confirm profit, reorg requires re-observation, and recovered states cannot reuse the original immutable prepared artifact for a second submission.
-- The existing settlement layer remains the only route to terminal `PROFIT_CONFIRMED/PROFIT_FAILED` states.
+- `125db946...` normalizes `PersistedObservation.observation` before calling settlement reconciliation.
+- The reorg test now reuses the original persisted inclusion evidence as stale evidence after the durable lifecycle is moved to `REORGED`, avoiding fabricated test wrapper objects.
+- The deterministic settlement boundary itself remains unchanged and still requires canonical INCLUDED evidence and a successful receipt before terminal profit accounting.
 
-The settlement-integrity test tree is implemented but not yet certified by a fresh full workflow run.
+#420 is the fresh certification for this repair and is currently in progress.
 
 ## 10. NEXT ATOMIC ACTION
-Trigger/inspect fresh full Phase-19 certification for `080ffd5a...`. On GREEN, harden the live chain-observation adapter itself so approved Polygon evidence collection is quorum-bound for transaction/receipt status, not only executor-authority status, before any recovered settlement decision can be trusted.
+Complete inspection of `#420`. On GREEN, move to hardening the live chain-observation adapter so approved Polygon transaction/receipt evidence collection is quorum-bound for recovered settlement decisions, with no production submission authority introduced.
 
 **LIVE SIGNING = BLOCKED**  
 **PUBLIC BROADCAST = BLOCKED**  
