@@ -13,6 +13,7 @@ from phantomx.route_simulator import simulate_two_leg
 from phantomx.governor import GovernorPolicy
 from phantomx.signer import EthereumEip1559Signer
 from phantomx.sqlite_execution_store import SQLiteExecutionStore
+from phantomx.hashing import keccak256_hex
 
 TOKEN_A = "0x" + "aa" * 20
 TOKEN_B = "0x" + "bb" * 20
@@ -132,6 +133,39 @@ class ExecutionCoordinatorTests(unittest.TestCase):
         durable = self.store.get_transaction(prepared.transaction_record.record_hash())
         self.assertEqual(durable.tx_hash, prepared.signed_transaction.transaction_hash)
         self.assertEqual(self.store.get_nonce(SENDER, 7).status.value, "SIGNED")
+
+    def test_complete_artifact_chain_reaches_signed_artifact(self):
+        prepared = self._run(reservation_id="res-chain-cert")
+        assembly = prepared.assembly
+        intent = assembly.intent
+        envelope = assembly.envelope
+        signed = prepared.signed_transaction
+
+        self.assertEqual(assembly.simulation.route_hash, assembly.bound_call.bound_intent.route_hash)
+        self.assertEqual(assembly.bound_call.route_commitment, prepared.preflight.route_hash and assembly.bound_call.route_commitment)
+        self.assertEqual(assembly.economic_proof.route_hash, assembly.simulation.route_hash)
+        self.assertEqual(intent.economic_proof_hash, assembly.economic_proof.proof_hash)
+        self.assertEqual(intent.simulation_proof_hash, assembly.simulation_proof_hash)
+        self.assertEqual(intent.calldata_hash, envelope.calldata_hash)
+        self.assertEqual(intent.intent_hash(), prepared.governor.intent_hash)
+        self.assertEqual(prepared.governor.route_hash, intent.route_hash)
+        self.assertEqual(prepared.governor.economic_proof_hash, intent.economic_proof_hash)
+        self.assertEqual(prepared.governor.simulation_proof_hash, intent.simulation_proof_hash)
+        self.assertEqual(prepared.governor.calldata_hash, envelope.calldata_hash)
+        self.assertEqual(prepared.governor.executor_authority_hash, prepared.authority.evidence_hash)
+        self.assertEqual(prepared.preflight.intent_hash, intent.intent_hash())
+        self.assertEqual(prepared.preflight.calldata_hash, envelope.calldata_hash)
+        self.assertEqual(prepared.preflight.authority_evidence_hash, prepared.authority.evidence_hash)
+        self.assertEqual(signed.intent_hash, intent.intent_hash())
+        self.assertEqual(signed.governor_decision_hash, prepared.governor.decision_hash)
+        self.assertEqual(signed.executor_runtime_binding_hash, prepared.signed_transaction.executor_runtime_binding_hash)
+        self.assertEqual(signed.transaction_hash, keccak256_hex(signed.raw_transaction))
+        self.assertEqual(prepared.transaction_record.tx_hash, signed.transaction_hash)
+        self.assertEqual(prepared.transaction_record.intent_hash, intent.intent_hash())
+        self.assertEqual(prepared.transaction_record.calldata_hash, envelope.calldata_hash)
+        self.assertEqual(prepared.transaction_record.nonce, envelope.nonce)
+        self.assertEqual(prepared.transaction_record.sender.lower(), envelope.sender.lower())
+        self.assertEqual(prepared.transaction_record.executor.lower(), envelope.executor.lower())
 
     def test_invalid_executor_authority_releases_before_nonce_reservation(self):
         signer = FakeSigner()
