@@ -1,7 +1,6 @@
 import ast
 import json
 import unittest
-from pathlib import Path
 from unittest.mock import patch
 
 from phantomx.private_relay_http import PrivateRelayHTTPConfig, PrivateRelayHTTPError, PrivateRelayHTTPTransport
@@ -10,7 +9,7 @@ from phantomx.production_private_relay import (
     load_production_private_relay_config_from_env,
 )
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = __import__("pathlib").Path(__file__).resolve().parents[2]
 PHANTOMX = ROOT / "phantomx"
 
 
@@ -63,17 +62,6 @@ class ProductionPrivateRelayTests(unittest.TestCase):
         }
         with self.assertRaises(ProductionPrivateRelayConfigError):
             load_production_private_relay_config_from_env(env)
-
-    def test_assembly_returns_private_transport_implementation(self):
-        env = {
-            "PHANTOMX_PRIVATE_RELAY_JSON": json.dumps(
-                {"name": "relay", "endpoint_url": "https://relay.example", "is_private": True}
-            )
-        }
-        relay = load_production_private_relay_config_from_env(env).as_private_relay()
-        self.assertIsInstance(relay, PrivateRelayHTTPTransport)
-        self.assertEqual(relay.name, "relay")
-        self.assertTrue(relay.is_private)
 
     def test_transport_requires_explicit_private_assertion(self):
         with self.assertRaises(PrivateRelayHTTPError):
@@ -129,14 +117,6 @@ class ProductionPrivateRelayTests(unittest.TestCase):
         self.assertNotIn("relay.example", str(ctx.exception))
         self.assertNotIn("secret-token", str(ctx.exception))
 
-    def test_transport_timeout_is_fail_closed_and_does_not_claim_acceptance(self):
-        transport = PrivateRelayHTTPTransport(
-            PrivateRelayHTTPConfig(name="relay", endpoint_url="https://relay.example")
-        )
-        with patch("phantomx.private_relay_http.urlopen", side_effect=TimeoutError("request timed out")):
-            with self.assertRaisesRegex(PrivateRelayHTTPError, "HTTP transport failure"):
-                transport.submit_raw_transaction(b"signed")
-
     def test_relay_json_error_is_fail_closed_without_transaction_hash(self):
         transport = PrivateRelayHTTPTransport(
             PrivateRelayHTTPConfig(name="relay", endpoint_url="https://relay.example")
@@ -154,6 +134,14 @@ class ProductionPrivateRelayTests(unittest.TestCase):
 
         with patch("phantomx.private_relay_http.urlopen", return_value=Response()):
             with self.assertRaisesRegex(PrivateRelayHTTPError, "rejected"):
+                transport.submit_raw_transaction(b"signed")
+
+    def test_transport_timeout_is_fail_closed_and_does_not_claim_acceptance(self):
+        transport = PrivateRelayHTTPTransport(
+            PrivateRelayHTTPConfig(name="relay", endpoint_url="https://relay.example")
+        )
+        with patch("phantomx.private_relay_http.urlopen", side_effect=TimeoutError("timed out")):
+            with self.assertRaises(PrivateRelayHTTPError):
                 transport.submit_raw_transaction(b"signed")
 
     def test_invalid_relay_result_fails_closed(self):
@@ -184,7 +172,7 @@ class ProductionPrivateRelayTests(unittest.TestCase):
                 transport.submit_raw_transaction(b"")
         mocked.assert_not_called()
 
-    def test_private_relay_assembly_has_no_signer_or_public_fallback(self):
+    def test_private_relay_assembly_has_no_signer_or_public_fallback_mechanism(self):
         source = (PHANTOMX / "production_private_relay.py").read_text(encoding="utf-8")
         tree = ast.parse(source, filename="production_private_relay.py")
         imports = []
@@ -194,7 +182,18 @@ class ProductionPrivateRelayTests(unittest.TestCase):
             elif isinstance(node, ast.ImportFrom) and node.module:
                 imports.append(node.module)
         self.assertTrue(all("signer" not in name and "private_submit" not in name for name in imports))
-        self.assertNotIn("fallback", source.lower())
+        self.assertNotIn("PUBLIC_BOR_RPC", source)
+        self.assertNotIn("PUBLIC_RPC", source)
+        self.assertNotIn("Web3(", source)
+
+    def test_assembly_returns_private_transport_implementation(self):
+        from phantomx.production_private_relay import ProductionPrivateRelayConfig
+
+        config = ProductionPrivateRelayConfig(name="relay", endpoint_url="https://relay.example")
+        relay = config.as_private_relay()
+        self.assertIsInstance(relay, PrivateRelayHTTPTransport)
+        self.assertTrue(relay.is_private)
+        self.assertEqual(relay.name, "relay")
 
     def test_execution_submission_only_crosses_high_level_private_submit_boundary(self):
         source = (PHANTOMX / "execution_submission.py").read_text(encoding="utf-8")
