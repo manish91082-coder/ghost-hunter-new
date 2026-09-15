@@ -5,7 +5,7 @@
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Latest implementation: `02d22489685758659d577a3f878f108fb9b8632a`
+- Latest implementation: `73f29f3912376b2beeeb3d8a5d974385ef7534c7`
 - Recovered-settlement certification `#420`: **GREEN**
 - Production chain observation adapter: `77c3c457...`
 - Read-only transaction/receipt RPC allowlist: `64f96d8b...`
@@ -17,8 +17,10 @@
 - Fresh certification `#427`: **GREEN**. All compile/EVM/Polygon stages and the Phase-19 unittest suite completed successfully.
 - End-to-end quorum recovery isolation fixture repair certification `#430`: **GREEN**. The single-provider INCLUDED path was blocked before lifecycle persistence, while the broader suite completed successfully.
 - Settlement reconciliation quorum boundary: `6a48ed044cc1579116b75e3f801e6fa866f2e89b`
-- Quorum settlement reconciliation contract tests: `02d22489685758659d577a3f878f108fb9b8632a`
-- Fresh certification `#432`: **IN PROGRESS**.
+- Quorum settlement reconciliation certification `#432`: **GREEN**. All compile/EVM/Polygon stages and the Phase-19 unittest suite completed successfully.
+- Quorum recovery provenance boundary: `03e2c93ee8b1116d38b81332f45f84265b4a5c3d`
+- Quorum recovery provenance tests: `73f29f3912376b2beeeb3d8a5d974385ef7534c7`
+- Fresh certification for quorum recovery provenance: **IN PROGRESS** on the current head.
 - Live mainnet execution: **BLOCKED**
 - Live capital: **LOCKED**
 - Production readiness: **NOT ACHIEVED**
@@ -43,24 +45,28 @@ The execution-observation entry point exposes a dedicated quorum-gated persisten
 
 The recovery isolation fixture statically constrains plain observation lifecycle persistence to its intentional boundary and exercises a single-provider INCLUDED observation that is rejected by a two-provider admission policy before transaction lifecycle mutation. fileciteturn1503file0L2-L2
 
-The settlement layer now exposes a dedicated quorum-gated reconciliation boundary. The low-level settlement primitive is explicitly documented as an already-admitted path, while the production boundary validates exact transaction/state/replacement binding and requires persisted, fresh quorum provenance before any settlement record or terminal profit state can be created. fileciteturn1510file0L2-L2
+The settlement layer exposes a dedicated quorum-gated reconciliation boundary. The low-level settlement primitive is an already-admitted path, while the production boundary validates exact transaction/state/replacement binding and requires persisted, fresh quorum provenance before any settlement record or terminal profit state can be created. fileciteturn1510file0L2-L2
+
+The durable recovery layer now exposes a matching quorum-gated boundary for DROP, REPLACED, and REORGED evidence. It validates exact state/transaction/replacement binding and fresh attester policy before calling the existing durable recovery mutation primitive. fileciteturn1527file0L2-L2
+
+The new recovery provenance matrix covers single-provider rejection, fresh two-provider DROP admission, stale replacement rejection, future REORG rejection, replacement binding mismatch, two-provider REORG admission, and a production-module static bypass audit. fileciteturn1530file0L2-L2
 
 ## P0 BLOCKERS
 1. Controlled production signer identity proof.
 2. Controlled production Polygon provider authority proof using approved endpoints and intended deployed executor.
 3. Controlled production private relay proof using an actually approved relay endpoint and authentication, with no public fallback.
-4. Production-like recovery and settlement reorg evidence, including complete certification of quorum-gated transaction/receipt observation and settlement admission.
+4. Production-like recovery and settlement reorg evidence, including complete certification of quorum-gated transaction/receipt observation, settlement admission, and recovery provenance.
 5. Controlled shadow/staging evidence using the identical immutable artifact chain.
 6. Final realized live PnL evidence after all preceding gates are GREEN.
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-`#427` is GREEN for the repaired quorum-gated execution-observation contract layer. `#430` is also GREEN for the repaired end-to-end single-provider recovery isolation fixture. Its evidence showed that the admission gate blocks the single-provider path before downstream lifecycle persistence.
+`#432` is GREEN for the settlement reconciliation quorum boundary. The fresh run completed Solidity compilation, 14/14 EVM integration tests, Polygon fork protocol smoke, Polygon fork execution probe, and the full Phase-19 unittest suite successfully. fileciteturn1520file0L2-L2
 
-A deeper architectural audit then identified the next important boundary: settlement reconciliation itself must not be a standalone consumer of an unadmitted `ObservationDecision`. Commit `6a48ed04...` adds `reconcile_quorum_included_execution`, which validates the exact quorum binding and freshness policy before invoking the existing low-level settlement primitive. The corresponding contract tests are committed in `02d22489...`; fresh certification `#432` is now running on that head. fileciteturn1520file0L2-L2
+Commit `03e2c93e...` then adds a quorum-gated durable recovery boundary covering DROP, REPLACED, and REORGED state mutation. Commit `73f29f39...` adds the provenance matrix and the production-surface bypass audit. The current certification for this new layer is running.
 
 ## NEXT ATOMIC ACTION
-Complete fresh certification `#432`. On GREEN, run the adversarial settlement matrix against quorum provenance: insufficient providers, stale evidence, future evidence, tx/state/replacement mismatch, canonical-block mismatch, conflicting settlement evidence, and successful two-provider admission. Then audit the replacement/reorg recovery paths for the same provenance requirement.
+Complete fresh certification for `73f29f3912376b2beeeb3d8a5d974385ef7534c7`. On GREEN, run the final Phase-19 recovery/settlement adversarial matrix across INCLUDED, REVERTED, PENDING, DROP, REPLACED, and REORGED, including stale/future/tampered evidence, canonical-block conflicts, settlement conflicts, duplicate evidence, and restart persistence. Then perform the production readiness gate audit for signer, provider authority, private relay, shadow/staging, and realized-PnL evidence.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
