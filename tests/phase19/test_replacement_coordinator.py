@@ -94,7 +94,9 @@ class ReplacementCoordinatorTests(unittest.TestCase):
         self.assertNotEqual(replacement.signed_transaction.transaction_hash, self.prepared.signed_transaction.transaction_hash)
         self.assertEqual(replacement.assembly.intent.nonce, self.prepared.assembly.intent.nonce)
         self.assertEqual(replacement.transaction_record.replacement_of, self.prepared.signed_transaction.transaction_hash)
-        self.assertEqual(self.store.get_transaction(self.prepared.transaction_record.record_hash()).state, ExecutionState.DROPPED)
+        # The source becomes REPLACED only after the new signed replacement has
+        # been atomically persisted and rebound to the durable nonce.
+        self.assertEqual(self.store.get_transaction(self.prepared.transaction_record.record_hash()).state, ExecutionState.REPLACED)
         self.assertEqual(self.store.get_transaction(replacement.transaction_record.record_hash()).state, ExecutionState.SIGNED)
         nonce = self.store.get_nonce(self.prepared.assembly.intent.sender, self.prepared.assembly.intent.nonce)
         self.assertEqual(nonce.status, NonceStatus.SIGNED)
