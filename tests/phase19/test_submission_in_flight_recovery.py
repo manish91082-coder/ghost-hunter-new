@@ -3,7 +3,7 @@
 import unittest
 
 from phantomx.chain_observer import ChainObservationState, ObservationDecision
-from phantomx.durable_recovery import persist_recovery_observation
+from phantomx.durable_recovery import DurableRecoveryError, persist_recovery_observation
 from phantomx.durable_nonce import NonceStatus
 from phantomx.execution import ExecutionState
 from phantomx.execution_observation import persist_chain_observation
@@ -100,25 +100,28 @@ class SubmissionInFlightRecoveryTests(unittest.TestCase):
         self.assertEqual(result.nonce_state, NonceStatus.DROPPED)
         self.assertEqual(result.action, RecoveryAction.ELIGIBLE_FOR_REPLACEMENT_REVIEW)
 
-    def test_reorg_evidence_can_move_in_flight_to_reobserve(self):
+    def test_direct_reorg_evidence_cannot_invent_prior_inclusion(self):
         self._enter_in_flight()
-        result = persist_recovery_observation(
-            store=self.store,
-            intent=self.intent,
-            observation=ObservationDecision(
-                ChainObservationState.REORGED,
-                self.tx_hash,
-                None,
-                "canonical block identity changed during uncertain submission recovery",
-            ),
-            tx_nonce=self.nonce,
-            block_hash="0x" + "11" * 32,
-            block_number=8000,
-            canonical_block_hash="0x" + "22" * 32,
+        with self.assertRaises(DurableRecoveryError):
+            persist_recovery_observation(
+                store=self.store,
+                intent=self.intent,
+                observation=ObservationDecision(
+                    ChainObservationState.REORGED,
+                    self.tx_hash,
+                    None,
+                    "no prior canonical inclusion exists for this uncertain relay outcome",
+                ),
+                tx_nonce=self.nonce,
+                block_hash="0x" + "11" * 32,
+                block_number=8000,
+                canonical_block_hash="0x" + "22" * 32,
+            )
+        self.assertEqual(
+            self.store.get_transaction(self.prepared.transaction_record.record_hash()).state,
+            ExecutionState.SUBMISSION_IN_FLIGHT,
         )
-        self.assertEqual(result.transaction_state, ExecutionState.REORGED)
-        self.assertEqual(result.nonce_state, NonceStatus.REORGED)
-        self.assertEqual(result.action, RecoveryAction.REOBSERVE)
+        self.assertEqual(self.store.get_nonce(self.intent.sender, self.nonce).status, NonceStatus.SIGNED)
 
     def test_startup_audit_accepts_durable_in_flight_state(self):
         self._enter_in_flight()
@@ -127,19 +130,20 @@ class SubmissionInFlightRecoveryTests(unittest.TestCase):
         self.assertEqual(audit.state, RecoveryAuditState.CLEAN)
         self.assertEqual(audit.anomalies, ())
 
-    def test_recovery_policy_never_reopens_in_flight_to_signed(self):
-        for chain_state in (
-            ChainObservationState.PENDING,
-            ChainObservationState.INCLUDED,
-            ChainObservationState.REVERTED,
-            ChainObservationState.DROPPED,
-            ChainObservationState.REPLACED,
-            ChainObservationState.REORGED,
-        ):
+    def test_recovery_policy_exposes_only_explicit_non_signing_actions(self):
+        expected = {
+            ChainObservationState.PENDING: RecoveryAction.HOLD,
+            ChainObservationState.INCLUDED: RecoveryAction.RECONCILE_INCLUDED,
+            ChainObservationState.REVERTED: RecoveryAction.MARK_REVERTED,
+            ChainObservationState.DROPPED: RecoveryAction.ELIGIBLE_FOR_REPLACEMENT_REVIEW,
+            ChainObservationState.REPLACED: RecoveryAction.REVIEW_REPLACEMENT,
+            ChainObservationState.REORGED: RecoveryAction.REOBSERVE,
+        }
+        for chain_state, expected_action in expected.items():
             replacement = "0x" + "22" * 32 if chain_state is ChainObservationState.REPLACED else None
             observation = ObservationDecision(chain_state, self.tx_hash, replacement, "evidence")
             decision = recover("record", ExecutionState.SUBMISSION_IN_FLIGHT, observation)
-            self.assertNotEqual(decision.action, RecoveryAction.BLOCK, chain_state.value)
+            self.assertEqual(decision.action, expected_action, chain_state.value)
             self.assertNotIn("SIGNED", decision.reason)
 
     def test_in_flight_state_survives_restart_without_creating_submitted_hash(self):
@@ -155,5 +159,3 @@ class SubmissionInFlightRecoveryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
-
-# Certification note: uncertain private relay outcomes remain fenced until explicit chain evidence resolves them.
