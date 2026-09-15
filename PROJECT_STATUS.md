@@ -6,10 +6,11 @@
 ## 0. CURRENT RESUME CARD
 - Project: `manish91082-coder/ghost-hunter-new`
 - Active branch: `phase-19-e2e-harness`
-- Latest implementation commit: `fec3836fb7f18dab6cbe2cd2f626fbc36e5132aa`
+- Latest implementation commit: `a1f76fcda0ff066b43a2dc0f19e08d682e98657b`
 - Private-relay HTTP transport: `b7789d8da6c1eea70cc86e0ee5dd04dac3895694`
 - Production private-relay assembly repair: `a9becb61ca05eee76a9123ff8d8be3d6fd9a97b8`
 - Private-relay consumer/ambiguity tests: `fec3836fb7f18dab6cbe2cd2f626fbc36e5132aa`
+- Latest relay secrecy/fallback-audit repair: `a1f76fcda0ff066b43a2dc0f19e08d682e98657b`
 - Certified execution-surface baseline: `80c7675a006e4f8f5aeece4606ef7fd8b99d5851`, run `#395` GREEN
 - Authority freshness/replay: `ea4e74dfb9a034c96faa9cd242055263c90bce0f`
 - Authority reuse policy: `6f7b329fcffe40fc81fee8d95779a8d9751450be`
@@ -23,7 +24,8 @@
 - Certified freshness integration: run `#393` GREEN, 477/477 Python
 - Certified production execution surface: run `#395` GREEN, 484/484 Python
 - Private-relay boundary initial CI `#398`: **FAILED**, 485 Python tests with 1 failure and 1 import error; all non-Python stages passed
-- Current repaired-head CI `#401`: **IN PROGRESS** for `fec3836fb7f18dab6cbe2cd2f626fbc36e5132aa`
+- Relay repair/consumer CI `#401`: **FAILED**, 500 Python tests with 2 assertion failures; all non-Python stages passed
+- Fresh CI for `a1f76fc...`: pending
 - Certification PR: `#1` OPEN, base `master`
 - Live mainnet execution: **BLOCKED**
 - Live capital authorization: **BLOCKED**
@@ -51,14 +53,18 @@ The high-level private submission boundary accepts governed immutable signed art
 
 The Polygon read transport remains read-only; write/submission methods are blocked before network I/O. fileciteturn1022file0L2-L2
 
-The dedicated private-relay transport is now the separate low-level submission adapter. It accepts only non-empty raw signed transaction bytes, sends only `eth_sendRawTransaction`, requires HTTPS and explicit private assertion, separates authentication from endpoint configuration, and validates the returned transaction hash. fileciteturn1056file0L2-L2
+The dedicated private-relay transport accepts only non-empty raw signed transaction bytes, sends only `eth_sendRawTransaction`, requires HTTPS and explicit private assertion, separates authentication from endpoint configuration, and validates the returned transaction hash. fileciteturn1056file0L2-L2
+
+The production relay configuration now keeps optional authentication material out of routine object representations, while the assembly audit checks the actual absence of public transport construction rather than rejecting the documentation word `fallback`.
 
 ## 4. CI CERTIFICATION PATH
 Certified historical gates include signer repair `#349`, signer runbook `#360`, Polygon transport `#364`, production authority assembly `#367`, authority CLI `#371`, provenance `#373/#376`, freshness/reuse `#378/#379/#380`, execution/replacement/signer freshness `#393`, and repository production execution surface `#395`.
 
 Run `#398` is preserved as failure evidence for the initial private-relay implementation: the Python stage recorded one import error and one surface-audit failure while compile, EVM, Polygon smoke, and Polygon execution probe passed. fileciteturn1054file0L2-L2
 
-The import binding and surface-audit scope were repaired in `a9becb61...` and `6697c38c...`. Additional consumer/ambiguity regression coverage was added in `fec3836f...`, which triggered run `#401`. The current run is still in progress, so no GREEN conclusion is claimed.
+Run `#401` then proved the import/surface repairs worked, but exposed two remaining test-contract issues: the production relay configuration repr still exposed the authentication token, and the assembly audit used an over-broad `fallback` string assertion. The authoritative log recorded 500 Python tests with exactly these two failures; every non-Python workflow stage remained green. fileciteturn1066file0L2-L2
+
+Both issues are repaired in `a1f76fc...`. Fresh CI for that exact head is pending and no GREEN conclusion is claimed yet.
 
 ## 5. CURRENT SIGNER IDENTITY GATE
 The signer exposes a non-secret cryptographic challenge proof. External verification recovers the Ethereum address and requires exact equality with the expected signer address without private-key access.
@@ -78,7 +84,7 @@ Authority evidence records actual attesting provider names in its canonical dige
 
 `phantomx/private_relay_http.py` is the dedicated low-level private-relay adapter and `phantomx/production_private_relay.py` is the explicit operator configuration assembly. No real production endpoint or relay credential has been introduced.
 
-The latest regression layer also verifies that production relay assembly returns the dedicated private transport, the execution submission module does not directly call the low-level raw relay method, and timeout/error responses fail closed without claiming successful acceptance.
+The regression layer verifies the assembly returns the dedicated private transport, execution submission does not directly call the low-level raw relay method, relay timeout/error responses fail closed, authentication is not leaked through repr, and the assembly has no public transport construction path.
 
 This remains **implementation certification, not proof of an approved or connected production relay**.
 
@@ -95,18 +101,16 @@ This remains **implementation certification, not proof of an approved or connect
 Every P0 gate must be GREEN with reproducible evidence before live capital. Any unchecked gate means **LIVE CAPITAL = LOCKED**.
 
 ## 9. CURRENT CHECKPOINT
-Atomic task: complete and certify the explicit private-relay configuration/transport boundary, then trace relay consumers and strengthen ambiguous relay outcomes without introducing live credentials or endpoints.
+Atomic task: repair and recertify the dedicated production private-relay boundary after CI exposed concrete test-contract mismatches.
 
-Current commits:
-- `b7789d8da6c1eea70cc86e0ee5dd04dac3895694` private-relay HTTP transport
-- `a9becb61ca05eee76a9123ff8d8be3d6fd9a97b8` production relay adapter import repair
-- `6697c38cd27648a73a17bcd3f4928f59df1b4df0` execution-surface audit repair
-- `fec3836fb7f18dab6cbe2cd2f626fbc36e5132aa` consumer/ambiguity regression coverage
+Repair commits:
+- `27d018e201d5b243b24896b6ca589b3f201c5e86` private relay auth repr hardening
+- `a1f76fcda0ff066b43a2dc0f19e08d682e98657b` relay test/audit contract repair
 
-Run `#401` is the active certification gate for the current implementation. Historical GREEN runs do not substitute for its conclusion.
+Run `#401` is preserved as explicit failure evidence. Fresh CI for `a1f76fc...` is pending.
 
 ## 10. NEXT ATOMIC ACTION
-When `#401` concludes, use the result as evidence, then harden the durable submission lifecycle for relay-accepted-but-ambiguous outcomes so a timeout or transport failure after possible acceptance cannot trigger an unsafe duplicate submission path.
+Use the fresh CI result for `a1f76fc...`. Once GREEN, trace the complete relay acceptance/uncertainty path from `PrivateRelayHTTPTransport` through `private_submit.py` and `execution_submission.py`, then harden durable handling for an ambiguous relay result so a transport timeout cannot accidentally permit duplicate submission while the original transaction may already have been accepted.
 
 **LIVE SIGNING = BLOCKED**  
 **PUBLIC BROADCAST = BLOCKED**  
