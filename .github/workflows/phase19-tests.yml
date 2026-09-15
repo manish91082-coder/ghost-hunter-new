@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - phase-19-e2e-harness
+    paths-ignore:
+      - "PROJECT_STATUS.md"
   workflow_dispatch:
 
 jobs:
