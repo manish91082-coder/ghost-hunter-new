@@ -6,9 +6,10 @@
 ## 0. CURRENT RESUME CARD
 - Project: `manish91082-coder/ghost-hunter-new`
 - Active branch: `phase-19-e2e-harness`
-- Active branch HEAD: `941288f13b079ff417402ef46776b8c27d7f1359`
-- Latest implementation-bearing commit currently observed: `ad04f49a2083e0de54949405016776753dea1fbb`
-- Latest cleanup commits: `777c7cc7ed8a0055a1b5576828a8306d1b383890`, `941288f13b079ff417402ef46776b8c27d7f1359`
+- Active branch HEAD: `eb9ee0c6b62e349500f177b8fa761673ce1a999b`
+- Latest implementation-bearing commit observed: `eb9ee0c6b62e349500f177b8fa761673ce1a999b` (replacement regression)
+- Prior implementation-bearing hardening: `ad04f49a2083e0de54949405016776753dea1fbb`
+- Recent cleanup/docs commits: `777c7cc7ed8a0055a1b5576828a8306d1b383890`, `941288f13b079ff417402ef46776b8c27d7f1359`, `01b20c5a6713aa84778e88fda07b9c71aaa4f18a`
 - Phase: Phase 19 execution-integrity / E2E policy harness
 - Live mainnet execution: **BLOCKED**
 - Live capital authorization: **BLOCKED**
@@ -31,23 +32,22 @@ Initial scope: Polygon, Aave V3, QuickSwap V2, Uniswap V3, USDC/WETH/WMATIC/WBTC
 ## 3. VERIFIED IMPLEMENTATION CAPABILITIES
 Phase 19 includes strict realized-profit gating, deterministic all-in economics, Keccak hashing, immutable intent/auth/envelope binding, exact block-bound quotes, route simulation and topology commitment, loan optimization, EVM preflight, Governor, signer boundary, durable SQLite nonce/transaction state, atomic replacement/recovery coordination, private-only submission, chain/recovery/reorg/replacement handling, receipt reconciliation, Solidity executor controls, Polygon fork harness, and adversarial/regression coverage.
 
-Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, one-path coordinator artifact-chain certification, and quorum-bound read-only executor authority attestation.
+Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, one-path coordinator artifact-chain certification, quorum-bound read-only executor authority attestation, and nullable durable-nonce-hash replacement coverage.
 
-## 4. MVP REPOSITORY CLEANUP
-The active Phase-19 branch has been surgically reduced to the targeted Phase-19 implementation/test spine.
+## 4. MVP REPOSITORY CLEANUP / CONSISTENCY
+The active branch has been reduced to the targeted Phase-19 implementation/test spine.
 
-- Removed the obsolete `v2/` stack, including historical AI/training/live-runner/diagnostic scripts, old deployment helpers, generated outputs, and legacy state/config artifacts.
-- Removed the obsolete `v3/` stack, including historical universal-engine/AI/training/live-runner/telemetry/deployment artifacts.
-- Removed the legacy root Python package marker `__init__.py`.
-- Removed the legacy `config/` directory, including `config/settings.json` and its embedded Telegram credential/config surface. Phase-19 does not use that legacy configuration layer; production configuration remains an external controlled input.
-- Preserved the Phase-19 Solidity contract, tests, `phantomx/` execution-integrity modules, Phase-19 test suite, workflow, requirements, project details, and canonical status/checkpoint evidence.
+- Removed obsolete `v2/` and `v3/` runtime/AI/training/deployment/state stacks.
+- Removed legacy root `__init__.py` and obsolete secret-bearing `config/settings.json` configuration surface.
+- Rewrote `PROJECT_DETAILS.md` to describe the current Phase-19 MVP instead of deleted legacy launchers/runners/AI artifacts.
+- Preserved the Phase-19 Solidity contract, tests, `phantomx/` execution-integrity modules, workflow, requirements, and audit/continuity evidence.
 
-**Security note:** a Telegram bot token was present in the removed legacy settings file. Deleting it from the active tree does not revoke a credential that may have been exposed in Git history. The credential should be revoked/rotated outside the repository.
+**Security note:** the removed legacy settings file contained a Telegram bot token. Deletion does not revoke a credential that may exist in Git history; revoke/rotate that credential externally.
 
 ## 5. CURRENT AUTHORITY-PROOF HARDENING
 `phantomx/executor_authority.py` provides `observe_executor_authority_quorum(...)`.
 
-The quorum observer verifies Polygon chain identity on every configured provider, chooses one common observation block, reads executor `owner()` and runtime bytecode from every provider at that identical block, requires configured provider quorum on owner + runtime-code hash, rejects duplicate identities/wrong chain/insufficient agreement/ambiguous splits, and returns the immutable `ExecutorAuthorityEvidence`.
+The quorum observer verifies Polygon chain identity on every configured provider, chooses one common observation block, reads executor `owner()` and runtime bytecode from every provider at that identical block, requires configured provider quorum on owner + runtime-code hash, rejects duplicate identities/wrong chain/insufficient agreement/ambiguous splits, and returns immutable `ExecutorAuthorityEvidence`.
 
 This is read-only and cannot sign or submit transactions.
 
@@ -60,9 +60,11 @@ This is read-only and cannot sign or submit transactions.
 - Run `#269`: GREEN, 14/14 EVM + 3/3 Polygon smoke + 1/1 fork probe + 406/406 Python.
 - Run `#270`: GREEN, 14/14 EVM + 3/3 Polygon smoke + 1/1 fork probe + 407/407 Python.
 - Run `#273`: GREEN, 14/14 EVM + 3/3 Polygon smoke + 1/1 Polygon fork execution probe + 408/408 Python.
-- Run `#275`: Python gate failed only on a brittle sorted-list assertion in the quorum test; 413 tests, 1 failure.
+- Run `#275`: Python gate failed only on a brittle sorted-list assertion; 413 tests, 1 failure.
 - Repair commit `e8ded6459a8d7a070310f49481f335043617650e` corrected the assertion.
 - Run `#276`: GREEN, 14/14 EVM + 3/3 Polygon smoke + 1/1 Polygon fork execution probe + 413/413 Python.
+
+**Current-head certification:** a fresh workflow run for `eb9ee0c6...` is required/awaited. The current GitHub connector did not expose a push-triggered workflow run for this commit at the time of this update, so no new pass is claimed.
 
 ## 7. CURRENT BLOCKERS / P0 GATES
 1. Controlled production signer identity proof without exposing private key material.
@@ -81,26 +83,22 @@ Every P0 gate must be GREEN with reproducible evidence before live capital. Any 
 ## 9. CURRENT CHECKPOINT
 **Timestamp:** 2026-09-15
 
-**Atomic task:** surgical repository cleanup to remove obsolete stacks/config/data without changing the Phase-19 execution-integrity architecture.
+**Atomic task:** lead-directed MVP integration/cleanliness audit, documentation alignment, and nullable durable-nonce replacement regression.
 
-**Cleanup evidence:**
-- Branch HEAD is `941288f13b079ff417402ef46776b8c27d7f1359`.
-- Commit `777c7cc7ed8a0055a1b5576828a8306d1b383890` removes obsolete `v2/` and `v3/` stacks from the MVP branch.
-- Commit `941288f13b079ff417402ef46776b8c27d7f1359` removes the legacy `config/` directory and root `__init__.py`.
-- The active Phase-19 workflow installs `requirements-phase19.txt`, compiles `contracts`, runs the Phase-19 EVM harness, Polygon fork smoke/execution probes, and discovers tests under `tests/phase19`; the removed v2/v3/config stacks are not part of that workflow definition.
+**New work completed:**
+- `PROJECT_DETAILS.md` was replaced with a canonical Phase-19 architecture description because the prior file referenced deleted legacy launchers, runners, AI trainers, public-RPC execution and stale thresholds.
+- `tests/phase19/test_replacement_coordinator.py` now explicitly tests a valid dropped source whose durable nonce row has `tx_hash=NULL`; replacement must proceed, then install the replacement transaction hash and `replacement_of` relationship atomically.
+- The core store schema explicitly permits nullable `nonce_records.tx_hash`, while replacement persistence rejects only a conflicting non-null source hash. This aligns storage semantics with the coordinator hardening.
 
-**Important:** the cleanup itself has not yet received a fresh post-cleanup CI result in the current evidence. Therefore current HEAD is **CLEANED BUT NOT YET RE-CERTIFIED**.
-
-**Replacement hardening remains:** the `ad04f49...` replacement-coordinator change is still an implementation-bearing unverified change until fresh CI certifies a current-head build. The missing nullable durable-nonce `tx_hash` regression remains a next engineering gate.
+**Current verdict:** architecture is structurally coherent and the targeted Phase-19 core is present. However, current HEAD is **NOT YET CI-CERTIFIED** after the documentation/test changes. Connector status for the latest commit currently returns no exposed checks, so a pass is not claimed.
 
 **Authority/input finding:**
-- Historical project material records `0x24056bCA6538693aE94Cc97E82f21Ee4EC7f128` as a PhantomXV2FlashLoanExecutor deployment candidate, but the same material explicitly marks it NOT YET PROVEN LIVE and requires chain, bytecode, interface, owner, domain, and runtime-code-hash verification.
-- Historical public Polygon RPC endpoints also exist in older runtime notes, but they are not an approved production quorum.
-- `common/active_rpc.txt` is not being promoted into production authority.
-
-**Decision:** repository cleanup is now complete for the clearly obsolete v2/v3/config surfaces. Do not delete Phase-19 status/evidence documents merely to reduce file count; those are part of continuity and certification evidence. Next gate is fresh full Phase-19 CI against the cleaned HEAD, followed by the nullable-durable-`tx_hash` replacement regression before any promotion to verified.
+- Historical project material still contains a candidate executor identity, but it is explicitly not live-proof; production authority remains blocked pending approved provider quorum + intended executor identity + expected signer identity.
+- Historical public RPC endpoints are not promoted into production authority.
 
 **Safety boundary:** no live signing, public broadcast, live capital, or production execution authorization.
+
+**Next atomic action:** obtain authoritative fresh CI evidence for `eb9ee0c6...`; inspect any failures; only then continue the MVP internal integration audit or advance to the highest-value unresolved production gate.
 
 ---
 
