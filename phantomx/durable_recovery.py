@@ -149,13 +149,13 @@ def persist_recovery_observation(
         try:
             db.execute("BEGIN IMMEDIATE")
             row = db.execute(
-                "SELECT record_hash,intent_hash,sender,nonce,state,tx_hash FROM transaction_records WHERE intent_hash=?",
-                (intent.intent_hash().lower(),),
+                "SELECT record_hash,intent_hash,sender,nonce,state,tx_hash FROM transaction_records WHERE intent_hash=? AND tx_hash=?",
+                (intent.intent_hash().lower(), observation.tx_hash.lower()),
             ).fetchone()
             if row is None:
-                raise DurableRecoveryError("unknown durable transaction for execution intent")
-            if row[5].lower() != observation.tx_hash.lower() or int(row[3]) != tx_nonce:
-                raise DurableRecoveryError("recovery evidence does not match durable transaction")
+                raise DurableRecoveryError("unknown durable transaction for execution intent and observed transaction hash")
+            if int(row[3]) != tx_nonce:
+                raise DurableRecoveryError("recovery evidence does not match durable transaction nonce")
             nrow = db.execute(
                 "SELECT reservation_id,intent_hash,status,tx_hash FROM nonce_records WHERE sender=? AND nonce=?",
                 (row[2], int(row[3])),
