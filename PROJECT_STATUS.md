@@ -10,10 +10,11 @@
 - Production chain observation adapter: `77c3c457...`
 - Read-only transaction/receipt RPC allowlist: `64f96d8b...`
 - Adapter adversarial tests: `5c926b91...`
-- Fresh adapter certification: **PENDING**
+- Fresh adapter certification `#423`: **IN PROGRESS**
 - Live mainnet execution: **BLOCKED**
 - Live capital: **LOCKED**
 - Production readiness: **NOT ACHIEVED**
+- Economic invariant: realized net profit must be **strictly greater than $0.20 after all applicable costs**
 
 ## SAFETY
 Evidence first. Contradictory or missing evidence is UNKNOWN/BLOCKED. Private execution has no public fallback. No live signing, public broadcast, production execution authorization, or live capital is granted during Phase 19 certification. Private keys and relay authentication material never enter repository code, fixtures, logs, or chat.
@@ -38,10 +39,12 @@ The HTTP read-only transport permits transaction and receipt lookup methods requ
 7. Live mainnet capital remains forbidden.
 
 ## CHECKPOINT
-#420 GREEN certified the recovered-settlement repair. `77c3c457...`, `64f96d8b...`, and `5c926b91...` add and test the read-only transaction/receipt quorum boundary. No fresh full-workflow certification has yet been claimed for this adapter.
+#420 GREEN certified the recovered-settlement repair. The read-only production transaction/receipt quorum boundary is implemented and its adversarial tests are attached to branch head `5c926b91...`.
+
+Fresh workflow `#423` is currently running against `a5f17ed...`, with no GREEN claim yet. Run #422 separately certified the read-only RPC allowlist change at `64f96d8b...`.
 
 ## NEXT ACTION
-Complete fresh Phase-19 certification for `5c926b91...`. On GREEN, integrate quorum-backed chain-observation evidence with durable persistence so recovered settlement cannot consume a single-provider observation.
+Complete fresh certification for `#423`. On GREEN, integrate the quorum-backed observation evidence into durable chain-observation persistence so recovered settlement cannot consume a single-provider observation.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
