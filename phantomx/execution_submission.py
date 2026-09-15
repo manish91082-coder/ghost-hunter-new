@@ -33,10 +33,11 @@ def submit_prepared_execution(
 ) -> SubmittedExecution:
     """Submit one immutable signed artifact privately, then persist SUBMITTED.
 
-    A fresh authority observation is required at submission. The observation may
-    be newer than signing-time evidence, but its stable executor owner/runtime
-    identity must equal the identity committed into the signed artifact. This
-    closes the signing-to-submission deployment drift window.
+    The durable record enters ``SUBMISSION_IN_FLIGHT`` in a committed SQLite
+    transaction immediately before network I/O. Once that state is durable,
+    retries are blocked until chain reconciliation proves the outcome. This
+    prevents a relay timeout or connection failure after possible acceptance
+    from being mistaken for a safe pre-submission retry opportunity.
     """
     try:
         if submission_authority.observed_block < prepared.authority.observed_block:
@@ -45,10 +46,9 @@ def submit_prepared_execution(
             raise ExecutionSubmissionError("submission executor runtime identity differs from signed artifact")
 
         # Re-check the durable lifecycle immediately before network I/O. A caller
-        # may retry a prepared object after a previous successful submission;
-        # that retry must not reach the relay once durable state is no longer
-        # SIGNED. This prevents duplicate private relay attempts for the same
-        # immutable signed artifact.
+        # may retry a prepared object after a previous successful submission or
+        # after an ambiguous relay outcome; neither case may reach the relay
+        # while the durable record is no longer exactly SIGNED.
         with store._connect() as db:
             row = db.execute(
                 "SELECT intent_hash,state,tx_hash,sender,nonce FROM transaction_records WHERE record_hash=?",
@@ -72,16 +72,37 @@ def submit_prepared_execution(
             if nrow[2] is not None and nrow[2].lower() != prepared.signed_transaction.transaction_hash.lower():
                 raise ExecutionSubmissionError("durable nonce transaction hash conflicts with signed artifact before private submission")
 
-        submission = submit_governed_transaction(
-            relay=relay,
-            signed_transaction=prepared.signed_transaction,
-            governor=prepared.governor,
-            intent=prepared.assembly.intent,
-            authorization=prepared.assembly.authorization,
-            envelope=prepared.assembly.envelope,
-            executor_authority=submission_authority,
-            now=now,
-        )
+            db.execute("BEGIN IMMEDIATE")
+            updated = db.execute(
+                "UPDATE transaction_records SET state=? WHERE record_hash=? AND state=?",
+                (
+                    ExecutionState.SUBMISSION_IN_FLIGHT.value,
+                    prepared.transaction_record.record_hash(),
+                    ExecutionState.SIGNED.value,
+                ),
+            ).rowcount
+            if updated != 1:
+                raise ExecutionSubmissionError("durable transaction could not enter submission in-flight state")
+            db.execute("COMMIT")
+
+        try:
+            submission = submit_governed_transaction(
+                relay=relay,
+                signed_transaction=prepared.signed_transaction,
+                governor=prepared.governor,
+                intent=prepared.assembly.intent,
+                authorization=prepared.assembly.authorization,
+                envelope=prepared.assembly.envelope,
+                executor_authority=submission_authority,
+                now=now,
+            )
+        except Exception as exc:
+            # Do not revert to SIGNED. The durable IN_FLIGHT marker is the
+            # crash-safe fence against duplicate relay submission. Operators
+            # or recovery automation must reconcile the signed tx hash on-chain.
+            raise ExecutionSubmissionError(
+                "private relay outcome is uncertain; durable submission remains IN_FLIGHT and must be reconciled on-chain"
+            ) from exc
     except Exception as exc:
         if isinstance(exc, ExecutionSubmissionError):
             raise
@@ -98,8 +119,8 @@ def submit_prepared_execution(
                 raise ExecutionSubmissionError("durable transaction record disappeared before submission persistence")
             if row[0].lower() != prepared.assembly.intent_hash.lower() or row[2].lower() != submission.transaction_hash.lower():
                 raise ExecutionSubmissionError("durable transaction identity changed before submission persistence")
-            if ExecutionState(row[1]) is not ExecutionState.SIGNED:
-                raise ExecutionSubmissionError("durable transaction is not in SIGNED state")
+            if ExecutionState(row[1]) is not ExecutionState.SUBMISSION_IN_FLIGHT:
+                raise ExecutionSubmissionError("durable transaction is not in submission in-flight state")
 
             nrow = db.execute(
                 "SELECT intent_hash,status,tx_hash FROM nonce_records WHERE sender=? AND nonce=?",
@@ -114,7 +135,7 @@ def submit_prepared_execution(
 
             db.execute(
                 "UPDATE transaction_records SET state=? WHERE record_hash=? AND state=?",
-                (ExecutionState.PRIVATE_SUBMITTED.value, prepared.transaction_record.record_hash(), ExecutionState.SIGNED.value),
+                (ExecutionState.PRIVATE_SUBMITTED.value, prepared.transaction_record.record_hash(), ExecutionState.SUBMISSION_IN_FLIGHT.value),
             )
             db.execute(
                 "UPDATE nonce_records SET status=?, tx_hash=? WHERE sender=? AND nonce=? AND status=?",
@@ -123,7 +144,7 @@ def submit_prepared_execution(
             db.execute("COMMIT")
     except Exception as exc:
         raise ExecutionSubmissionError(
-            "private relay accepted the transaction but durable SUBMITTED persistence failed; hold and reconcile on-chain"
+            "private relay accepted the transaction but durable SUBMITTED persistence failed; durable record remains held for on-chain reconciliation"
         ) from exc
 
     return SubmittedExecution(
