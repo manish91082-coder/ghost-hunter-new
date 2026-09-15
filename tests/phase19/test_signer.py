@@ -111,7 +111,7 @@ class SignerBoundaryTests(unittest.TestCase):
 
     def test_authority_identity_mismatch_is_blocked(self):
         foreign = replace(self.authority, owner="0x" + "22" * 20, evidence_hash="")
-        with self.assertRaisesRegex(SignerError, "freshness or identity"):
+        with self.assertRaisesRegex(SignerError, "governor executor authority evidence"):
             self.sign(executor_authority=foreign)
 
     def test_authority_runtime_code_mutation_is_blocked(self):
@@ -121,21 +121,25 @@ class SignerBoundaryTests(unittest.TestCase):
 
     def test_stale_authority_observation_is_blocked(self):
         stale = replace(self.authority, observed_block=4999, evidence_hash="")
+        governor = replace(self.governor, executor_authority_hash=stale.evidence_hash, decision_hash="")
         with self.assertRaisesRegex(SignerError, "freshness or identity"):
-            self.sign(executor_authority=stale)
+            self.sign(executor_authority=stale, governor=governor)
 
     def test_replayed_authority_observation_is_blocked_at_signer_boundary(self):
         replayed = replace(self.authority, observed_block=4997, evidence_hash="")
+        governor = replace(self.governor, executor_authority_hash=replayed.evidence_hash, decision_hash="")
         with self.assertRaisesRegex(SignerError, "freshness or identity"):
             self.sign(
                 executor_authority=replayed,
+                governor=governor,
                 authority_evidence_reuse_policy=AuthorityEvidenceReusePolicy(maximum_age_blocks=2),
             )
 
     def test_future_authority_observation_is_blocked_at_signer_boundary(self):
         future = replace(self.authority, observed_block=5001, evidence_hash="")
+        governor = replace(self.governor, executor_authority_hash=future.evidence_hash, decision_hash="")
         with self.assertRaisesRegex(SignerError, "freshness or identity"):
-            self.sign(executor_authority=future)
+            self.sign(executor_authority=future, governor=governor)
 
     def test_governor_authority_hash_mismatch_is_blocked(self):
         blocked = replace(self.governor, executor_authority_hash="0x" + "77" * 32, decision_hash="")
