@@ -5,11 +5,9 @@
 
 ## 0. CURRENT RESUME CARD
 
-- Project: PhantomX / Flash Loan Ghost Hunter
-- Repository: `manish91082-coder/ghost-hunter-new`
-- Default branch: `master`
+- Project: `manish91082-coder/ghost-hunter-new`
 - Active implementation branch: `phase-19-e2e-harness`
-- Latest implementation-bearing commit: `ed3451f82c4c4934fe1c5bfe23623222a10d3a3b` — exact rollback snapshot assertion correction
+- Latest implementation-bearing commit: `de6eee477f0e1b8844c88de26be3e884cb8e9d4e` — intent-to-calldata commitment bridge regression hardening
 - Phase: Phase 19, execution-integrity / E2E policy harness
 - Live mainnet execution: **BLOCKED**
 - Live capital authorization: **BLOCKED**
@@ -70,17 +68,22 @@ Completed and under active integration/testing on Phase 19 include:
 - exact observed-transaction binding for durable recovery;
 - recovery semantics that do not manufacture active nonce ownership for an unknown replacement hash;
 - repeated replacement-chain testing with restart persistence and stale-source rejection;
-- atomic rollback regression for failed replacement persistence.
+- atomic rollback regression for failed replacement persistence;
+- intent-to-calldata commitment bridge regression proving that a semantic intent mutation makes the embedded execution commitment stale.
 
-## 4. ROUTE COMMITMENT INTEGRITY
+## 4. ROUTE COMMITMENT / CRYPTOGRAPHIC BRIDGE INTEGRITY
 
-The executable route now has an explicit topology commitment joined with the quote-route commitment. Python and Solidity reference vectors are covered by EVM tests, and mutation tests reject changed route/topology/commitment values.
+The executable route has an explicit topology commitment joined with the quote-route commitment. Python and Solidity reference vectors are covered by EVM tests, and mutation tests reject changed route/topology/commitment values.
 
-The cryptographic bridge is still an area for continued hardening: off-chain intent/economic proof, calldata commitment, and on-chain route/topology commitment must remain exactly synchronized without introducing a hash cycle.
+The bridge design intentionally excludes `calldata_hash` from the embedded execution commitment to avoid a cryptographic fixed-point cycle, while separately binding the completed calldata hash into the immutable `ExecutionIntent` and transaction envelope.
+
+The latest hardening test mutates an execution-semantic intent field (`deadline`) after calldata generation and verifies that the original embedded execution commitment no longer matches the mutated intent commitment. This closes a regression class where off-chain semantic state could drift while the serialized calldata still carried the earlier commitment.
+
+The remaining certification requirement is end-to-end proof that the same immutable artifact chain remains synchronized across quote route, topology, calldata, economic proof, simulation proof, authorization, and final signed transaction at the signer boundary.
 
 ## 5. RECOVERY / DURABILITY STATE
 
-Execution lifecycle vocabulary now includes explicit `REORGED`, `REPLACED`, and `DROPPED` states.
+Execution lifecycle vocabulary includes explicit `REORGED`, `REPLACED`, and `DROPPED` states.
 
 Durable recovery records explicit evidence and does not itself sign, submit, create replacements, or release a nonce.
 
@@ -112,10 +115,13 @@ Failed replacement insertion must roll back source and nonce mutations together.
 ### Atomic rollback gate
 
 - Run `#267` on `658ffe0cf686d62897f0551ea0ab9df70e930cdd`: **FAIL** only in the new rollback regression; all EVM/fork gates passed and Python was **404/405**, with the failing assertion expecting a hard-coded nonce tx hash where the fixture had `None` before replacement installation.
-- Exact failure: `AssertionError: None != '0x1111...1111'` at the rollback test's `restarted_nonce.tx_hash` assertion.
-- Corrected commit `ed3451f82c4c4934fe1c5bfe23623222a10d3a3b`: regression now snapshots the exact pre-attempt nonce state and asserts exact post-restart equality.
-- Run `#268` on `ed3451f82c4c4934fe1c5bfe23623222a10d3a3b`: **IN PROGRESS** at checkpoint time.
-- Run #268 has completed setup/Foundry and Solidity compilation and is currently running the EVM gate; later gates have not yet been observed.
+- Corrected commit `ed3451f82c4c4934fe1c5bfe23623222a10d3a3b` changed the regression to snapshot exact pre-attempt nonce state and assert exact post-restart equality.
+- Run `#268` on `ed3451f82c4c4934fe1c5bfe23623222a10d3a3b`: **PASS / GREEN**. Observed evidence: Solidity compilation PASS, **14/14 EVM**, **3/3 Polygon protocol smoke**, **1/1 Polygon fork execution probe**, and **405/405 Python** tests.
+
+### Current cryptographic bridge hardening
+
+- Commit `de6eee477f0e1b8844c88de26be3e884cb8e9d4e`: added `test_intent_mutation_invalidates_embedded_execution_commitment` to `tests/phase19/test_executor_calldata.py`.
+- Run `#269` on `de6eee477f0e1b8844c88de26be3e884cb8e9d4e`: **IN PROGRESS**. No GREEN claim is made yet.
 
 A status-only commit does not trigger the Phase-19 verification workflow because `.github/workflows/phase19-tests.yml` ignores `PROJECT_STATUS.md`-only pushes.
 
@@ -124,22 +130,21 @@ A status-only commit does not trigger the Phase-19 verification workflow because
 These percentages are engineering readiness estimates, not formal certification scores.
 
 - **Core architecture + deterministic implementation:** approximately **75–80% complete**.
-- **Go-live evidence/certification:** approximately **45–55% complete**.
-- **Overall mission toward first controlled live hunt:** approximately **60–70% complete**.
+- **Go-live evidence/certification:** approximately **50–60% complete**.
+- **Overall mission toward first controlled live hunt:** approximately **65–70% complete**.
 
-Phase-19 execution-integrity evidence is materially stronger, but production readiness remains unproven.
+Phase-19 execution-integrity evidence is materially stronger after the replacement/recovery closure and bridge hardening, but production readiness remains unproven.
 
 ## 8. CURRENT BLOCKERS
 
-1. Complete terminal evidence for Run #268.
-2. If #268 is green, freeze the replacement/recovery integrity gate and advance to the final route/topology cryptographic bridge audit.
-3. Establish final route/topology cryptographic bridge certification.
-4. Prove production signer/network authority under controlled conditions.
-5. Prove production private relay capability with no public fallback.
-6. Prove startup/recovery operational safety under production-like conditions.
-7. Produce controlled shadow/staging evidence using the same immutable artifact chain.
-8. Obtain realized live PnL evidence only after all preceding P0 gates are GREEN.
-9. Live mainnet capital deployment remains forbidden.
+1. Complete terminal evidence for Run #269.
+2. Complete end-to-end cryptographic bridge certification across the immutable execution artifact chain.
+3. Prove production signer/network authority under controlled conditions.
+4. Prove production private relay capability with no public fallback.
+5. Prove startup/recovery operational safety under production-like conditions.
+6. Produce controlled shadow/staging evidence using the same immutable artifact chain.
+7. Obtain realized live PnL evidence only after all preceding P0 gates are GREEN.
+8. Live mainnet capital deployment remains forbidden.
 
 ## 9. GO-LIVE GATES
 
@@ -194,23 +199,26 @@ Append/replace only with evidence-backed state. Never fabricate passes.
 
 ## 12. CURRENT CHECKPOINT
 
-**Timestamp:** 2026-09-15T08:20+05:30
+**Timestamp:** 2026-09-15T13:05+05:30
 
-**Atomic task:** P19-RA-01 — atomic rollback certification after repeated replacement-chain testing.
+**Atomic task:** P19-BRIDGE-01 — final route/topology cryptographic bridge hardening.
+
+**Changed files:**
+- `tests/phase19/test_executor_calldata.py` — added semantic intent-mutation regression for the embedded execution commitment.
+- `PROJECT_STATUS.md` — synchronized with terminal #268 evidence and current #269 execution state.
 
 **Evidence observed:**
-- Run #266 is GREEN and proves the repeated `tx0 → tx1 → tx2` replacement chain, restart persistence, active newest-owner invariant, and stale-source recovery rejection.
-- Run #267 is conclusively FAILED only because the newly added rollback test assumed a nonce tx_hash that the fixture never populated; the failure is at the test assertion, not an observed partial mutation.
-- `ed3451...` corrects that regression to compare the complete durable nonce snapshot before and after the failed replacement install.
-- Run #268 is currently executing the corrected implementation-bearing checkpoint; no GREEN claim is made yet.
+- Run #268 is **GREEN**, proving the corrected replacement rollback regression plus the full existing Phase-19 EVM/Polygon/Python gate set: 14/14 EVM, 3/3 Polygon smoke, 1/1 Polygon fork execution probe, 405/405 Python.
+- The new bridge regression is implementation-level and specifically verifies that changing an execution-semantic field after calldata generation produces an execution commitment mismatch against the commitment embedded in the previously generated calldata.
+- Run #269 is **IN PROGRESS** against `de6eee477f0e1b8844c88de26be3e884cb8e9d4e`; no result is assumed before terminal evidence.
 
-**Decision:** remain in ACTIVE AUDIT until #268 terminates. A green #268 will close the replacement/recovery audit provided the complete gate remains green, after which the next atomic task is final route/topology cryptographic bridge certification. A red #268 will trigger a surgical repair based only on its observed failure.
+**Decision:** replacement/recovery hardening is now backed by a green full-gate run. Remain in ACTIVE AUDIT for the new bridge regression until #269 terminates. A green #269 will advance the task to complete signer-boundary bridge certification; a red #269 will trigger a surgical repair based only on observed failure.
 
-**Latest implementation checkpoint:** `ed3451f82c4c4934fe1c5bfe23623222a10d3a3b`
+**Latest implementation checkpoint:** `de6eee477f0e1b8844c88de26be3e884cb8e9d4e`
 
 **Safety boundary:** No live signing, public broadcast, live capital, or production execution authorization is granted.
 
-**Next atomic action:** observe terminal Run #268 evidence.
+**Next atomic action:** observe terminal Run #269 evidence, then perform signer-boundary artifact-chain certification.
 
 ---
 
