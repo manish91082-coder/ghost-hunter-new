@@ -76,7 +76,7 @@ class TransactionRecord:
     ) -> None:
         if self.intent_hash.lower() != intent.intent_hash().lower():
             raise ValueError("transaction record intent hash mismatch")
-        if self.authorization_hash.lower() != _authorization_hash(authorization).lower():
+        if self.authorization_hash.lower() != authorization_hash(authorization).lower():
             raise ValueError("transaction record authorization hash mismatch")
         if bound_nonce.reservation_id != self.reservation_id:
             raise ValueError("transaction record reservation mismatch")
@@ -96,7 +96,8 @@ class TransactionRecord:
             raise ValueError("invalid transaction hash")
 
 
-def _authorization_hash(authorization: Authorization) -> str:
+def authorization_hash(authorization: Authorization) -> str:
+    """Return the canonical identity hash of one full Authorization object."""
     payload = {
         "intent_hash": authorization.intent_hash.lower(),
         "calldata_hash": authorization.calldata_hash.lower(),
@@ -112,6 +113,11 @@ def _authorization_hash(authorization: Authorization) -> str:
         "max_priority_fee_per_gas": authorization.max_priority_fee_per_gas,
     }
     return keccak256_hex(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode())
+
+
+def _authorization_hash(authorization: Authorization) -> str:
+    """Backward-compatible private alias for the canonical authorization hash."""
+    return authorization_hash(authorization)
 
 
 def build_signed_record(
@@ -134,7 +140,7 @@ def build_signed_record(
         raise ValueError("invalid transaction hash")
     record = TransactionRecord(
         intent_hash=intent.intent_hash(),
-        authorization_hash=_authorization_hash(authorization),
+        authorization_hash=authorization_hash(authorization),
         reservation_id=bound_nonce.reservation_id,
         chain_id=envelope.chain_id,
         sender=envelope.sender,
