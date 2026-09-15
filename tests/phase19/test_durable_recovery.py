@@ -74,7 +74,10 @@ class DurableRecoveryTests(unittest.TestCase):
         self.assertEqual(result.transaction_state, ExecutionState.REPLACED)
         self.assertEqual(result.nonce_state, NonceStatus.REPLACED)
         self.assertEqual(self.store.get_transaction(self.prepared.transaction_record.record_hash()).state, ExecutionState.REPLACED)
-        self.assertEqual(self.store.get_nonce(self.intent.sender, self.nonce).status, NonceStatus.REPLACED)
+        nonce = self.store.get_nonce(self.intent.sender, self.nonce)
+        self.assertEqual(nonce.status, NonceStatus.REPLACED)
+        self.assertEqual(nonce.tx_hash, replacement_hash)
+        self.assertEqual(nonce.replacement_of, self.tx_hash)
 
     def test_recovery_binds_replacement_record_to_observed_transaction_hash(self):
         replacement_hash = "0x" + "bb" * 32
@@ -121,8 +124,12 @@ class DurableRecoveryTests(unittest.TestCase):
             pending_nonce=self.nonce + 1,
         )
         self.assertEqual(result.transaction_record_hash, replacement_record.record_hash())
-        self.assertEqual(self.store.get_transaction(self.prepared.transaction_record.record_hash()).state, ExecutionState.SIGNED if False else ExecutionState.PRIVATE_SUBMITTED)
+        self.assertEqual(self.store.get_transaction(self.prepared.transaction_record.record_hash()).state, ExecutionState.PRIVATE_SUBMITTED)
         self.assertEqual(self.store.get_transaction(replacement_record.record_hash()).state, ExecutionState.REPLACED)
+        nonce = self.store.get_nonce(self.intent.sender, self.nonce)
+        self.assertEqual(nonce.status, NonceStatus.REPLACED)
+        self.assertEqual(nonce.tx_hash, "0x" + "cc" * 32)
+        self.assertEqual(nonce.replacement_of, replacement_hash)
 
     def test_reorg_moves_included_record_to_reorged_and_reobservation_can_recover(self):
         persist_chain_observation(
