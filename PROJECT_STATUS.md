@@ -5,7 +5,8 @@
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Latest implementation: `d018f8aea32d7db5aa012b02dcaacab87435af4c`
+- Latest project commit: `eadc26baee59807a619a477058653784733a0e77`
+- Final executable implementation under certification: `d018f8aea32d7db5aa012b02dcaacab87435af4c`
 - Recovered-settlement certification `#420`: **GREEN**
 - Production chain observation adapter: `77c3c457...`
 - Read-only transaction/receipt RPC allowlist: `64f96d8b...`
@@ -19,11 +20,16 @@
 - Quorum recovery provenance boundary: `03e2c93ee8b1116d38b81332f45f84265b4a5c3d`
 - Quorum recovery provenance certification `#435`: **GREEN**
 - Final Phase-19 adversarial recovery/settlement matrix: `d018f8aea32d7db5aa012b02dcaacab87435af4c`
-- Fresh certification for final matrix: **PENDING / RUN NOT YET SURFACED**
-- Matrix fixture hardening: isolated fixture recreation now uses registered cleanup rather than manually tearing down a fixture whose cleanup remains registered; final matrix explicitly exercises PENDING, REVERTED, DROP, REPLACED, and REORGED paths.
+- Final matrix certification `#436`: **GREEN**. The hardened final matrix workflow completed successfully across Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Phase-19 unittest suite.
+- Production-readiness gate audit: `PHASE19_PRODUCTION_READINESS_AUDIT.md` committed at `eadc26baee59807a619a477058653784733a0e77`
+- Production readiness decision: **NOT ACHIEVED**
+- Controlled production signer identity: **BLOCKED**. No fresh externally held production-signer challenge signature and provenance record is present; the runbook explicitly states mechanism-level CI is insufficient for this gate.
+- Controlled production Polygon provider authority: **BLOCKED**. The implementation requires explicitly approved HTTPS endpoints, quorum, intended executor, and expected signer inputs, but no controlled production observation evidence is present.
+- Controlled production private relay: **BLOCKED**. The implementation requires explicit HTTPS private-relay configuration and provides no public fallback, but no approved production relay proof/evidence is present.
+- Controlled shadow/staging: **BLOCKED**. No independently evidenced production-like shadow/staging execution artifact using the identical immutable chain is present.
+- Realized live PnL: **BLOCKED**. No controlled live-mainnet realized settlement evidence exists and live capital remains locked.
 - Live mainnet execution: **BLOCKED**
 - Live capital: **LOCKED**
-- Production readiness: **NOT ACHIEVED**
 - Economic invariant: realized net profit must be **strictly greater than $0.20 after all applicable costs**
 
 ## SAFETY
@@ -33,32 +39,36 @@ Evidence first. Contradictory or missing evidence is UNKNOWN/BLOCKED. Private ex
 `LIVE BLOCK → DATA/RPC QUORUM → EXACT QUOTES → ROUTE ENGINE → LOAN OPTIMIZER → EXACT COST MODEL → WORST-CASE NET PNL → AI RANKING → EVM PREFLIGHT → GOVERNOR → SIGNER → PRIVATE SUBMIT → ON-CHAIN EXECUTOR → RECEIPT AUDITOR → REALIZED NET PNL`
 
 ## VERIFIED CAPABILITIES
-Deterministic economics, immutable authorization/envelope binding, quote and simulation evidence, EVM preflight, Governor, signer verification, durable nonce/transaction state, private-only submission, recovery, receipt reconciliation, executor controls, and authority quorum/provenance/freshness controls are implemented. #420, #423, #427, #430, #432, and #435 provide the latest certified gates.
+Deterministic economics, immutable authorization/envelope binding, quote and simulation evidence, EVM preflight, Governor, signer verification, durable nonce/transaction state, private-only submission, recovery, receipt reconciliation, executor controls, and authority quorum/provenance/freshness controls are implemented. #420, #423, #427, #430, #432, #435, and #436 provide the latest certified gates.
 
 The production chain observer is read-only and requires a unique quorum-backed decision. fileciteturn1534file0L2-L2
 
 The execution-observation path requires an exact, previously persisted and fresh quorum record before lifecycle persistence. fileciteturn1545file0L2-L2
 
-Settlement reconciliation now has a dedicated quorum boundary, and the lower-level settlement primitive is explicitly treated as an already-admitted path. fileciteturn1548file0L2-L2
+Settlement reconciliation has a dedicated quorum boundary, and the lower-level settlement primitive is explicitly treated as an already-admitted path. fileciteturn1548file0L2-L2
 
-Recovery mutation now has the same quorum provenance boundary for DROP, REPLACED, and REORGED evidence. fileciteturn1549file0L2-L2
+Recovery mutation has the same quorum provenance boundary for DROP, REPLACED, and REORGED evidence. fileciteturn1549file0L2-L2
+
+The production authority module remains environment-driven and read-only: it requires explicit operator-supplied provider configuration and validates HTTPS endpoints, executor identity, and expected signer before observing authority. fileciteturn1564file0L2-L2
+
+The production private-relay assembly likewise requires explicit HTTPS configuration and `private=true` and has no public fallback. fileciteturn1573file0L2-L2
 
 ## P0 BLOCKERS
 1. Controlled production signer identity proof.
 2. Controlled production Polygon provider authority proof using approved endpoints and intended deployed executor.
 3. Controlled production private relay proof using an actually approved relay endpoint and authentication, with no public fallback.
-4. Production-like recovery and settlement reorg evidence, including complete certification of quorum-gated transaction/receipt observation, settlement admission, and recovery provenance.
-5. Controlled shadow/staging evidence using the identical immutable artifact chain.
-6. Final realized live PnL evidence after all preceding gates are GREEN.
+4. Controlled shadow/staging evidence using the identical immutable artifact chain.
+5. Controlled realized live settlement/PnL evidence satisfying strict `net > $0.20` after all applicable costs.
+6. Independent re-audit after all preceding production gates are evidenced.
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-`#435` is GREEN for quorum recovery provenance, including single-provider rejection, fresh two-provider admission, stale/future evidence rejection, replacement binding checks, reorg admission, and the static production-surface bypass audit. fileciteturn1536file0L2-L2
+`#436` is GREEN for the final Phase-19 adversarial recovery/settlement matrix. The completed job verifies the hardening commit across compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full unittest suite. fileciteturn1562file0L2-L2
 
-The final adversarial matrix was previously committed at `8460c589...`. Its certification had not surfaced in the Actions index, so the fixture was hardened before accepting any certification claim. Commit `d018f8aea32d7db5aa012b02dcaacab87435af4c` removes the double-teardown hazard by centralizing fixture recreation and explicitly adds fresh REPLACED and REORGED coverage alongside the already present PENDING, REVERTED, DROP, stale/future/tampered, canonical-block, settlement-conflict, restart, and low-level caller-confinement checks.
+The production-readiness audit has now been recorded separately. It deliberately distinguishes mechanism-level CI/fork proof from controlled production proof. The signer runbook requires a fresh externally generated signature and preserved provenance, and explicitly states that a CI pass for the mechanism alone is not production identity evidence. fileciteturn1567file0L2-L2
 
 ## NEXT ATOMIC ACTION
-Obtain and verify the fresh Phase-19 certification for `d018f8aea32d7db5aa012b02dcaacab87435af4c`. On GREEN, begin the production-readiness gate audit. On failure, repair only the exact failing boundary and recertify.
+The next work is **not** a production unlock. Close the P0 evidence gaps one at a time, beginning with the externally controlled production signer-identity proof, then controlled provider authority, private relay, shadow/staging, and realized-PnL evidence. After each evidence package, perform an independent re-audit and keep every remaining gate fail-closed.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
