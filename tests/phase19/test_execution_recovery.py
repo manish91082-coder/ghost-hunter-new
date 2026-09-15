@@ -38,6 +38,15 @@ class ExecutionRecoveryAuditTests(unittest.TestCase):
         self.assertEqual(result.checked_transactions, 1)
         self.assertEqual(result.checked_nonces, 1)
 
+    def test_signed_nonce_may_be_hash_free_before_private_submission(self):
+        with self.store._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            db.execute("UPDATE nonce_records SET status=?, tx_hash=NULL, replacement_of=NULL WHERE sender=? AND nonce=?", (NonceStatus.SIGNED.value, self.sender, 7))
+            db.execute("COMMIT")
+        result = audit_store(SQLiteExecutionStore(self.store.path))
+        self.assertEqual(result.state, RecoveryAuditState.CLEAN)
+        self.assertEqual(result.anomalies, ())
+
     def test_corrupt_nonce_intent_is_inconsistent(self):
         with self.store._connect() as db:
             db.execute("BEGIN IMMEDIATE")
