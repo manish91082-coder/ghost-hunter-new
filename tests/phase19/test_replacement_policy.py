@@ -10,7 +10,7 @@ class ReplacementPolicyTests(unittest.TestCase):
         self.policy = ReplacementFeePolicy(min_bump_bps=11000, max_fee_multiplier_bps=12500, max_absolute_fee_per_gas=150, max_priority_fee_per_gas=50)
 
     def auth(self, **changes):
-        values = dict(original_tx_hash="0x" + "11" * 32, replacement_tx_hash="0x" + "22" * 32, intent_hash="0x" + "33" * 32, authorization_hash="0x" + "44" * 32, nonce=42, old_max_fee_per_gas=100, old_max_priority_fee_per_gas=20, new_max_fee_per_gas=115, new_max_priority_fee_per_gas=23, policy_hash="0x" + "55" * 32)
+        values = dict(original_tx_hash="0x" + "11" * 32, replacement_tx_hash="0x" + "22" * 32, intent_hash="0x" + "33" * 32, authorization_hash="0x" + "44" * 32, nonce=42, old_max_fee_per_gas=100, old_max_priority_fee_per_gas=20, new_max_fee_per_gas=115, new_max_priority_fee_per_gas=23, policy_hash=self.policy.policy_hash())
         values.update(changes)
         return ReplacementAuthorization(**values)
 
@@ -57,6 +57,10 @@ class ReplacementPolicyTests(unittest.TestCase):
             self.auth(authorization_hash="").validate(policy=self.policy)
         with self.assertRaises(ReplacementPolicyError):
             self.auth(policy_hash="").validate(policy=self.policy)
+
+    def test_policy_hash_changes_when_policy_changes(self):
+        changed = ReplacementFeePolicy(min_bump_bps=11100, max_fee_multiplier_bps=12500, max_absolute_fee_per_gas=150, max_priority_fee_per_gas=50)
+        self.assertNotEqual(self.policy.policy_hash(), changed.policy_hash())
 
     def test_policy_configuration_rejects_unsafe_bounds(self):
         with self.assertRaises(ValueError):
