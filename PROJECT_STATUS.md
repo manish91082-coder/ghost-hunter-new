@@ -5,7 +5,7 @@
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Latest implementation: `73f29f3912376b2beeeb3d8a5d974385ef7534c7`
+- Latest implementation: `8460c589ef6b82b1da08d73624f29d0cd63d2549`
 - Recovered-settlement certification `#420`: **GREEN**
 - Production chain observation adapter: `77c3c457...`
 - Read-only transaction/receipt RPC allowlist: `64f96d8b...`
@@ -20,8 +20,9 @@
 - Quorum settlement reconciliation certification `#432`: **GREEN**. All compile/EVM/Polygon stages and the Phase-19 unittest suite completed successfully.
 - Quorum recovery provenance boundary: `03e2c93ee8b1116d38b81332f45f84265b4a5c3d`
 - Quorum recovery provenance tests: `73f29f3912376b2beeeb3d8a5d974385ef7534c7`
-- Fresh certification `#435`: **GREEN**. The quorum recovery provenance matrix and production-surface bypass audit completed successfully.
-- Final Phase-19 adversarial recovery/settlement matrix: **IMPLEMENTATION IN PROGRESS**
+- Fresh certification `#435`: **GREEN**. The quorum recovery provenance matrix and production-surface bypass audit completed successfully. fileciteturn1536file0L2-L2
+- Final Phase-19 adversarial recovery/settlement matrix: `8460c589ef6b82b1da08d73624f29d0cd63d2549`
+- Fresh certification for final matrix: **PENDING**. The newly committed test head has not yet surfaced a new workflow run in the Actions index.
 - Live mainnet execution: **BLOCKED**
 - Live capital: **LOCKED**
 - Production readiness: **NOT ACHIEVED**
@@ -52,6 +53,8 @@ The durable recovery layer exposes a matching quorum-gated boundary for DROP, RE
 
 The certified recovery provenance matrix covers single-provider rejection, fresh two-provider DROP admission, stale replacement rejection, future REORG rejection, replacement binding mismatch, two-provider REORG admission, and a production-module static bypass audit. fileciteturn1530file0L2-L2
 
+The final adversarial matrix commit adds quorum-gated PENDING and REVERTED lifecycle coverage, explicit future/stale/single-provider/tampered evidence rejection, canonical-block settlement conflict protection, idempotent/conflicting settlement evidence checks, restart persistence of quorum evidence, and static confinement of the low-level recovery/settlement mutation primitives.
+
 ## P0 BLOCKERS
 1. Controlled production signer identity proof.
 2. Controlled production Polygon provider authority proof using approved endpoints and intended deployed executor.
@@ -62,12 +65,12 @@ The certified recovery provenance matrix covers single-provider rejection, fresh
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-`#435` is GREEN. The fresh certification completed the quorum recovery provenance boundary and its adversarial matrix successfully, with the complete Phase-19 compile/EVM/Polygon and unittest workflow remaining GREEN. fileciteturn1536file0L2-L2
+`#435` is GREEN for quorum recovery provenance. fileciteturn1536file0L2-L2
 
-The next phase is now the final adversarial matrix. Its scope is deliberately broader than the already-certified isolated gates: it will exercise the complete recovery/settlement state family, provenance freshness and tamper resistance, canonical-block conflicts, evidence idempotency/conflict behavior, and persistence across restart before the production-readiness gate is considered.
+The final adversarial matrix is committed at `8460c589...`. It has not yet earned a certification result because the latest Actions index still reports `#435` as the newest completed run. No pass is claimed until the new workflow run executes the matrix.
 
 ## NEXT ATOMIC ACTION
-Complete the final Phase-19 adversarial recovery/settlement matrix. Then, only on GREEN, perform the production-readiness gate audit for controlled signer identity, approved Polygon provider authority, private relay, shadow/staging, and realized-PnL evidence.
+Obtain the fresh certification for `8460c589ef6b82b1da08d73624f29d0cd63d2549`. On GREEN, execute the production-readiness gate audit for controlled signer identity, approved Polygon provider authority, private relay, shadow/staging, and realized-PnL evidence. On any failure, repair only the exact failing boundary and recertify.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
