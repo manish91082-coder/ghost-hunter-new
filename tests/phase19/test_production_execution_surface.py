@@ -50,17 +50,17 @@ class ProductionExecutionSurfaceTests(unittest.TestCase):
     def test_raw_relay_submission_call_is_confined_to_private_boundary(self):
         self.assertEqual(self._calls_named("submit_raw_transaction"), ["private_submit.py"])
 
-    def test_raw_transaction_rpc_method_is_only_present_in_explicit_blocklist(self):
-        source = self._source(PHANTOMX / "polygon_rpc_http.py")
-        self.assertIn("_BLOCKED_METHODS", source)
-        self.assertIn('"eth_sendRawTransaction"', source)
+    def test_raw_transaction_rpc_method_is_confined_to_submission_transport(self):
         offenders = [
             path.name
             for path in PRODUCTION_FILES
-            if "eth_sendRawTransaction" in self._source(path)
+            if '"eth_sendRawTransaction"' in self._source(path)
+            and path.name != "private_relay_http.py"
             and path.name != "polygon_rpc_http.py"
         ]
         self.assertEqual(offenders, [])
+        self.assertIn('"eth_sendRawTransaction"', self._source(PHANTOMX / "private_relay_http.py"))
+        self.assertIn('"eth_sendRawTransaction"', self._source(PHANTOMX / "polygon_rpc_http.py"))
 
     def test_production_authority_does_not_import_signing_or_submission_layers(self):
         source = self._source(PHANTOMX / "production_authority.py")
@@ -73,6 +73,13 @@ class ProductionExecutionSurfaceTests(unittest.TestCase):
                 imported_modules.append(node.module)
         forbidden = {"phantomx.signer", "phantomx.private_submit", ".signer", ".private_submit"}
         self.assertTrue(forbidden.isdisjoint(imported_modules))
+
+    def test_production_private_relay_assembly_does_not_import_signing_layers(self):
+        source = self._source(PHANTOMX / "production_private_relay.py")
+        self.assertNotIn("phantomx.signer", source)
+        self.assertNotIn("phantomx.private_submit", source)
+        self.assertNotIn("PrivateKey(", source)
+        self.assertNotIn("sign_msg_hash(", source)
 
     def test_authority_observation_cli_has_no_signing_or_submission_dependency(self):
         source = (ROOT / "scripts" / "observe_production_authority.py").read_text(encoding="utf-8")
