@@ -7,6 +7,7 @@ from phantomx.economics import CostBreakdown
 from phantomx.execution import ExecutionState
 from phantomx.execution_coordinator import ExecutionCoordinatorError, prepare_signed_execution
 from phantomx.executor_authority import ExecutorAuthorityEvidence, runtime_code_binding_hash
+from phantomx.executor_calldata import executor_route_commitment
 from phantomx.quote_engine import ExactQuote
 from phantomx.quote_snapshot import QuoteSnapshot
 from phantomx.route_simulator import simulate_two_leg
@@ -143,7 +144,13 @@ class ExecutionCoordinatorTests(unittest.TestCase):
 
         self.assertEqual(assembly.simulation.route_hash, assembly.bound_call.bound_intent.route_hash)
         self.assertEqual(assembly.economic_proof.route_hash, assembly.simulation.route_hash)
-        self.assertEqual(assembly.bound_call.route_commitment, assembly.bound_call.route_commitment)
+        self.assertEqual(
+            assembly.bound_call.route_commitment,
+            executor_route_commitment(
+                route_hash=assembly.simulation.route_hash,
+                topology_hash=assembly.bound_call.topology_hash,
+            ),
+        )
         self.assertEqual(intent.economic_proof_hash, assembly.economic_proof.proof_hash)
         self.assertEqual(intent.simulation_proof_hash, assembly.simulation_proof_hash)
         self.assertEqual(intent.calldata_hash, envelope.calldata_hash)
