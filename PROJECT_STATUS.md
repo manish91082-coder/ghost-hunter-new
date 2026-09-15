@@ -6,15 +6,17 @@
 ## 0. CURRENT RESUME CARD
 - Project: `manish91082-coder/ghost-hunter-new`
 - Active branch: `phase-19-e2e-harness`
-- Latest implementation commit: `6e2cef743f76c9af3c00a722cc147ee724996bd6`
-- Authority freshness implementation: `ea4e74dfb9a034c96faa9cd242055263c90bce0f`
+- Latest implementation commit: `ea93238a9461db63bf02bc0993a170071179bc96`
+- Latest authority freshness implementation: `ea4e74dfb9a034c96faa9cd242055263c90bce0f`
 - Authority reuse policy: `6f7b329fcffe40fc81fee8d95779a8d9751450be`
-- Latest coordinator freshness integration: `53c84152a3df0407b3d37eaf4fee3577481b8829`
-- Latest signer freshness integration: `7b8314a11490921b02240b27175304aa1f6d3687`
+- Latest execution coordinator freshness hardening: `53c84152a3df0407b3d37eaf4fee3577481b8829`
+- Latest replacement coordinator freshness hardening: `97d25cd024de1bf1e50c547ee9ceef924cb240cc`
+- Latest signer freshness hardening: `7b8314a11490921b02240b27175304aa1f6d3687`
 - Latest submission fixture compatibility repair: `6e2cef743f76c9af3c00a722cc147ee724996bd6`
+- Latest replacement fixture compatibility repair: `f99552ac255a579c226bda1e6554675000a4d498`
+- Latest signer freshness contract tests: `ea93238a9461db63bf02bc0993a170071179bc96`
 - Authority freshness tests: `76aa052b9b0087056d6b6da6aec924f89a507020`
 - Coordinator freshness tests: `4bec83c21f85ca82e34bf86efb0f92a8f1d7ed3d`
-- Signer freshness tests: `9a4fd321e1725d1abece2d689a26cec60e379bf7`
 - Production Polygon authority assembly: `2492cd97c750bc3aa37b30d25e9bc9fcb2fb0864`
 - Production Polygon authority tests: `007789cabaa56b089ee89890b05596b7a1c18095`
 - Production authority operator audit CLI: `f02e6db75ca27a061372f956defbee90f2de0d97`
@@ -38,12 +40,13 @@
 - Authority freshness implementation run `#378`: GREEN
 - Replay-resistant reuse policy run `#379`: GREEN
 - Reuse-boundary certification run `#380`: GREEN
-- Coordinator freshness integration runs `#381/#382`: FAILED, superseded by minimal compatibility repair
-- Signer freshness integration run `#383`: FAILED, exposed missing authority-hash assertion plus block-context semantics
+- Coordinator freshness integration runs `#381/#382`: FAILED, preserved and superseded
+- Signer freshness integration run `#383`: FAILED, exposed authority-hash and block-context contract gaps
 - Coordinator/signing repair run `#384`: FAILED, superseded
-- Latest combined certification run `#385`: FAILED with 477 Python tests, 3 failures and 58 errors; compile, EVM, Polygon smoke, and Polygon execution probe all passed
-- Latest compatibility repair commit: `6e2cef743f76c9af3c00a722cc147ee724996bd6`
-- Fresh CI for latest compatibility repair: **NOT YET OBSERVED**
+- Combined certification run `#385`: FAILED, exposed shared fixture compatibility plus signer assertion issues
+- Compatibility repair certification run `#389`: FAILED with 477 Python tests, 4 failures and 4 errors; compile, 14/14 EVM, 3/3 Polygon fork smoke, and 1/1 Polygon fork execution probe passed
+- Latest repair commits: coordinator `53c84152...`, signer `7b8314a1...`, replacement coordinator `97d25cd0...`, submission fixtures `6e2cef74...`, replacement fixtures `f99552ac...`, signer contract tests `ea93238a...`
+- Latest CI run: `#393` IN PROGRESS for `ea93238a...`
 - Certification PR: `#1` (OPEN, base `master`)
 - Phase: Phase 19 execution-integrity / E2E policy harness
 - Live mainnet execution: **BLOCKED**
@@ -67,7 +70,7 @@ Initial scope: Polygon, Aave V3, QuickSwap V2, Uniswap V3, USDC/WETH/WMATIC/WBTC
 ## 3. VERIFIED IMPLEMENTATION CAPABILITIES
 Phase 19 includes strict realized-profit gating, deterministic all-in economics, Keccak hashing, immutable intent/auth/envelope binding, exact block-bound quotes, route simulation and topology commitment, loan optimization, EVM preflight, Governor, signer boundary, durable SQLite nonce/transaction state, atomic replacement/recovery coordination, private-only submission, chain/recovery/reorg/replacement handling, receipt reconciliation, Solidity executor controls, Polygon fork harness, and adversarial/regression coverage.
 
-Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, one-path coordinator artifact-chain certification, quorum-bound read-only executor authority attestation, nullable durable-nonce-hash replacement coverage, restart-audit coverage proving a pre-submission `SIGNED` nonce may legitimately remain hash-free while the durable transaction record remains authoritative, CI runtime modernization to Node 24-compatible action majors, pre-network blocking of repeated submission of an already-submitted durable artifact, explicit regression coverage that terminal `PROFIT_CONFIRMED`/`PROFIT_FAILED` states cannot be reopened by reorg recovery evidence, least-privilege/time-bounded CI execution, rejection of an all-zero signer private key, a non-secret signer identity challenge/proof boundary with cryptographic address recovery, restoration of the immutable signed-transaction artifact, an external verifier that can independently validate challenge signatures without private-key access, an operator-safe signer CLI, a controlled production signer identity runbook, a strict read-only Polygon HTTP transport with an allowlisted method surface and no transaction submission path, an environment-driven production Polygon authority assembly boundary that accepts only explicitly supplied HTTPS endpoints, quorum, executor address, and expected signer address and feeds the existing read-only quorum/owner binding layer, an operator-facing production authority audit CLI that emits only canonical non-secret authority evidence and fails closed without echoing endpoint/provider exception detail, static production-authority surface checks, authority evidence that cryptographically records the names of the providers that actually attested the winning owner/runtime-code observation, replay-resistant block-age freshness protection for authority evidence reuse, and freshness enforcement at both the execution-coordinator and signer boundaries.
+Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, one-path coordinator artifact-chain certification, quorum-bound read-only executor authority attestation, nullable durable-nonce-hash replacement coverage, restart-audit coverage proving a pre-submission `SIGNED` nonce may legitimately remain hash-free while the durable transaction record remains authoritative, CI runtime modernization to Node 24-compatible action majors, pre-network blocking of repeated submission of an already-submitted durable artifact, explicit regression coverage that terminal `PROFIT_CONFIRMED`/`PROFIT_FAILED` states cannot be reopened by reorg recovery evidence, least-privilege/time-bounded CI execution, rejection of an all-zero signer private key, a non-secret signer identity challenge/proof boundary with cryptographic address recovery, restoration of the immutable signed-transaction artifact, an external verifier that can independently validate challenge signatures without private-key access, an operator-safe signer CLI, a controlled production signer identity runbook, a strict read-only Polygon HTTP transport with an allowlisted method surface and no transaction submission path, an environment-driven production Polygon authority assembly boundary that accepts only explicitly supplied HTTPS endpoints, quorum, executor address, and expected signer address and feeds the existing read-only quorum/owner binding layer, an operator-facing production authority audit CLI that emits only canonical non-secret authority evidence and fails closed without echoing endpoint/provider exception detail, static production-authority surface checks, authority evidence that cryptographically records the names of the providers that actually attested the winning owner/runtime-code observation, replay-resistant block-age freshness protection for authority evidence reuse, explicit authority freshness enforcement at the execution coordinator and signer boundaries, and the same explicit authority freshness policy propagated into replacement preparation and signing.
 
 ## 4. CI CERTIFICATION PATH
 The Phase-19 workflow runs on branch pushes and pull requests to `master`, while ignoring status-only changes. It uses `actions/checkout@v5` and `actions/setup-python@v6`, grants only `contents: read`, enforces a 30-minute job timeout, then performs Foundry compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the Phase-19 unittest suite.
@@ -86,11 +89,13 @@ Runs `#373` and `#374` certified the provider-provenance implementation/test con
 
 User-supplied GitHub Actions evidence shows freshness sequence runs `#377` failed, then `#378`, `#379`, and `#380` completed successfully.
 
-Runs `#381` and `#382` exposed the compatibility impact of making coordinator authority reuse policy explicit. Run `#383` exposed signer-boundary semantic gaps: the signer path had dropped the explicit governor authority-hash equality assertion and was evaluating freshness against the wrong block context for coordinator-created authority observations. Run `#384` remained failed. Latest combined run `#385` demonstrated the remaining concrete failures: 58 fixture/setup errors because shared submission fixtures had not yet supplied the new required coordinator policy, plus three signer assertion failures. The authoritative run metadata shows compile, 14/14 EVM, 3/3 Polygon fork smoke, and 1/1 Polygon fork execution probe succeeded; only the Python stage failed. fileciteturn973file0L2-L2
+Runs `#381` and `#382` exposed the compatibility impact of making coordinator authority reuse policy explicit. Run `#383` exposed signer-boundary semantic gaps. Run `#384` remained failed. Run `#385` demonstrated the remaining fixture and signer contract failures. Its workflow metadata confirmed compile, EVM, Polygon smoke, and Polygon execution probe passed, with only the Python stage failing. fileciteturn973file0L2-L2
 
-The current repair path binds the shared submission fixture to an explicit `AuthorityEvidenceReusePolicy`, preserves the explicit policy requirement rather than introducing an unsafe implicit coordinator default, and keeps coordinator/signer freshness checks on the correct proven block boundaries.
+Fresh repair run `#389` tested the submission-fixture compatibility commit `6e2cef74...`. All non-Python workflow stages passed. The Python log recorded 477 tests with 4 failures and 4 errors. The errors were isolated to replacement-coordinator consumers whose authority observation block was ahead of the Governor block, while the four signer failures were assertion-contract mismatches caused by tests mutating authority evidence without rebinding the Governor's authority hash.
 
-Fresh CI for the latest compatibility repair `6e2cef743f76c9af3c00a722cc147ee724996bd6` has not yet been observed. No GREEN claim is made.
+The subsequent repair adds explicit authority freshness policy to replacement preparation, propagates current block context to replacement signing, and aligns signer regression tests so freshness failures exercise the freshness gate rather than the earlier authority-hash gate.
+
+Run `#393` is currently **IN PROGRESS** for `ea93238a...`; no final conclusion is claimed yet.
 
 Historical GREEN runs remain historical evidence only and do not substitute for current implementation proof.
 
@@ -99,7 +104,7 @@ The signer exposes a non-secret cryptographic challenge proof. The external veri
 
 The operator CLI generates fresh challenges and verifies externally produced signatures. The checked-in runbook defines the controlled production procedure, acceptance criteria, provenance requirements, and fail-closed handling. The mechanism is CI-certified. The **actual production signer identity gate remains NOT GREEN** until real externally held production-signer evidence is supplied and independently verified.
 
-The signing boundary now explicitly requires Governor authority-hash equality and a bounded authority-evidence reuse window. Coordinator-created signing passes the current observation block separately from the Governor's proven simulation block, while requiring the authority observation not to predate that proven block. fileciteturn971file0L7-L11
+The signer boundary explicitly checks Governor authority evidence identity before signing, then requires the supplied authority observation to satisfy exact executor/signer binding, a lower observed-block bound equal to the Governor block, and a bounded freshness window. Coordinator and replacement callers provide current observation block context separately so a valid observation can be newer than the Governor's proven route block without being treated as future evidence.
 
 ## 6. CURRENT POLYGON RPC / AUTHORITY GATE
 `phantomx/polygon_rpc.py` is the fail-closed read policy boundary: Polygon chain 137 is mandatory, provider identity is explicit, and quorum disagreement fails closed. `phantomx/polygon_rpc_http.py` is CI-certified as a separate network transport. It permits only read methods needed by the Phase-19 observation path; write/submission methods and unknown methods are blocked before network I/O.
@@ -110,9 +115,9 @@ The signing boundary now explicitly requires Governor authority-hash equality an
 
 `ExecutorAuthorityEvidence` records the provider names that attested the winning owner/runtime-code result. These names are included in the canonical evidence digest, so changing the attesting set changes evidence identity. Runtime code binding deliberately excludes provider names because it represents the deployed owner/code identity independent of transport provenance.
 
-`verify_executor_authority_freshness` rejects authority evidence from the future and evidence older than the explicit maximum block-age window. `AuthorityEvidenceReusePolicy` and `verify_reusable_production_authority_evidence` combine exact executor/signer binding with that freshness check and collapse reuse failures to a generic blocked outcome. fileciteturn954file0L7-L11
+`verify_executor_authority_freshness` rejects authority evidence from the future and evidence older than the explicit maximum block-age window. `AuthorityEvidenceReusePolicy` and `verify_reusable_production_authority_evidence` combine exact executor/signer binding, an explicit minimum observed block, and bounded freshness while collapsing reuse failures to a generic blocked outcome. fileciteturn954file0L7-L11
 
-The execution coordinator invokes this reusable authority boundary before nonce reservation with the proven simulation block as the lower bound, and propagates the explicit policy to signing. The signer rechecks the same authority hash and evaluates freshness against the current signing observation block while enforcing the Governor block as the minimum acceptable observation. fileciteturn972file0L7-L11 fileciteturn971file0L7-L11
+The execution coordinator invokes this reusable authority boundary before nonce reservation with the simulation block as the lower bound, and passes both the explicit policy and current observed block into signing. Replacement preparation now follows the same rule. This prevents stale, future, or source-incompatible authority observations from reaching signing. The production executor identity remains separately bound to the intended deployed executor and expected owner/signer.
 
 This is **configuration/orchestration/CLI/static-surface/provenance/freshness implementation certification, not production authority certification**. The actual P0 authority gate still requires real explicitly approved provider endpoints, a confirmed intended deployed executor address, the expected signer address, fresh multi-provider quorum evidence against that exact executor, and controlled provenance of the observing environment.
 
@@ -125,7 +130,7 @@ This is **configuration/orchestration/CLI/static-surface/provenance/freshness im
 6. **Final realized live PnL evidence** after all preceding gates are GREEN.
 7. Live mainnet capital deployment remains forbidden.
 
-Required before real production authority attestation: approved Polygon RPC provider set, controlled confirmation of the intended deployed executor address, expected signer address, fresh authority evidence with attesting-provider provenance, explicit evidence-reuse age policy, controlled evidence retention, and fresh CI certification of every newly modified execution/signer consumer.
+Required before real production authority attestation: approved Polygon RPC provider set, controlled confirmation of the intended deployed executor address, expected signer address, fresh authority evidence with attesting-provider provenance, explicit evidence-reuse age policy, controlled evidence retention, and fresh CI certification of every newly modified execution, replacement, and signer consumer. Private key material stays outside repository code, fixtures, logs, and chat.
 
 ## 8. GO-LIVE RULE
 Every P0 gate must be GREEN with reproducible evidence before live capital. Any unchecked gate means **LIVE CAPITAL = LOCKED**.
@@ -142,10 +147,12 @@ These are explicit planning metrics, not claims of external evidence.
 - Operator authority observation CLI: **GREEN** through run `#371`.
 - Provider-provenance implementation/test layer: **GREEN** through run `#376`.
 - Authority freshness/replay protection: **GREEN** through user-observed runs `#378`, `#379`, `#380`.
-- Coordinator/signer freshness consumer integration: **implemented; latest fresh CI pending after compatibility repair**.
+- Execution-coordinator freshness integration: **implemented; latest CI #393 pending**.
+- Replacement-coordinator freshness integration: **implemented; latest CI #393 pending**.
+- Signer freshness integration: **implemented; latest CI #393 pending**.
 
 ### B. First real-life hunt readiness
-- Fresh current implementation CI GREEN: **NO, not yet established for latest compatibility repair**.
+- Fresh current implementation CI GREEN: **NO, latest run #393 is still in progress**.
 - Production-control gates GREEN: **0 / 5**.
 - First real-money hunt: **NOT READY**.
 
@@ -156,21 +163,20 @@ These are explicit planning metrics, not claims of external evidence.
 ## 10. CURRENT CHECKPOINT
 **Timestamp:** 2026-09-15
 
-**Atomic task completed:** acted on the user-supplied CI failure evidence from runs `#381` through `#385`, traced the exact dominant failures to an explicit coordinator policy compatibility break and signer-boundary authority semantics, repaired the reusable authority helper to accept the proven lower block bound, restored explicit Governor authority-hash equality at signing, propagated current block context through the coordinator-to-signer path, and updated the shared submission fixture to supply the explicit reuse policy.
+**Atomic task completed:** processed the user-supplied CI failure chain through #385, then used fresh run #389 logs to isolate the remaining replacement and signer contract failures. The implementation was repaired so the same explicit authority freshness policy now propagates across normal execution preparation, replacement preparation, and the final signer boundary. Shared replacement fixtures were updated to supply the explicit policy, and signer regression tests were corrected to isolate freshness semantics from authority-hash mismatch semantics.
 
 **New evidence:**
-- User-observed freshness certification: `#378`, `#379`, `#380` GREEN.
-- Latest combined failure: `#385`, 477 tests, 3 failures, 58 errors, with compile/EVM/Polygon stages passing. fileciteturn973file0L2-L2
-- Production authority reuse helper repair: `8a6c3c44...`.
-- Signer boundary repair: `7b8314a1...`.
-- Coordinator boundary repair: `53c84152...`.
-- Submission fixture compatibility repair: `6e2cef74...`.
+- Run `#389`: **FAILED**, with 477 Python tests, 4 failures and 4 errors; all compile/EVM/Polygon stages passed.
+- Replacement-coordinator repair: `97d25cd0...`.
+- Replacement-coordinator tests: `f99552ac...`.
+- Signer contract tests: `ea93238a...`.
+- Latest CI run `#393`: **IN PROGRESS** for `ea93238a...`.
 
-**Current verdict:** authority evidence freshness is enforced at the reusable-evidence layer, execution coordinator, and signer boundary. The latest CI failure has been reduced to a concrete compatibility contract repair; that newest repair still requires fresh CI before certification can be advanced.
+**Current verdict:** the freshness invariant is now structurally propagated through the primary execution path, replacement path, and signer path. The current implementation awaits fresh full-workflow certification. Actual production signer identity and actual production Polygon/provider authority remain unproven and therefore blocked.
 
 **Safety boundary:** no live signing, public broadcast, live capital, or production execution authorization.
 
-**Next atomic action:** certify `6e2cef743f76c9af3c00a722cc147ee724996bd6` in fresh CI. If any failures remain, isolate the smallest contract mismatch, repair minimally, and repeat. Once GREEN, perform the repository-wide alternate-path audit for authority/signing bypasses.
+**Next atomic action:** complete fresh CI run `#393`; if GREEN, perform the repository-wide alternate execution/signing path audit to prove no production authorization path can bypass the same authority freshness and identity controls. If CI fails, preserve the failure and repair only the demonstrated contract mismatch.
 
 ---
 
