@@ -14,11 +14,11 @@
 - Signer identity runbook: `1c76ab9da90d3c20785ae85ce14eeee29f6f8264`
 - Latest signer identity implementation: `fd34078fae864c02136484eeef3afd5f4a6c05a4`
 - Latest signer artifact repair: `148d9d01d0b6037312678d4af76ff1ade1a4e4e0`
-- Fresh authoritative repair CI: run `#349` GREEN for `148d9d01...`
-- Fresh PR-head CI: run `#354` GREEN for `9489c047...`
-- Fresh post-CLI CI: run `#357` GREEN for `e3040c24...`
-- Fresh signer-runbook CI: run `#360` GREEN for `1c76ab9...`
-- Fresh Polygon transport CI: run `#364` IN PROGRESS for `04bcaf9...`
+- Fresh authoritative repair CI: run `#349` GREEN
+- Fresh PR-head CI: run `#354` GREEN
+- Fresh post-CLI CI: run `#357` GREEN
+- Fresh signer-runbook CI: run `#360` GREEN
+- Fresh Polygon transport CI: run `#364` GREEN for `04bcaf9...`
 - Certification PR: `#1` (OPEN, base `master`)
 - Phase: Phase 19 execution-integrity / E2E policy harness
 - Live mainnet execution: **BLOCKED**
@@ -47,15 +47,15 @@ Recent hardening includes exact observed-transaction recovery binding, no manufa
 ## 4. CI CERTIFICATION PATH
 The Phase-19 workflow runs on branch pushes and pull requests to `master`, while ignoring status-only changes. It uses `actions/checkout@v5` and `actions/setup-python@v6`, grants only `contents: read`, enforces a 30-minute job timeout, then performs Foundry compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the Phase-19 unittest suite.
 
-Fresh repair validation run `#349` tested `148d9d01...` and concluded **SUCCESS**. It completed Solidity compile, 14/14 EVM tests, 3/3 Polygon fork smoke tests, 1/1 Polygon fork execution probe, and the Python suite.
+Fresh repair validation run `#349` tested `148d9d01...` and concluded **SUCCESS**.
 
-Fresh PR-head validation run `#354` tested `9489c047...` and concluded **SUCCESS** with 14/14 EVM, 3/3 Polygon fork smoke, 1/1 Polygon fork execution, and 430/430 Python tests.
+Fresh PR-head validation run `#354` tested `9489c047...` and concluded **SUCCESS**.
 
-Fresh post-CLI validation run `#357` tested `e3040c24...` and concluded **SUCCESS**, including the CLI safety/regression coverage.
+Fresh post-CLI validation run `#357` tested `e3040c24...` and concluded **SUCCESS**.
 
-Fresh signer-runbook validation run `#360` tested `1c76ab9...` and concluded **SUCCESS**. Its authoritative job log completed all stages and the Phase-19 Python suite with **435 tests, 0 failures**, including the signer runbook-adjacent identity and CLI coverage.
+Fresh signer-runbook validation run `#360` tested `1c76ab9...` and concluded **SUCCESS**. The authoritative job log recorded **435 Python tests with 0 failures**, alongside successful compile, 14/14 EVM, 3/3 Polygon fork smoke, and 1/1 Polygon fork execution probe stages.
 
-Fresh Polygon RPC transport validation run `#364` targets `04bcaf9...` and is currently **IN PROGRESS**. No pass is claimed until completion.
+Fresh Polygon transport validation run `#364` tested `04bcaf9...` and concluded **SUCCESS**. The dedicated workflow job completed every stage successfully. Its authoritative job record confirms compile, EVM integration, Polygon fork smoke, Polygon fork execution probe, and the Phase-19 Python suite all completed with success. The detailed log also recorded the full Phase-19 suite as **435 tests, 0 failures**.
 
 Run `#348` remains historical failure evidence: `fd34078f...` failed in Python because `SignedTransaction` had been removed during signer-proof hardening. The deterministic regression was repaired in `148d9d01...`, and that repair is GREEN.
 
@@ -67,9 +67,9 @@ The signer exposes a non-secret cryptographic challenge proof. The external veri
 The operator CLI generates fresh challenges and verifies externally produced signatures. The checked-in runbook defines the controlled production procedure, acceptance criteria, provenance requirements, and fail-closed handling. The mechanism is CI-certified. The **actual production signer identity gate remains NOT GREEN** until real externally held production-signer evidence is supplied and independently verified.
 
 ## 6. CURRENT POLYGON RPC / AUTHORITY GATE
-`phantomx/polygon_rpc.py` remains the policy boundary: chain identity must be Polygon 137, provider identity is explicit, and quorum disagreement fails closed. The new `phantomx/polygon_rpc_http.py` adds a separate network transport that permits only six read methods: `eth_chainId`, `eth_blockNumber`, `eth_getBlockByNumber`, `eth_getTransactionCount`, `eth_getCode`, and `eth_call`. Submission methods and unknown methods are blocked before network I/O. HTTP/JSON/id/endpoint validation is fail-closed.
+`phantomx/polygon_rpc.py` is the fail-closed read policy boundary: Polygon chain 137 is mandatory, provider identity is explicit, and quorum disagreement fails closed. `phantomx/polygon_rpc_http.py` is now CI-certified as a separate network transport. It permits only `eth_chainId`, `eth_blockNumber`, `eth_getBlockByNumber`, `eth_getTransactionCount`, `eth_getCode`, and `eth_call`. Write/submission methods and unknown methods are blocked before network I/O; HTTP/JSON/response-id/endpoint validation also fails closed.
 
-The new transport is CI validation pending in run `#364`. Importantly, this does **not** prove production endpoint trust or deployed executor authority. The actual P0 authority gate still requires the explicitly approved provider set, intended deployed executor address, and reproducible quorum evidence from controlled production configuration.
+The transport certification is **not** production authority certification. The actual P0 authority gate still requires a controlled list of explicitly approved provider endpoints, a confirmed intended deployed executor address, and reproducible multi-provider quorum evidence gathered against that exact executor.
 
 ## 7. CURRENT BLOCKERS / P0 GATES
 1. **Controlled production signer identity proof** without exposing private key material.
@@ -91,11 +91,11 @@ These are explicit planning metrics, not claims of external evidence.
 ### A. Engineering foundation
 - Deterministic Phase-19 execution-integrity implementation: **substantially built**.
 - Practical assessment: **~85% engineering foundation complete**.
-- Latest certified signer/runbook implementation: **GREEN** through run `#360`.
-- Polygon HTTP transport integration validation: **PENDING** run `#364`.
+- Latest signer/runbook implementation CI: **GREEN** through run `#360`.
+- Polygon HTTP transport: **GREEN** through run `#364`.
 
 ### B. First real-life hunt readiness
-- Fresh current implementation CI GREEN: **YES before current transport change; current transport change pending CI**.
+- Fresh current implementation CI GREEN: **YES**.
 - Production-control gates GREEN: **0 / 5**.
 - First real-money hunt: **NOT READY**.
 
@@ -106,19 +106,20 @@ These are explicit planning metrics, not claims of external evidence.
 ## 10. CURRENT CHECKPOINT
 **Timestamp:** 2026-09-15
 
-**Atomic task completed:** introduced a strict read-only Polygon HTTP JSON-RPC transport and adversarial transport tests, while preserving the existing policy/quorum layer as the authority boundary.
+**Atomic task completed:** introduced and certified the strict read-only Polygon HTTP transport boundary required to move from pure policy tests toward controlled provider-authority integration.
 
 **New evidence:**
-- Transport commit: `4a8e8338...`.
-- Transport test commit/current head: `04bcaf92...`.
-- Run `#360` is confirmed **SUCCESS** for the signer runbook.
-- Run `#364` is currently validating the Polygon transport change.
+- Transport implementation: `4a8e8338...`.
+- Transport tests/current implementation: `04bcaf92...`.
+- Run `#360`: **SUCCESS** for signer runbook `1c76ab9...`.
+- Run `#364`: **SUCCESS** for Polygon transport `04bcaf9...`.
+- Run `#364` completed all workflow stages successfully; Phase-19 Python suite: **435/435**.
 
-**Current verdict:** the signer proof infrastructure is CI-certified and the Polygon network transport is now implemented as a separate, read-only, allowlisted boundary. Actual production signer identity and production Polygon/provider authority remain unproven and therefore blocked.
+**Current verdict:** CI-certified signer identity infrastructure and CI-certified read-only Polygon HTTP transport are in place. Actual production signer identity and production Polygon/provider authority remain unproven and therefore blocked.
 
 **Safety boundary:** no live signing, public broadcast, live capital, or production execution authorization.
 
-**Next atomic action:** obtain fresh run `#364` completion. On GREEN, perform the controlled production Polygon/provider authority evidence pass using only explicitly approved endpoints and the intended executor address, with no submission-capable transport.
+**Next atomic action:** perform controlled production Polygon/provider authority observation using explicitly approved endpoints and the intended deployed executor address. This must remain read-only and evidence-producing. Do not introduce submission-capable transport or use unapproved public endpoints as production authority evidence.
 
 ---
 
