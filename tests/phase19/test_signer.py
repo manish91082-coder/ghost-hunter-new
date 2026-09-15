@@ -7,6 +7,7 @@ from phantomx.execution import Authorization, ExecutionIntent, TransactionEnvelo
 from phantomx.executor_authority import ExecutorAuthorityEvidence, runtime_code_binding_hash
 from phantomx.governor import GovernorDecision
 from phantomx.hashing import keccak256_hex
+from phantomx.production_authority_evidence import AuthorityEvidenceReusePolicy
 from phantomx.signer import EthereumEip1559Signer, SignerError, recover_eip1559_sender, sign_governed_transaction, prove_signer_identity
 
 TOKEN = "0x" + "aa" * 20
@@ -110,7 +111,7 @@ class SignerBoundaryTests(unittest.TestCase):
 
     def test_authority_identity_mismatch_is_blocked(self):
         foreign = replace(self.authority, owner="0x" + "22" * 20, evidence_hash="")
-        with self.assertRaisesRegex(SignerError, "executor authority is invalid"):
+        with self.assertRaisesRegex(SignerError, "freshness or identity"):
             self.sign(executor_authority=foreign)
 
     def test_authority_runtime_code_mutation_is_blocked(self):
@@ -120,8 +121,21 @@ class SignerBoundaryTests(unittest.TestCase):
 
     def test_stale_authority_observation_is_blocked(self):
         stale = replace(self.authority, observed_block=4999, evidence_hash="")
-        with self.assertRaisesRegex(SignerError, "executor authority is invalid"):
+        with self.assertRaisesRegex(SignerError, "freshness or identity"):
             self.sign(executor_authority=stale)
+
+    def test_replayed_authority_observation_is_blocked_at_signer_boundary(self):
+        replayed = replace(self.authority, observed_block=4997, evidence_hash="")
+        with self.assertRaisesRegex(SignerError, "freshness or identity"):
+            self.sign(
+                executor_authority=replayed,
+                authority_evidence_reuse_policy=AuthorityEvidenceReusePolicy(maximum_age_blocks=2),
+            )
+
+    def test_future_authority_observation_is_blocked_at_signer_boundary(self):
+        future = replace(self.authority, observed_block=5001, evidence_hash="")
+        with self.assertRaisesRegex(SignerError, "freshness or identity"):
+            self.sign(executor_authority=future)
 
     def test_governor_authority_hash_mismatch_is_blocked(self):
         blocked = replace(self.governor, executor_authority_hash="0x" + "77" * 32, decision_hash="")
