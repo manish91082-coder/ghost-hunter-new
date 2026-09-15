@@ -6,7 +6,7 @@ from phantomx.economic_proof import build_economic_proof
 from phantomx.economics import CostBreakdown
 from phantomx.execution import ExecutionState
 from phantomx.execution_coordinator import ExecutionCoordinatorError, prepare_signed_execution
-from phantomx.executor_authority import ExecutorAuthorityEvidence
+from phantomx.executor_authority import ExecutorAuthorityEvidence, runtime_code_binding_hash
 from phantomx.quote_engine import ExactQuote
 from phantomx.quote_snapshot import QuoteSnapshot
 from phantomx.route_simulator import simulate_two_leg
@@ -142,8 +142,8 @@ class ExecutionCoordinatorTests(unittest.TestCase):
         signed = prepared.signed_transaction
 
         self.assertEqual(assembly.simulation.route_hash, assembly.bound_call.bound_intent.route_hash)
-        self.assertEqual(assembly.bound_call.route_commitment, prepared.preflight.route_hash and assembly.bound_call.route_commitment)
         self.assertEqual(assembly.economic_proof.route_hash, assembly.simulation.route_hash)
+        self.assertEqual(assembly.bound_call.route_commitment, assembly.bound_call.route_commitment)
         self.assertEqual(intent.economic_proof_hash, assembly.economic_proof.proof_hash)
         self.assertEqual(intent.simulation_proof_hash, assembly.simulation_proof_hash)
         self.assertEqual(intent.calldata_hash, envelope.calldata_hash)
@@ -154,11 +154,14 @@ class ExecutionCoordinatorTests(unittest.TestCase):
         self.assertEqual(prepared.governor.calldata_hash, envelope.calldata_hash)
         self.assertEqual(prepared.governor.executor_authority_hash, prepared.authority.evidence_hash)
         self.assertEqual(prepared.preflight.intent_hash, intent.intent_hash())
+        self.assertEqual(prepared.preflight.route_hash, intent.route_hash)
+        self.assertEqual(prepared.preflight.economic_proof_hash, intent.economic_proof_hash)
+        self.assertEqual(prepared.preflight.simulation_proof_hash, intent.simulation_proof_hash)
         self.assertEqual(prepared.preflight.calldata_hash, envelope.calldata_hash)
         self.assertEqual(prepared.preflight.authority_evidence_hash, prepared.authority.evidence_hash)
         self.assertEqual(signed.intent_hash, intent.intent_hash())
         self.assertEqual(signed.governor_decision_hash, prepared.governor.decision_hash)
-        self.assertEqual(signed.executor_runtime_binding_hash, prepared.signed_transaction.executor_runtime_binding_hash)
+        self.assertEqual(signed.executor_runtime_binding_hash, runtime_code_binding_hash(prepared.authority))
         self.assertEqual(signed.transaction_hash, keccak256_hex(signed.raw_transaction))
         self.assertEqual(prepared.transaction_record.tx_hash, signed.transaction_hash)
         self.assertEqual(prepared.transaction_record.intent_hash, intent.intent_hash())
