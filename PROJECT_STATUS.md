@@ -6,8 +6,8 @@
 ## 0. CURRENT RESUME CARD
 - Project: `manish91082-coder/ghost-hunter-new`
 - Active branch: `phase-19-e2e-harness`
-- Active branch HEAD: `eb9ee0c6b62e349500f177b8fa761673ce1a999b`
-- Latest implementation-bearing commit observed: `eb9ee0c6b62e349500f177b8fa761673ce1a999b` (replacement regression)
+- Latest implementation-bearing commit: `e40aa7b4abc86cce0bee0951717ab3b7aa651f70`
+- Latest implementation-bearing hardening before this checkpoint: `eb9ee0c6b62e349500f177b8fa761673ce1a999b`
 - Prior implementation-bearing hardening: `ad04f49a2083e0de54949405016776753dea1fbb`
 - Recent cleanup/docs commits: `777c7cc7ed8a0055a1b5576828a8306d1b383890`, `941288f13b079ff417402ef46776b8c27d7f1359`, `01b20c5a6713aa84778e88fda07b9c71aaa4f18a`
 - Phase: Phase 19 execution-integrity / E2E policy harness
@@ -32,7 +32,7 @@ Initial scope: Polygon, Aave V3, QuickSwap V2, Uniswap V3, USDC/WETH/WMATIC/WBTC
 ## 3. VERIFIED IMPLEMENTATION CAPABILITIES
 Phase 19 includes strict realized-profit gating, deterministic all-in economics, Keccak hashing, immutable intent/auth/envelope binding, exact block-bound quotes, route simulation and topology commitment, loan optimization, EVM preflight, Governor, signer boundary, durable SQLite nonce/transaction state, atomic replacement/recovery coordination, private-only submission, chain/recovery/reorg/replacement handling, receipt reconciliation, Solidity executor controls, Polygon fork harness, and adversarial/regression coverage.
 
-Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, one-path coordinator artifact-chain certification, quorum-bound read-only executor authority attestation, and nullable durable-nonce-hash replacement coverage.
+Recent hardening includes exact observed-transaction recovery binding, no manufactured nonce ownership for unknown replacements, repeated replacement persistence, atomic replacement rollback, semantic intent-mutation protection, exact serialized signer-envelope certification, one-path coordinator artifact-chain certification, quorum-bound read-only executor authority attestation, nullable durable-nonce-hash replacement coverage, and restart-audit coverage proving a pre-submission `SIGNED` nonce may legitimately remain hash-free while the durable transaction record remains authoritative.
 
 ## 4. MVP REPOSITORY CLEANUP / CONSISTENCY
 The active branch has been reduced to the targeted Phase-19 implementation/test spine.
@@ -64,7 +64,7 @@ This is read-only and cannot sign or submit transactions.
 - Repair commit `e8ded6459a8d7a070310f49481f335043617650e` corrected the assertion.
 - Run `#276`: GREEN, 14/14 EVM + 3/3 Polygon smoke + 1/1 Polygon fork execution probe + 413/413 Python.
 
-**Current-head certification:** a fresh workflow run for `eb9ee0c6...` is required/awaited. The current GitHub connector did not expose a push-triggered workflow run for this commit at the time of this update, so no new pass is claimed.
+**Current-head certification:** a fresh workflow run for the latest implementation commit `e40aa7b4abc86cce0bee0951717ab3b7aa651f70` is required. The available connector does not currently expose a push-triggered run for the branch commit through its commit-run filter, so no new pass is claimed. Run `#276` remains historical evidence only and predates the latest regression additions.
 
 ## 7. CURRENT BLOCKERS / P0 GATES
 1. Controlled production signer identity proof without exposing private key material.
@@ -83,14 +83,15 @@ Every P0 gate must be GREEN with reproducible evidence before live capital. Any 
 ## 9. CURRENT CHECKPOINT
 **Timestamp:** 2026-09-15
 
-**Atomic task:** lead-directed MVP integration/cleanliness audit, documentation alignment, and nullable durable-nonce replacement regression.
+**Atomic task:** lead-directed MVP integration/cleanliness audit, followed by restart/recovery invariant hardening.
 
 **New work completed:**
-- `PROJECT_DETAILS.md` was replaced with a canonical Phase-19 architecture description because the prior file referenced deleted legacy launchers, runners, AI trainers, public-RPC execution and stale thresholds.
-- `tests/phase19/test_replacement_coordinator.py` now explicitly tests a valid dropped source whose durable nonce row has `tx_hash=NULL`; replacement must proceed, then install the replacement transaction hash and `replacement_of` relationship atomically.
-- The core store schema explicitly permits nullable `nonce_records.tx_hash`, while replacement persistence rejects only a conflicting non-null source hash. This aligns storage semantics with the coordinator hardening.
+- `PROJECT_DETAILS.md` now describes the actual current Phase-19 MVP architecture and artifact chain, with deleted legacy runtime surfaces removed from the active documentation path.
+- `tests/phase19/test_replacement_coordinator.py` explicitly covers a valid dropped source whose durable nonce row has `tx_hash=NULL`; replacement must proceed and atomically install the replacement linkage.
+- `tests/phase19/test_execution_recovery.py` now proves the intended pre-submission state: a `SIGNED` durable nonce may have `tx_hash=NULL`, while its durable transaction record remains present and the startup audit still returns `CLEAN`.
+- The complementary invariant remains enforced: `SUBMITTED`/active recovery states without a transaction hash are inconsistent and fail the restart audit.
 
-**Current verdict:** architecture is structurally coherent and the targeted Phase-19 core is present. However, current HEAD is **NOT YET CI-CERTIFIED** after the documentation/test changes. Connector status for the latest commit currently returns no exposed checks, so a pass is not claimed.
+**Current verdict:** the active Phase-19 implementation remains structurally coherent, with the targeted recovery semantics now covered by regression tests. However, the latest implementation-bearing commit is **NOT YET CI-CERTIFIED**. No current-head green claim is made.
 
 **Authority/input finding:**
 - Historical project material still contains a candidate executor identity, but it is explicitly not live-proof; production authority remains blocked pending approved provider quorum + intended executor identity + expected signer identity.
@@ -98,7 +99,7 @@ Every P0 gate must be GREEN with reproducible evidence before live capital. Any 
 
 **Safety boundary:** no live signing, public broadcast, live capital, or production execution authorization.
 
-**Next atomic action:** obtain authoritative fresh CI evidence for `eb9ee0c6...`; inspect any failures; only then continue the MVP internal integration audit or advance to the highest-value unresolved production gate.
+**Next atomic action:** obtain authoritative fresh CI for `e40aa7b4...`; inspect failures if any; then continue the startup/recovery and production-gate audit rather than advancing toward live execution.
 
 ---
 
