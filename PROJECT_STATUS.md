@@ -9,8 +9,7 @@
 - Repository: `manish91082-coder/ghost-hunter-new`
 - Default branch: `master`
 - Active implementation branch: `phase-19-e2e-harness`
-- Current branch HEAD (latest status-sync checkpoint): `status-sync pending after 658ffe0cf686d62897f0551ea0ab9df70e930cdd`
-- Latest implementation-bearing commit: `658ffe0cf686d62897f0551ea0ab9df70e930cdd` — atomic replacement-persistence rollback regression
+- Latest implementation-bearing commit: `ed3451f82c4c4934fe1c5bfe23623222a10d3a3b` — exact rollback snapshot assertion correction
 - Phase: Phase 19, execution-integrity / E2E policy harness
 - Live mainnet execution: **BLOCKED**
 - Live capital authorization: **BLOCKED**
@@ -99,7 +98,7 @@ A chain-observed `REPLACED` event records the observed replacement hash as recov
 
 Repeated replacement preparation preserves the forensic chain `tx0 → tx1 → tx2`, with historical records retained as `REPLACED` and only the newest durably installed transaction owning the nonce in `SIGNED` state before submission.
 
-Failed replacement insertion is required to roll back the source transition and nonce transition together; a database uniqueness failure must not leave partial lifecycle mutation.
+Failed replacement insertion must roll back source and nonce mutations together. The regression now asserts exact pre-attempt snapshot restoration rather than assuming that the nonce already carries a transaction hash.
 
 ## 6. VERIFIED CI EVIDENCE
 
@@ -108,19 +107,15 @@ Failed replacement insertion is required to roll back the source transition and 
 - Run `#258` on `05a9becc1542f6d588cbfc77691beacb8087f29b`: **PASS / GREEN**, 14 EVM + 3 Polygon smoke + 1 Polygon fork probe + **402/402 Python**.
 - Run `#261` on `8212bfd315d5aec11521bc40a3302d88f5bbc72c`: **PASS / GREEN**, 14 EVM + 3 Polygon smoke + 1 Polygon fork probe + **403/403 Python**.
 - Run `#262` on `3417387353a0866f50115e873ed5a5353a82fb0c`: **PASS / GREEN**, 14 EVM + 3 Polygon smoke + 1 Polygon fork probe + **403/403 Python**.
+- Run `#266` on `e0f8d4d52118ff9cdeae220038029d1baef2307b`: **PASS / GREEN**, 14 EVM + 3 Polygon smoke + 1 Polygon fork probe + **404/404 Python**.
 
-### Repeated replacement-chain certification
+### Atomic rollback gate
 
-- Run `#266` on `e0f8d4d52118ff9cdeae220038029d1baef2307b`: **PASS / GREEN**.
-- Run #266 evidence: Solidity compile PASS; EVM harness **14/14**; Polygon protocol smoke **3/3**; Polygon fork execution probe **1/1**; Python Phase-19 suite **404/404**.
-- New regression `test_repeated_replacements_preserve_forensic_chain_and_active_owner` passed, including SQLite reopen persistence and stale-source recovery rejection.
-
-### Atomic replacement rollback gate
-
-- Commit `658ffe0cf686d62897f0551ea0ab9df70e930cdd`: adds `test_replacement_persistence_rolls_back_source_and_nonce_on_insert_failure`.
-- This test forces a late transaction-hash uniqueness failure during replacement installation and verifies source, nonce, and durable replacement-record invariants after restart.
-- Run `#267` on `658ffe0cf686d62897f0551ea0ab9df70e930cdd`: **IN PROGRESS** at checkpoint time.
-- Run #267 is currently compiling/running the full Phase-19 gate; no terminal result is claimed yet.
+- Run `#267` on `658ffe0cf686d62897f0551ea0ab9df70e930cdd`: **FAIL** only in the new rollback regression; all EVM/fork gates passed and Python was **404/405**, with the failing assertion expecting a hard-coded nonce tx hash where the fixture had `None` before replacement installation.
+- Exact failure: `AssertionError: None != '0x1111...1111'` at the rollback test's `restarted_nonce.tx_hash` assertion.
+- Corrected commit `ed3451f82c4c4934fe1c5bfe23623222a10d3a3b`: regression now snapshots the exact pre-attempt nonce state and asserts exact post-restart equality.
+- Run `#268` on `ed3451f82c4c4934fe1c5bfe23623222a10d3a3b`: **IN PROGRESS** at checkpoint time.
+- Run #268 has completed setup/Foundry and Solidity compilation and is currently running the EVM gate; later gates have not yet been observed.
 
 A status-only commit does not trigger the Phase-19 verification workflow because `.github/workflows/phase19-tests.yml` ignores `PROJECT_STATUS.md`-only pushes.
 
@@ -132,12 +127,12 @@ These percentages are engineering readiness estimates, not formal certification 
 - **Go-live evidence/certification:** approximately **45–55% complete**.
 - **Overall mission toward first controlled live hunt:** approximately **60–70% complete**.
 
-Phase-19 execution-integrity evidence is now materially stronger, but production readiness remains unproven.
+Phase-19 execution-integrity evidence is materially stronger, but production readiness remains unproven.
 
 ## 8. CURRENT BLOCKERS
 
-1. Complete terminal evidence for Run #267.
-2. If #267 is green, close the Phase-19 crash/rollback audit and freeze the execution-integrity gate.
+1. Complete terminal evidence for Run #268.
+2. If #268 is green, freeze the replacement/recovery integrity gate and advance to the final route/topology cryptographic bridge audit.
 3. Establish final route/topology cryptographic bridge certification.
 4. Prove production signer/network authority under controlled conditions.
 5. Prove production private relay capability with no public fallback.
@@ -201,21 +196,21 @@ Append/replace only with evidence-backed state. Never fabricate passes.
 
 **Timestamp:** 2026-09-15T08:20+05:30
 
-**Atomic task:** P19-RA-01 — atomic rollback certification after repeated replacement-chain GREEN.
+**Atomic task:** P19-RA-01 — atomic rollback certification after repeated replacement-chain testing.
 
 **Evidence observed:**
-- Run #258, #261, #262 and #266 are all implementation-bearing GREEN gates as recorded above.
-- Run #266 establishes the repeated replacement chain `tx0 → tx1 → tx2` with restart persistence and stale-source rejection.
-- `658ffe...` adds a late-insert-failure rollback test for replacement persistence.
-- Run #267 is in progress on `658ffe...`; no terminal result has been claimed.
+- Run #266 is GREEN and proves the repeated `tx0 → tx1 → tx2` replacement chain, restart persistence, active newest-owner invariant, and stale-source recovery rejection.
+- Run #267 is conclusively FAILED only because the newly added rollback test assumed a nonce tx_hash that the fixture never populated; the failure is at the test assertion, not an observed partial mutation.
+- `ed3451...` corrects that regression to compare the complete durable nonce snapshot before and after the failed replacement install.
+- Run #268 is currently executing the corrected implementation-bearing checkpoint; no GREEN claim is made yet.
 
-**Decision:** keep Phase-19 certification in ACTIVE AUDIT state until Run #267 terminates. If green, freeze the replacement/recovery integrity gate and advance to the final route/topology cryptographic bridge audit. If red, repair only the proven failing layer and rerun.
+**Decision:** remain in ACTIVE AUDIT until #268 terminates. A green #268 will close the replacement/recovery audit provided the complete gate remains green, after which the next atomic task is final route/topology cryptographic bridge certification. A red #268 will trigger a surgical repair based only on its observed failure.
 
-**Latest implementation checkpoint:** `658ffe0cf686d62897f0551ea0ab9df70e930cdd`
+**Latest implementation checkpoint:** `ed3451f82c4c4934fe1c5bfe23623222a10d3a3b`
 
 **Safety boundary:** No live signing, public broadcast, live capital, or production execution authorization is granted.
 
-**Next atomic action:** observe terminal Run #267 evidence, then continue only from the result.
+**Next atomic action:** observe terminal Run #268 evidence.
 
 ---
 
