@@ -155,3 +155,5 @@ class SubmissionInFlightRecoveryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+# Certification note: uncertain private relay outcomes remain fenced until explicit chain evidence resolves them.
