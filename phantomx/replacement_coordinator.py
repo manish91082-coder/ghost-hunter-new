@@ -16,6 +16,7 @@ from .evm_preflight import EVMPreflightResult, preflight_execution
 from .executor_authority import ExecutorAuthorityError, ExecutorAuthorityEvidence, verify_executor_authority
 from .governor import GovernorDecision, GovernorPolicy, govern_execution
 from .nonce_binding import BoundNonce
+from .production_authority_evidence import AuthorityEvidenceReusePolicy, ProductionAuthorityEvidenceError, verify_reusable_production_authority_evidence
 from .replacement_policy import ReplacementAuthorization, ReplacementFeePolicy
 from .signer import SignedTransaction, TransactionSigner, sign_governed_transaction
 from .sqlite_execution_store import SQLiteExecutionStore
@@ -55,6 +56,7 @@ def prepare_replacement_execution(
     executor: str,
     sender: str,
     executor_authority: ExecutorAuthorityEvidence,
+    authority_evidence_reuse_policy: AuthorityEvidenceReusePolicy,
     deadline: int,
     first_on_quickswap: bool,
     amount_out_min_first: int,
@@ -97,14 +99,15 @@ def prepare_replacement_execution(
         raise ReplacementCoordinatorError("durable nonce is not in an explicitly replaceable state")
 
     try:
-        verify_executor_authority(
+        verify_reusable_production_authority_evidence(
             executor_authority,
-            chain_id=simulation.chain_id,
-            executor=executor,
-            sender=sender,
+            expected_executor=executor,
+            expected_signer=sender,
+            current_observed_block=current_block_number,
+            policy=authority_evidence_reuse_policy,
             minimum_observed_block=simulation.block_number,
         )
-    except ExecutorAuthorityError as exc:
+    except (ExecutorAuthorityError, ProductionAuthorityEvidenceError) as exc:
         raise ReplacementCoordinatorError(str(exc)) from exc
 
     try:
@@ -159,7 +162,7 @@ def prepare_replacement_execution(
         preflight=preflight,
         intent=assembly.intent,
         envelope=assembly.envelope,
-        economic_proof=assembly.economic_proof,
+        economic_proof=economic_proof,
         executor_authority=executor_authority,
         lifecycle_state=ExecutionState.VERIFIED,
         nonce_reserved=True,
@@ -180,6 +183,8 @@ def prepare_replacement_execution(
             envelope=assembly.envelope,
             executor_authority=executor_authority,
             now=now,
+            authority_evidence_reuse_policy=authority_evidence_reuse_policy,
+            current_observed_block=current_block_number,
         )
     except Exception as exc:
         raise ReplacementCoordinatorError(str(exc)) from exc
