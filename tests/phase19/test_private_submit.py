@@ -121,7 +121,7 @@ class PrivateSubmitBoundaryTests(unittest.TestCase):
     def test_runtime_code_mutation_is_rejected_before_network_io(self):
         relay = FakeRelay()
         mutated = replace(self.authority, observed_block=5001, runtime_code_hash="0x" + "66" * 32, evidence_hash="")
-        with self.assertRaisesRegex(PrivateSubmitError, "runtime identity differs"):
+        with self.assertRaisesRegex(PrivateSubmitError, "runtime identity changed"):
             self.submit(relay, executor_authority=mutated)
         self.assertEqual(relay.calls, 0)
 
