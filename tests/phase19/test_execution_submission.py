@@ -246,3 +246,5 @@ class ExecutionSubmissionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+# Certification note: ambiguous relay outcomes are intentionally held, never retried from SIGNED.
