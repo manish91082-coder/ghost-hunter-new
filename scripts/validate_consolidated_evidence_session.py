@@ -42,6 +42,7 @@ VALIDATORS = {
     "polygon_authority": "scripts/validate_production_authority_evidence.py",
     "private_relay": "scripts/validate_private_relay_evidence.py",
     "shadow_staging": "scripts/validate_shadow_staging_evidence.py",
+    "realized_pnl": "scripts/validate_realized_pnl_evidence.py",
 }
 
 HEX40 = re.compile(r"^0x[0-9a-fA-F]{40}$")
@@ -116,6 +117,12 @@ def _bind_lane_identities(
             "artifact_commit": manifest_artifact,
             "executor_identity": manifest_executor,
             "expected_signer": manifest_signer,
+            "operator_identity": operator,
+            "witness_identity": witness,
+        }
+    elif lane == "realized_pnl":
+        checks = {
+            "artifact_commit": manifest_artifact,
             "operator_identity": operator,
             "witness_identity": witness,
         }
