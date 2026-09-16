@@ -3,7 +3,7 @@
 
 This coordinator never contacts production infrastructure, signs, submits,
 broadcasts, or releases capital. It validates the session manifest structure and
-runs only the already-approved lane validators for evidence files that exist.
+runs only the approved offline lane validators for evidence files that exist.
 Missing lanes remain BLOCKED rather than being inferred GREEN.
 """
 from __future__ import annotations
@@ -37,6 +37,7 @@ VALIDATORS = {
     "signer": "scripts/validate_signer_evidence.py",
     "polygon_authority": "scripts/validate_production_authority_evidence.py",
     "private_relay": "scripts/validate_private_relay_evidence.py",
+    "shadow_staging": "scripts/validate_shadow_staging_evidence.py",
 }
 
 
@@ -97,7 +98,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError(f"lane {lane}: evidence_file must be text when supplied")
 
             if lane not in VALIDATORS:
-                results[lane] = {"status": status, "validation": "NOT_AVAILABLE"}
+                results[lane] = {"status": "BLOCKED", "validation": "NOT_AVAILABLE"}
                 continue
 
             if not evidence_path:
