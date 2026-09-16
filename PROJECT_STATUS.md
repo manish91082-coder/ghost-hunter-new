@@ -5,8 +5,8 @@
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Latest verified engineering commit: `213c781368af684ce9af58daeacdf2baade6c453`
-- Latest verified Phase-19 CI certification: workflow run `496` / run ID `35096413145` **GREEN** on `213c781368af684ce9af58daeacdf2baade6c453`
+- Latest verified engineering commit: `119e574123ce1719f73a5f1c3439b14b9e83b247`
+- Latest verified Phase-19 CI certification: workflow run `512` / run ID `35125233382` **GREEN** on `119e574123ce1719f73a5f1c3439b14b9e83b247`; checkout now uses full Git history and the complete Phase-19 workflow passed
 - External evidence session artifact remains frozen at `e117b6550686cf5e0ff787d9bd7d85e83996db07`; newer documentation commits do not retroactively alter that evidence identity
 - Required external-evidence validators remain present for signer, Polygon authority, private relay, shadow/staging, and realized PnL
 - Certification PR `#1`: **OPEN / MERGE CONFLICTS**; merge is not required for external evidence capture
