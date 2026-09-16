@@ -1,7 +1,9 @@
-"""Compose concrete live discovery through the execution governor.
+"""Compose concrete live discovery through deterministic preflight.
 
 This module provides deterministic orchestration before the signer boundary. It
-performs no signing, submission, broadcast, or live-capital operation.
+performs no signing, submission, broadcast, or live-capital operation. Canonical
+Governor integration lives in ``live_canonical_governor.py`` and the durable
+execution coordinator.
 """
 from __future__ import annotations
 
@@ -14,7 +16,6 @@ from .cross_venue_discovery import (
 )
 from .evm_preflight import EVMPreflightResult, preflight_execution
 from .execution_assembly import ExecutionAssembly
-from .execution_governor import GovernorDecision, GovernorPolicy, govern_execution
 from .executor_authority import ExecutorAuthorityEvidence
 from .opportunity_discovery import OpportunityDiscoveryResult
 from .opportunity_economics import OpportunityEconomicsResult
@@ -120,7 +121,7 @@ def discover_prepare_and_preflight_best_opportunity(
     uniswap_gas_estimate: int | None = None,
     block=None,
 ) -> tuple[OpportunityDiscoveryResult, OpportunityEconomicsResult, ExecutionAssembly, EVMPreflightResult]:
-    """Run live discovery, economic assembly, and EVM preflight."""
+    """Run concrete discovery, economic assembly, and EVM preflight."""
     try:
         discovery, economics, assembly = discover_and_prepare_best_opportunity_execution(
             rpc,
@@ -165,86 +166,10 @@ def discover_prepare_and_preflight_best_opportunity(
     return discovery, economics, assembly, preflight
 
 
-def discover_prepare_preflight_and_govern_best_opportunity(
-    rpc,
-    quickswap: QuickSwapV2ExactQuoter,
-    uniswap: UniswapV3ExactQuoter,
-    *,
-    token_pairs: Iterable[tuple[str, str]],
-    loan_amounts: Iterable[int],
-    uniswap_fee: int,
-    build_proof_for: Callable,
-    executor: str,
-    sender: str,
-    nonce: int,
-    deadline: int,
-    amount_out_min_first: int,
-    amount_out_min_second: int,
-    minimum_surplus: int,
-    aave_pool: str,
-    quickswap_router: str,
-    uniswap_v3_router: str,
-    gas_limit: int,
-    max_fee_per_gas: int,
-    max_priority_fee_per_gas: int,
-    now: int,
-    governor_policy: GovernorPolicy,
-    executor_authority: ExecutorAuthorityEvidence | None = None,
-    expected_route_commitment: str | None = None,
-    expected_chain_id: int = 137,
-    quickswap_gas_estimate: int | None = None,
-    uniswap_gas_estimate: int | None = None,
-    block=None,
-) -> tuple[OpportunityDiscoveryResult, OpportunityEconomicsResult, ExecutionAssembly, EVMPreflightResult, GovernorDecision]:
-    """Run the complete deterministic pipeline through the pre-signer governor."""
-    try:
-        discovery, economics, assembly, preflight = discover_prepare_and_preflight_best_opportunity(
-            rpc,
-            quickswap,
-            uniswap,
-            token_pairs=token_pairs,
-            loan_amounts=loan_amounts,
-            uniswap_fee=uniswap_fee,
-            build_proof_for=build_proof_for,
-            executor=executor,
-            sender=sender,
-            nonce=nonce,
-            deadline=deadline,
-            amount_out_min_first=amount_out_min_first,
-            amount_out_min_second=amount_out_min_second,
-            minimum_surplus=minimum_surplus,
-            aave_pool=aave_pool,
-            quickswap_router=quickswap_router,
-            uniswap_v3_router=uniswap_v3_router,
-            gas_limit=gas_limit,
-            max_fee_per_gas=max_fee_per_gas,
-            max_priority_fee_per_gas=max_priority_fee_per_gas,
-            now=now,
-            executor_authority=executor_authority,
-            expected_route_commitment=expected_route_commitment,
-            expected_chain_id=expected_chain_id,
-            quickswap_gas_estimate=quickswap_gas_estimate,
-            uniswap_gas_estimate=uniswap_gas_estimate,
-            block=block,
-        )
-        decision = govern_execution(
-            preflight=preflight,
-            assembly=assembly,
-            policy=governor_policy,
-            now=now,
-        )
-    except Exception as exc:
-        if isinstance(exc, LiveOpportunityPipelineError):
-            raise
-        raise LiveOpportunityPipelineError("live opportunity governor rejected execution") from exc
-    return discovery, economics, assembly, preflight, decision
-
-
 __all__ = [
     "LiveOpportunityPipelineError",
     "discover_and_prepare_best_opportunity_execution",
     "discover_prepare_and_preflight_best_opportunity",
-    "discover_prepare_preflight_and_govern_best_opportunity",
     "QUICKSWAP_TO_UNISWAP_PATH",
     "UNISWAP_TO_QUICKSWAP_PATH",
 ]
