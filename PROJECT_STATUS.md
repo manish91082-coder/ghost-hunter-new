@@ -6,7 +6,7 @@
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
 - Latest verified software/project commit: `7f5a839bd5968961f23dff27b9dfa8da41539993`
-- Latest repository-side procedure commit: `fa63a0a7faf8e3f03b710deb3c4bb4b6b700b67f`
+- Latest repository-side procedure/test commit: `2caa8ff285fa98e061dc22da82502bff2765b812`
 - Current Phase-19 CI certification: workflow run `442` / run ID `35065382193` **GREEN** on `7f5a839bd5968961f23dff27b9dfa8da41539993`; all primary steps passed: dependency install, Foundry install, Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and full Phase-19 unittest suite
 - Prior completed Phase-19 CI certification: run `35018490583` / workflow run `439` **GREEN** on certified software commit `ebf794537c531a1241426a2bca9f355e205e44fc`
 - Final executable implementation: `d018f8aea32d7db5aa012b02dcaacab87435af4c`
@@ -31,11 +31,14 @@
 - Controlled Polygon authority observation runbook: `PHASE19_PRODUCTION_AUTHORITY_OBSERVATION_RUNBOOK.md`
 - Controlled Polygon authority evidence validator: `scripts/validate_production_authority_evidence.py`
 - Controlled Polygon authority validator tests: `tests/phase19/test_production_authority_evidence_validator.py`
+- Controlled private-relay evidence intake specification: `PHASE19_PRIVATE_RELAY_EVIDENCE_INTAKE.md`
+- Controlled private-relay evidence validator: `scripts/validate_private_relay_evidence.py`
+- Controlled private-relay evidence validator tests: `tests/phase19/test_private_relay_evidence_validator.py`
 - Historical deployment-record forensic finding: an older commit `8460c589ef6b82b1da08d73624f29d0cd63d2549` contains `v2/v3` records asserting a Polygon Mainnet deployment at `0x24056bCA6538693aE94Cc97E82f21Ee4EC7f1286` with deployment tx `0x92bc4dc8b3450332c281445fb4443f8725586b18e880a063e0892af2c28c595a`; these records are historical repository claims only and are **NOT ACCEPTED** as current production-authority evidence because they lack the current controlled quorum/provenance contract and are not present as an accepted evidence package on the current canonical branch
 - Production readiness decision: **NOT ACHIEVED**
 - Controlled production signer identity: **BLOCKED**. No fresh externally held production-signer challenge signature and provenance record is present.
 - Controlled production Polygon provider authority: **BLOCKED**. Repository-side observer, evidence contract, validator, tests, and controlled observation runbook are prepared and CI-certified, but no controlled production observation evidence from explicitly approved endpoints is present.
-- Controlled production private relay: **BLOCKED**. Explicit HTTPS private-relay configuration is required and public fallback is forbidden, but no approved production relay proof/evidence is present.
+- Controlled production private relay: **BLOCKED**. HTTPS/private assertion/evidence tooling is now prepared and adversarially tested in the repository, but no approved production relay proof/evidence is present.
 - Controlled shadow/staging: **BLOCKED**. No independently evidenced production-like shadow/staging execution artifact using the identical immutable chain is present.
 - Realized live PnL: **BLOCKED**. No controlled live-mainnet realized settlement evidence exists and live capital remains locked.
 - Live mainnet execution: **BLOCKED**
@@ -57,6 +60,8 @@ The production authority module remains environment-driven and read-only, requir
 
 The controlled authority evidence validator checks Polygon chain identity, common-block consistency, owner/signer binding, runtime-code identity, quorum membership, canonical evidence hash, and required provenance fields without network access, signing, submission, or broadcast.
 
+The private-relay boundary accepts only explicit HTTPS configuration with an explicit `private=true` assertion and no public fallback. Authentication material is sourced externally and is intentionally excluded from the evidence package and routine representation. The new evidence validator is offline-only and validates schema, HTTPS/private assertions, external authentication configuration assertion, prohibited material markers, provenance, and canonical evidence integrity.
+
 ## P0 BLOCKERS
 1. Controlled production signer identity proof.
 2. Controlled production Polygon provider authority proof using approved endpoints and intended deployed executor.
@@ -69,12 +74,12 @@ The controlled authority evidence validator checks Polygon chain identity, commo
 ## CHECKPOINT
 Workflow run `442` / run ID `35065382193` is **GREEN**. The authority validator coverage and all earlier Phase-19 deterministic controls are CI-certified.
 
-A forensic review also found historical repository records claiming that a Polygon Mainnet executor at `0x24056bCA6538693aE94Cc97E82f21Ee4EC7f1286` was deployed with transaction `0x92bc4dc8b3450332c281445fb4443f8725586b18e880a063e0892af2c28c595a`. The same address and transaction are repeated across historical v2/v3 deployment records. These are not being promoted to production evidence: the current gate requires fresh controlled provider quorum, common-block observation, owner/signer binding, runtime-code identity, canonical evidence hash, and provenance/independent review. The historical records do not satisfy that acceptance chain.
+Repository-side private-relay evidence intake, offline validation, and adversarial validator coverage have now been added. The current repository-side implementation is preparation only and does not constitute proof that any real production relay is approved or reachable.
 
-Current repository-side conclusion: **historical deployment claim identified; production authority remains BLOCKED pending fresh controlled evidence.**
+The new validator intentionally refuses to accept non-HTTPS, non-private, missing-authentication, unknown-field, prohibited-material, provenance-missing, or tampered evidence packages.
 
 ## NEXT ATOMIC ACTION
-Run a fresh controlled production-authority observation against the intended executor from explicitly approved HTTPS Polygon providers. The historical `v2/v3` deployment record may be used only as a candidate executor identifier for investigation, never as proof. Capture only non-secret evidence and validate it offline before any gate change. Keep signer, relay, shadow, realized-PnL, and live-capital gates locked.
+Verify the new private-relay evidence validator through the Phase-19 CI workflow. If CI fails, repair only the failing boundary. If CI passes, proceed to a controlled external private-relay observation against an explicitly approved production private endpoint and retain only non-secret evidence. Keep signer, Polygon authority, shadow, realized-PnL, and live-capital gates locked.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
