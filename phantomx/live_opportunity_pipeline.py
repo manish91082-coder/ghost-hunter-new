@@ -8,12 +8,15 @@ from __future__ import annotations
 
 from typing import Callable, Iterable
 
-from .cross_venue_discovery import discover_cross_venue_opportunities
-from .cross_venue_discovery import QUICKSWAP_TO_UNISWAP_PATH, UNISWAP_TO_QUICKSWAP_PATH
-from .cross_venue_discovery import OpportunityDiscoveryResult
-from .cross_venue_discovery import QuickSwapV2ExactQuoter, UniswapV3ExactQuoter
+from .cross_venue_discovery import (
+    QUICKSWAP_TO_UNISWAP_PATH,
+    UNISWAP_TO_QUICKSWAP_PATH,
+    discover_cross_venue_opportunities,
+)
+from .cross_venue_route import QuickSwapV2ExactQuoter, UniswapV3ExactQuoter
 from .execution_assembly import ExecutionAssembly
-from .opportunity_economics import EconomicProof, OpportunityEconomicsResult
+from .opportunity_discovery import OpportunityDiscoveryResult
+from .opportunity_economics import OpportunityEconomicsResult
 from .opportunity_pipeline import prepare_best_opportunity_execution
 
 
