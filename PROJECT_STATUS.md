@@ -31,6 +31,7 @@
 - Controlled Polygon authority observation runbook: `PHASE19_PRODUCTION_AUTHORITY_OBSERVATION_RUNBOOK.md`
 - Controlled Polygon authority evidence validator: `scripts/validate_production_authority_evidence.py`
 - Controlled Polygon authority validator tests: `tests/phase19/test_production_authority_evidence_validator.py`
+- Historical deployment-record forensic finding: an older commit `8460c589ef6b82b1da08d73624f29d0cd63d2549` contains `v2/v3` records asserting a Polygon Mainnet deployment at `0x24056bCA6538693aE94Cc97E82f21Ee4EC7f1286` with deployment tx `0x92bc4dc8b3450332c281445fb4443f8725586b18e880a063e0892af2c28c595a`; these records are historical repository claims only and are **NOT ACCEPTED** as current production-authority evidence because they lack the current controlled quorum/provenance contract and are not present as an accepted evidence package on the current canonical branch
 - Production readiness decision: **NOT ACHIEVED**
 - Controlled production signer identity: **BLOCKED**. No fresh externally held production-signer challenge signature and provenance record is present.
 - Controlled production Polygon provider authority: **BLOCKED**. Repository-side observer, evidence contract, validator, tests, and controlled observation runbook are prepared and CI-certified, but no controlled production observation evidence from explicitly approved endpoints is present.
@@ -68,12 +69,12 @@ The controlled authority evidence validator checks Polygon chain identity, commo
 ## CHECKPOINT
 Workflow run `442` / run ID `35065382193` is **GREEN**. The authority validator coverage and all earlier Phase-19 deterministic controls are CI-certified.
 
-The next repository-side procedure is now documented in `PHASE19_PRODUCTION_AUTHORITY_OBSERVATION_RUNBOOK.md`. It defines the controlled, observation-only sequence: freeze approved inputs, validate HTTPS providers, prove chain 137, select a common block, observe owner and runtime code, require quorum agreement, verify owner-to-signer binding, construct the non-secret evidence package, run the offline validator, and obtain independent review.
+A forensic review also found historical repository records claiming that a Polygon Mainnet executor at `0x24056bCA6538693aE94Cc97E82f21Ee4EC7f1286` was deployed with transaction `0x92bc4dc8b3450332c281445fb4443f8725586b18e880a063e0892af2c28c595a`. The same address and transaction are repeated across historical v2/v3 deployment records. These are not being promoted to production evidence: the current gate requires fresh controlled provider quorum, common-block observation, owner/signer binding, runtime-code identity, canonical evidence hash, and provenance/independent review. The historical records do not satisfy that acceptance chain.
 
-This procedure is preparation only. It does not create production authority proof until actual observations from explicitly approved production endpoints are externally captured and independently reviewed.
+Current repository-side conclusion: **historical deployment claim identified; production authority remains BLOCKED pending fresh controlled evidence.**
 
 ## NEXT ATOMIC ACTION
-Execute the controlled production Polygon authority observation procedure using explicitly approved production endpoints and the intended deployed executor. Capture only the required non-secret evidence package, then run `scripts/validate_production_authority_evidence.py` offline. If no approved production endpoints/executor/signer are available, keep the gate BLOCKED and do not substitute public/fork infrastructure. Keep signer, relay, shadow, realized-PnL, and live-capital gates locked.
+Run a fresh controlled production-authority observation against the intended executor from explicitly approved HTTPS Polygon providers. The historical `v2/v3` deployment record may be used only as a candidate executor identifier for investigation, never as proof. Capture only non-secret evidence and validate it offline before any gate change. Keep signer, relay, shadow, realized-PnL, and live-capital gates locked.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
