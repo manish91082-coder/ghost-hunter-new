@@ -6,9 +6,12 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $FrozenArtifact = 'e117b6550686cf5e0ff787d9bd7d85e83996db07'
+$LatestVerifiedEngineeringHead = '213c781368af684ce9af58daeacdf2baade6c453'
+$LatestVerifiedPreflightHead = 'c2db3e6a6ac861b207bea9bf1e6252d32ae291e0'
 $VerifiedToolchainHeads = @(
     $FrozenArtifact,
-    'c2db3e6a6ac861b207bea9bf1e6252d32ae291e0'
+    $LatestVerifiedPreflightHead,
+    $LatestVerifiedEngineeringHead
 )
 $required = @{
     'PHANTOMX_EXECUTOR_ADDRESS' = 'current intended Polygon executor address'
@@ -22,7 +25,7 @@ $repoRoot = (git rev-parse --show-toplevel 2>$null).Trim()
 if (-not $repoRoot) { throw 'BLOCKED: run this from the ghost-hunter-new repository' }
 $head = (git rev-parse HEAD).Trim().ToLowerInvariant()
 if ($VerifiedToolchainHeads -notcontains $head) {
-    throw "BLOCKED: repository HEAD $head is not a verified Phase-19 toolchain head; use $FrozenArtifact or the latest verified preflight head $($VerifiedToolchainHeads[1])"
+    throw "BLOCKED: repository HEAD $head is not a verified Phase-19 toolchain head; use frozen artifact $FrozenArtifact, verified preflight head $LatestVerifiedPreflightHead, or latest verified engineering head $LatestVerifiedEngineeringHead"
 }
 
 $missing = @()
