@@ -21,12 +21,11 @@ The project goal is not Phase-19. The goal is a working, evidence-backed Polygon
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Latest verified engineering commit: `2c42974945a925868b9a6d27598f30241e9c481c`
-- Latest engineering changes awaiting CI verification: `b19472a302086bdd6263697bddf17de03d5bb55b` and `a13327ef471c23f2ab761a37b562b95ce74faa1b`
-- New MVP integration milestone: `phantomx/mvp_pipeline.py` now connects exact route acquisition → economic proof → deterministic execution assembly as one non-signing/non-submitting pipeline.
-- New regression coverage: `tests/phase19/test_mvp_pipeline.py` covers successful assembly, strict profit-floor rejection, fee-bound rejection, and read-only RPC method discipline.
-- CI verification for the new engineering chain is currently in progress under workflow run `520` / run ID `35133085137`; Solidity compile and EVM integration have already passed, while Polygon fork protocol smoke is running.
-- Latest completed Phase-19 CI certification before this change: workflow run `517` / run ID `35128971266` **GREEN** on `2c42974945a925868b9a6d27598f30241e9c481c`; the complete deterministic workflow passed including Solidity compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Phase-19 unittest suite.
+- Latest verified engineering commit: `1dbadae395426f9c53f94ad052a4565c499b6575`
+- Latest verified Phase-19 CI certification: workflow run `521` / run ID `35133216772` **GREEN** on `1dbadae395426f9c53f94ad052a4565c499b6575`; compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Python Phase-19 suite all passed.
+- New MVP integration milestone: `phantomx/mvp_pipeline.py` connects exact route acquisition → strict economic proof → deterministic execution assembly as one pre-execution pipeline. It does not sign, submit, broadcast, or touch live capital.
+- New regression coverage: `tests/phase19/test_mvp_pipeline.py` covers successful assembly, strict profit-floor rejection, invalid EIP-1559 fee bounds, and read-only RPC discipline.
+- Prior failed CI run `520` was isolated to the new fee-bound regression: the pipeline allowed an invalid `max_priority_fee_per_gas > max_fee_per_gas` input to reach assembly instead of rejecting it early. This was corrected in `1dbadae...`; run `521` then passed.
 - Current status synchronization is documentation-only and does not constitute engineering certification.
 - Frozen external evidence artifact remains `e117b6550686cf5e0ff787d9bd7d85e83996db07`; engineering commits after that artifact do not retroactively alter its identity.
 - Consolidated external-evidence validator hard-binds the session manifest artifact identity to the frozen external artifact.
