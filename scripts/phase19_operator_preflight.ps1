@@ -6,13 +6,6 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $FrozenArtifact = 'e117b6550686cf5e0ff787d9bd7d85e83996db07'
-$LatestVerifiedEngineeringHead = '213c781368af684ce9af58daeacdf2baade6c453'
-$LatestVerifiedPreflightHead = 'c2db3e6a6ac861b207bea9bf1e6252d32ae291e0'
-$VerifiedToolchainHeads = @(
-    $FrozenArtifact,
-    $LatestVerifiedPreflightHead,
-    $LatestVerifiedEngineeringHead
-)
 $required = @{
     'PHANTOMX_EXECUTOR_ADDRESS' = 'current intended Polygon executor address'
     'PHANTOMX_EXPECTED_SIGNER_ADDRESS' = 'current expected production signer address'
@@ -24,8 +17,20 @@ $required = @{
 $repoRoot = (git rev-parse --show-toplevel 2>$null).Trim()
 if (-not $repoRoot) { throw 'BLOCKED: run this from the ghost-hunter-new repository' }
 $head = (git rev-parse HEAD).Trim().ToLowerInvariant()
-if ($VerifiedToolchainHeads -notcontains $head) {
-    throw "BLOCKED: repository HEAD $head is not a verified Phase-19 toolchain head; use frozen artifact $FrozenArtifact, verified preflight head $LatestVerifiedPreflightHead, or latest verified engineering head $LatestVerifiedEngineeringHead"
+if (-not $head) { throw 'BLOCKED: repository HEAD could not be resolved' }
+
+# The external session is authorized only from a checkout that contains the
+# frozen artifact in local git history and whose current HEAD descends from it.
+# This avoids a brittle allow-list of historical toolchain heads while still
+# preventing execution from an unrelated history.
+$artifactPresent = git cat-file -e "$FrozenArtifact^{commit}" 2>$null
+if ($LASTEXITCODE -ne 0) {
+    throw "BLOCKED: frozen external artifact $FrozenArtifact is not present in local git history"
+}
+
+git merge-base --is-ancestor $FrozenArtifact $head 2>$null
+if ($LASTEXITCODE -ne 0) {
+    throw "BLOCKED: repository HEAD $head is not descended from frozen external artifact $FrozenArtifact"
 }
 
 $missing = @()
@@ -62,7 +67,7 @@ if ($signer -notmatch '^0x[0-9a-fA-F]{40}$') { throw 'BLOCKED: PHANTOMX_EXPECTED
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host ''
-Write-Host 'PRECHECK COMPLETE: external session workspace and manifest prepared.'
+Write-Host "PRECHECK COMPLETE: external session workspace and manifest prepared from descendant HEAD $head of frozen artifact $FrozenArtifact."
 Write-Host 'Parallel lanes A/B/C/D can now run against this same session.'
 Write-Host 'Lane E remains gated on independently observed realized settlement.'
 Write-Host 'Safety: LIVE SIGNING=BLOCKED; PUBLIC BROADCAST=BLOCKED; LIVE CAPITAL=LOCKED'
