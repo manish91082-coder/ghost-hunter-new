@@ -36,12 +36,12 @@ def fail(message: str) -> int:
     return 2
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", default=".")
     parser.add_argument("--expected-artifact", default=FROZEN_ARTIFACT)
     parser.add_argument("--expected-engineering-baseline", default=ENGINEERING_BASELINE)
-    args = parser.parse_args()
+    args = parser.parse_args([] if argv is None else argv)
     root = Path(args.root).resolve()
 
     for rel in REQUIRED_FILES:
@@ -106,4 +106,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))
