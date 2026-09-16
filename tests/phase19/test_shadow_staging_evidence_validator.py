@@ -7,11 +7,14 @@ from pathlib import Path
 from scripts.validate_shadow_staging_evidence import main
 
 
+CURRENT_VERIFIED_ARTIFACT = "eea845af1388ea619c54ffc4faf8a34d215e2aa1"
+
+
 class ShadowStagingEvidenceValidatorTests(unittest.TestCase):
     def _evidence(self, root: Path, **overrides):
         data = {
             "schema_version": 1,
-            "artifact_commit": "7506b41c1e7ec876b39ae8428896c374a48b0181",
+            "artifact_commit": CURRENT_VERIFIED_ARTIFACT,
             "executor_identity": "0x1111111111111111111111111111111111111111",
             "expected_signer": "0x2222222222222222222222222222222222222222",
             "route_proof_identity": "route-proof-1",
