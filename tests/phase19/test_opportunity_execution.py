@@ -91,7 +91,7 @@ class OpportunityExecutionTests(unittest.TestCase):
             valuation_hash="0x" + "55" * 32,
             final_settlement_usd=Decimal("100.74"),
             loan_principal_usd=Decimal("100.00"),
-            costs=CostBreakdown(flash_loan_fee=Decimal("0.30")),
+            costs=CostBreakdown(flash_loan_fee=Decimal("0.55")),
             max_gas_usd=Decimal("0"),
             max_relay_usd=Decimal("0"),
             minimum_net_profit_usd=Decimal("0.20"),
