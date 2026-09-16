@@ -7,20 +7,46 @@
 - Branch: `phase-19-e2e-harness`
 - Latest verified engineering commit: `213c781368af684ce9af58daeacdf2baade6c453`
 - Latest verified Phase-19 CI certification: workflow run `496` / run ID `35096413145` **GREEN** on `213c781368af684ce9af58daeacdf2baade6c453`; dependency install, Foundry install, Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, full Phase-19 unittest suite, and post-verification steps all passed
+- Verified acceleration sequence remains frozen through signer evidence packaging and canonical hash-binding hardening at `213c781368af684ce9af58daeacdf2baade6c453`
+- Documentation-only synchronization commits after the verified engineering baseline do not supersede that verified engineering commit.
 - External evidence session artifact remains frozen at `e117b6550686cf5e0ff787d9bd7d85e83996db07` until a deliberate new evidence session is started; newer toolchain commits do not retroactively alter that evidence identity
 - External gate launch packet currently present at `PHASE19_EXTERNAL_GATE_LAUNCH_PACKET.md`; its frozen evidence identity is `e117b655...`
 - One-shot external gate worksheet is maintained as a repository-side procedure artifact; its frozen evidence identity is `e117b655...`
+- Recovered-settlement certification `#420`: **GREEN**
+- Production chain observation adapter: `77c3c457...`
+- Read-only transaction/receipt RPC allowlist: `64f96d8b...`
+- Adapter adversarial certification `#423`: **GREEN**
+- Durable quorum observation admission store: `9cd129c26c23b62d5ae0e7ea796f070fd7802c9c`
+- Execution-observation quorum gate: `2a02e9110f303befa1fba2b0311f0e321530f0ba`
+- Fresh certification `#427`: **GREEN**
+- End-to-end quorum recovery isolation certification `#430`: **GREEN**
+- Settlement reconciliation quorum boundary: `6a48ed044cc1579116b75e3f801e6fa866f2e89b`
+- Quorum settlement reconciliation certification `#432`: **GREEN**
+- Quorum recovery provenance boundary: `03e2c93ee8b1116d38b81332f45f84265b4a5c3d`
+- Quorum recovery provenance certification `#435`: **GREEN**
+- Final Phase-19 adversarial recovery/settlement matrix: `d018f8aea32d7db5aa012b02dcaacab87435af4c`
+- Final matrix certification `#436`: **GREEN**
+- Production-readiness audit certification `#437`: **GREEN**
+- Controlled signer evidence intake specification: `PHASE19_SIGNER_EVIDENCE_INTAKE.md`
 - Controlled signer evidence validator: `scripts/validate_signer_evidence.py`
+- Controlled Polygon authority evidence intake specification: `PHASE19_PRODUCTION_AUTHORITY_EVIDENCE_INTAKE.md`
+- Controlled Polygon authority observation runbook: `PHASE19_PRODUCTION_AUTHORITY_OBSERVATION_RUNBOOK.md`
 - Controlled Polygon authority evidence validator: `scripts/validate_production_authority_evidence.py`
+- Controlled private-relay evidence intake specification: `PHASE19_PRIVATE_RELAY_EVIDENCE_INTAKE.md`
 - Controlled private-relay evidence validator: `scripts/validate_private_relay_evidence.py`
+- Consolidated external evidence session protocol: `PHASE19_CONSOLIDATED_EXTERNAL_EVIDENCE_SESSION.md`
 - Consolidated external evidence session coordinator: `scripts/validate_consolidated_evidence_session.py`
 - Batched Phase-19 gate console: `scripts/phase19_gate_console.py`
+- Consolidated coordinator binds accepted signer, Polygon authority, private relay, shadow/staging, and realized-PnL evidence to manifest-level signer, executor, artifact, private-relay, operator, and witness identities; absolute evidence paths are rejected and relative paths resolve from the external manifest workspace
+- Cross-lane provenance binding: canonical evidence hashes may be joined authority → shadow/staging → realized-PnL; mismatches fail closed while legacy opaque fixture labels remain accepted for compatibility
 - Shadow/staging evidence validator: `scripts/validate_shadow_staging_evidence.py`
 - Realized-PnL evidence validator: `scripts/validate_realized_pnl_evidence.py`
 - Realized-PnL provenance rule: arithmetic validation does not constitute independent proof of actual settlement
 - Signer evidence packager: `scripts/package_signer_evidence.py`; canonical challenge/evidence-hash binding is CI-verified by workflow run `#496`
+- Signer packager adversarial/regression tests: CI-verified by workflow run `#496`
+- Shadow/staging validator tests use a frozen verified-artifact fixture; latest CI-verified engineering code is `213c7813...`
 - Historical deployment-record forensic finding: older commit `8460c589ef6b82b1da08d73624f29d0cd63d2549` contains historical Polygon deployment assertions; these remain forensic only and are not accepted as current production-authority evidence
-- Certification PR `#1`: **OPEN / MERGE CONFLICTS**. Current integration head is allowed to move with documentation-only sync commits; merge is not required for external evidence capture and is not treated as a production gate.
+- Certification PR `#1`: **OPEN / MERGE CONFLICTS**. Current integration head may include documentation-only sync commits; merge is not required for external evidence capture and is not treated as a production gate.
 - External evidence handoff issue `#2`: **OPEN / BLOCKED**. No current production evidence package has been accepted.
 - Production readiness decision: **NOT ACHIEVED**
 - Controlled production signer identity: **BLOCKED**. No fresh externally held production-signer challenge signature and provenance record is present.
