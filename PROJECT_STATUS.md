@@ -21,12 +21,13 @@ The project goal is not Phase-19. The goal is a working, evidence-backed Polygon
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Latest verified engineering commit: `1dbadae395426f9c53f94ad052a4565c499b6575`
-- Latest verified Phase-19 CI certification: workflow run `521` / run ID `35133216772` **GREEN** on `1dbadae395426f9c53f94ad052a4565c499b6575`; compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Python Phase-19 suite all passed.
-- New MVP integration milestone: `phantomx/mvp_pipeline.py` connects exact route acquisition → strict economic proof → deterministic execution assembly as one pre-execution pipeline. It does not sign, submit, broadcast, or touch live capital.
-- New regression coverage: `tests/phase19/test_mvp_pipeline.py` covers successful assembly, strict profit-floor rejection, invalid EIP-1559 fee bounds, and read-only RPC discipline.
+- Latest verified engineering commit: `a5456f8ebe628dee843e1109423ed55cd5e196cb`
+- Latest verified Phase-19 CI certification: workflow run `524` / run ID `35133584156` **GREEN** on `a5456f8ebe628dee843e1109423ed55cd5e196cb`; compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Python Phase-19 suite all passed.
+- New opportunity-discovery milestone: `phantomx/opportunity_discovery.py` evaluates a complete explicit token-pair × loan-size frontier using injected exact route simulations, requires one shared chain+pinned block across the evaluated set, and separates gross-positive observations without treating gross spread as executable profit.
+- New regression coverage: `tests/phase19/test_opportunity_discovery.py` covers complete-domain evaluation, failure-abort/no-partial-result behavior, mixed-block rejection, duplicate loan amounts, and token-identity fail-closed behavior.
+- Prior MVP certification remains run `521` / run ID `35133216772` on `1dbadae...`, covering the exact route → strict economic proof → deterministic execution assembly pipeline and invalid EIP-1559 fee-bound regression.
 - Prior failed CI run `520` was isolated to the new fee-bound regression: the pipeline allowed an invalid `max_priority_fee_per_gas > max_fee_per_gas` input to reach assembly instead of rejecting it early. This was corrected in `1dbadae...`; run `521` then passed.
-- Current status synchronization is documentation-only and does not constitute engineering certification.
+- The discovery layer is valuation-independent by design. A gross-positive route observation is not a net-profit or production-execution claim; complete valuation, fee, gas, loan, and settlement economics remain downstream gates.
 - Frozen external evidence artifact remains `e117b6550686cf5e0ff787d9bd7d85e83996db07`; engineering commits after that artifact do not retroactively alter its identity.
 - Consolidated external-evidence validator hard-binds the session manifest artifact identity to the frozen external artifact.
 - Operator preflight requires the frozen artifact in local history and current HEAD to descend from it.
