@@ -64,12 +64,19 @@ class OpportunityEconomicsTests(unittest.TestCase):
         )
 
     def test_complete_frontier_is_evaluated_and_best_is_selected(self):
+        second_q1 = snapshot(
+            "uniswap_v3", self.token_a, self.token_b, 2000, 2200, 500, "0x" + "22" * 20
+        )
+        second_q2 = snapshot(
+            "quickswap_v2", self.token_b, self.token_a, 2200, 2240, 30, "0x" + "11" * 20
+        )
+        second_simulation = simulate_two_leg(second_q1, second_q2)
         second = OpportunityCandidate(
             token_a=self.token_a,
             token_b=self.token_b,
             venue_path="uniswap_v3->quickswap_v2",
             loan_amount=2000,
-            simulation=self.simulation,
+            simulation=second_simulation,
         )
         result = evaluate_discovered_opportunities(
             (self.candidate, second),
