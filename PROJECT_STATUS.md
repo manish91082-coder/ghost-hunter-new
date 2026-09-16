@@ -5,10 +5,11 @@
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Latest verified engineering commit: `52591d6091636e8ac7fe9f7fab93780c3b780fe5`
-- Latest verified Phase-19 CI certification: workflow run `516` / run ID `35128086489` **GREEN** on `52591d6091636e8ac7fe9f7fab93780c3b780fe5`; complete Phase-19 workflow passed including Solidity compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Phase-19 unittest suite
+- Latest verified engineering commit: `2c42974945a925868b9a6d27598f30241e9c481c`
+- Latest verified Phase-19 CI certification: workflow run `517` / run ID `35128971266` **GREEN** on `2c42974945a925868b9a6d27598f30241e9c481c`; complete Phase-19 workflow passed including Solidity compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Phase-19 unittest suite
 - Frozen external evidence artifact remains `e117b6550686cf5e0ff787d9bd7d85e83996db07`; engineering commits after that artifact do not retroactively alter its identity
 - Consolidated external-evidence validator now enforces that the session manifest `verified_artifact_commit` equals the frozen external evidence artifact
+- Operator preflight now requires the frozen artifact to be present in local git history and requires current HEAD to descend from that artifact, removing the brittle historical head allow-list while retaining fail-closed ancestry validation
 - Required external-evidence validators remain present for signer, Polygon authority, private relay, shadow/staging, and realized PnL
 - Certification PR `#1`: **OPEN / MERGE CONFLICTS**; merge is not required for external evidence capture
 - External evidence handoff issue `#2`: **OPEN / BLOCKED**; no current production evidence package has been accepted
