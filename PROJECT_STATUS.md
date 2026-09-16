@@ -21,15 +21,14 @@ The project goal is not Phase-19. The goal is a working, evidence-backed Polygon
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Latest verified engineering commit: `b8b1a8e38bb0f1cdb5591b0c85e0859ff0ddcc50`
-- Latest verified Phase-19 CI certification: workflow run `535` / run ID `35136271972` **GREEN** on `b8b1a8e38bb0f1cdb5591b0c85e0859ff0ddcc50`; checkout, Python/dependencies, Foundry install, Solidity compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Phase-19 unittest suite all completed successfully.
-- Verified route-fixture repair remains part of the certified chain: workflow run `528` / run ID `35135442351` **GREEN** on `f9a5c1932cd57d6a80585e117618462c8da0cbc3`; reverse Uniswap→QuickSwap test binds to canonical `QuoteSnapshot.dex` and the full Phase-19 suite passed.
-- Concrete cross-venue discovery integration is present in `phantomx/cross_venue_discovery.py`: one canonical Polygon block is acquired once and reused across both supported venue directions and the full supplied loan-size frontier.
-- Regression coverage is present in `tests/phase19/test_cross_venue_discovery.py` for both directions, all supplied loan sizes, shared block reuse, and pre-market invalid-fee rejection.
-- New economic binding layer is present in `phantomx/opportunity_economics.py`: every discovered candidate can be joined to caller-supplied valuation/cost evidence, producing a hash-bound `EconomicProof` whose route/quote identities must match the discovered route.
-- The economic frontier deliberately retains below-floor proofs as evidence and excludes them from selection; it does not silently skip failing candidates and does not turn gross spread into an execution claim.
-- New regression coverage is present in `tests/phase19/test_opportunity_economics.py` for complete economic evaluation, strict-profit selection, route/quote binding, evidence-to-proof adaptation, below-floor fail-closed selection, and invalid evaluator output.
-- Workflow run `535` certifies the corrected below-floor evidence behavior on commit `b8b1a8e...`; the following `PROJECT_STATUS.md` synchronization commit is documentation-only and is ignored by the Phase-19 workflow.
+- Latest verified engineering commit: `9721d023103223357d112a3522d647a58204592e`
+- Latest verified Phase-19 CI certification: workflow run `539` / run ID `35136908600` **GREEN** on `9721d023103223357d112a3522d647a58204592e`; checkout, Python/dependencies, Foundry install, Solidity compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Phase-19 unittest suite all completed successfully.
+- Run `538` had one test-only failure in the newly added opportunity-execution regression: the below-floor fixture accidentally evaluated above the strict floor. The fixture was corrected; no product-code defect was established by that failure. Run `539` then passed the complete 684-test suite.
+- `phantomx/opportunity_execution.py` now provides the narrow hand-off from a strictly profitable `OpportunityEconomicEvaluation` to deterministic `assemble_execution`, with exact venue-path validation and no quoting, valuation, signing, submission, or broadcast.
+- `tests/phase19/test_opportunity_execution.py` covers profitable discovery-to-execution binding, strict below-floor rejection before assembly, and unsupported venue-path fail-closed behavior.
+- Concrete cross-venue discovery integration remains present in `phantomx/cross_venue_discovery.py`: one canonical Polygon block is acquired once and reused across both supported venue directions and the full supplied loan-size frontier.
+- `phantomx/opportunity_economics.py` remains the economic binding layer: discovered candidates are joined to caller-supplied valuation/cost evidence, producing hash-bound `EconomicProof`; below-floor proofs are retained as evidence and excluded from selection.
+- `phantomx/loan_optimizer.py` remains the exact-domain loan-size optimizer: every supplied integer amount is evaluated, below-floor candidates remain evidence-only, mixed chain/block comparisons are rejected, and ties resolve to the smaller loan.
 - The discovery layer is valuation-independent by design. A gross-positive route observation is not a net-profit or production-execution claim; complete valuation, fee, gas, loan, and settlement economics remain downstream gates.
 - Frozen external evidence artifact remains `e117b6550686cf5e0ff787d9bd7d85e83996db07`; engineering commits after that artifact do not retroactively alter its identity.
 - Consolidated external-evidence validator hard-binds the session manifest artifact identity to the frozen external artifact.
