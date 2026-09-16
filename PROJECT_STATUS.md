@@ -5,8 +5,8 @@
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Latest verified software/project commit: `364cc681a71c183d82408dbff53ee88e4ccb16a2`
-- Latest Phase-19 CI: run `35018490583` / workflow run `439` **GREEN** on software parent commit `ebf794537c531a1241426a2bca9f355e205e44fc`; subsequent branch commits are status-only synchronization commits and are ignored by the Phase-19 workflow path filter
+- Latest verified software/project commit: `7f5a839bd5968961f23dff27b9dfa8da41539993`
+- Latest Phase-19 CI certification: run `35018490583` / workflow run `439` **GREEN** on certified software commit `ebf794537c531a1241426a2bca9f355e205e44fc`; new authority-evidence commits are not yet CI-certified
 - Final executable implementation: `d018f8aea32d7db5aa012b02dcaacab87435af4c`
 - Recovered-settlement certification `#420`: **GREEN**
 - Production chain observation adapter: `77c3c457...`
@@ -26,9 +26,12 @@
 - Production-readiness audit certification `#437`: **GREEN**. The audit record was committed and the complete Phase-19 workflow passed on the audit commit.
 - Controlled signer evidence intake specification: `PHASE19_SIGNER_EVIDENCE_INTAKE.md`
 - Controlled signer evidence validator: `scripts/validate_signer_evidence.py` (`ebf794537c531a1241426a2bca9f355e205e44fc`)
+- Controlled Polygon authority evidence intake specification: `PHASE19_PRODUCTION_AUTHORITY_EVIDENCE_INTAKE.md`
+- Controlled Polygon authority evidence validator: `scripts/validate_production_authority_evidence.py`
+- Controlled Polygon authority validator tests: `tests/phase19/test_production_authority_evidence_validator.py`
 - Production readiness decision: **NOT ACHIEVED**
 - Controlled production signer identity: **BLOCKED**. No fresh externally held production-signer challenge signature and provenance record is present; the signer runbook explicitly states mechanism-level CI is insufficient for this gate.
-- Controlled production Polygon provider authority: **BLOCKED**. Explicitly approved HTTPS endpoints, quorum, intended executor, and expected signer inputs are required, but no controlled production observation evidence is present.
+- Controlled production Polygon provider authority: **BLOCKED**. The repository-side authority observation path and offline evidence validator are now prepared, but no controlled production observation evidence from explicitly approved endpoints is present.
 - Controlled production private relay: **BLOCKED**. Explicit HTTPS private-relay configuration is required and public fallback is forbidden, but no approved production relay proof/evidence is present.
 - Controlled shadow/staging: **BLOCKED**. No independently evidenced production-like shadow/staging execution artifact using the identical immutable chain is present.
 - Realized live PnL: **BLOCKED**. No controlled live-mainnet realized settlement evidence exists and live capital remains locked.
@@ -69,12 +72,14 @@ The production private-relay assembly requires explicit HTTPS configuration and 
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-Latest verified executable/project state is commit `364cc681a71c183d82408dbff53ee88e4ccb16a2`. That commit contains the controlled signer evidence intake status update. The branch now contains only subsequent `PROJECT_STATUS.md` synchronization commits from this continuity audit; these are documentation-only and the Phase-19 workflow explicitly ignores `PROJECT_STATUS.md`, so they do not create fresh executable CI evidence. The latest available Phase-19 CI run is `35018490583` / workflow run `439`, completed successfully on parent software commit `ebf794537c531a1241426a2bca9f355e205e44fc`.
+The branch head is `7f5a839bd5968961f23dff27b9dfa8da41539993`, a test-only commit adding controlled Polygon authority evidence-validator coverage. Its parent `33e1b09a...` adds the corresponding non-secret authority evidence intake contract. These additions are repository-side readiness infrastructure and are not being treated as production authority proof.
 
-The controlled signer evidence intake specification defines the minimum non-secret proof package: fresh challenge, exact external signature, verifier-derived identities/hashes, verifier commit/certification reference, and external operator/witness/timestamp provenance. The validator recomputes the signature proof and challenge/evidence hashes without accepting any private-key material. The gate remains BLOCKED until an externally controlled package is actually produced and independently accepted.
+The latest certified Phase-19 CI run remains `35018490583` / workflow run `439`, successful on the earlier certified executable commit `ebf794537c531a1241426a2bca9f355e205e44fc`. The new authority-evidence commits do not yet have a fresh CI certification and therefore must remain uncertified until GitHub Actions executes against them.
+
+The signer gate remains BLOCKED pending a fresh externally produced production-signer proof package. The new Polygon authority intake path now defines and validates common-block, provider uniqueness, Polygon chain identity, executor owner binding, runtime-code identity, quorum, evidence hash, and external provenance without handling secrets.
 
 ## NEXT ATOMIC ACTION
-Close the controlled production signer-identity gate using the new intake contract: generate a fresh challenge, obtain exactly one signature from the externally held production signer, independently verify it against the independently approved production address, assemble the required provenance fields outside the repository, and submit that non-secret evidence package for independent acceptance. Keep every other production gate locked.
+Verify the newly added Polygon authority evidence validator through GitHub Actions. If GREEN, perform the next repository-side authority audit and prepare the controlled production observation procedure; do not infer production authority until evidence from explicitly approved endpoints is independently captured and accepted. Keep signer, relay, shadow, realized-PnL, and live-capital gates locked.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
