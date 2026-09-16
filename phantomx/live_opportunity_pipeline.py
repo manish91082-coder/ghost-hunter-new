@@ -13,11 +13,12 @@ from .cross_venue_discovery import (
     UNISWAP_TO_QUICKSWAP_PATH,
     discover_cross_venue_opportunities,
 )
-from .cross_venue_route import QuickSwapV2ExactQuoter, UniswapV3ExactQuoter
 from .execution_assembly import ExecutionAssembly
 from .opportunity_discovery import OpportunityDiscoveryResult
 from .opportunity_economics import OpportunityEconomicsResult
 from .opportunity_pipeline import prepare_best_opportunity_execution
+from .quickswap_v2 import QuickSwapV2ExactQuoter
+from .uniswap_v3 import UniswapV3ExactQuoter
 
 
 class LiveOpportunityPipelineError(ValueError):
