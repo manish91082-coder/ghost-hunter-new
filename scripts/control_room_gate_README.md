@@ -1,0 +1,1 @@
+Run `python scripts/validate_phase19_control_room.py` in a verified checkout. A green result only confirms repository coordination invariants; it does not grant production authority.
