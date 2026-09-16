@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Callable, Iterable
 
-from .economic_proof import EconomicProof, EconomicProofError, build_economic_proof
+from .economic_proof import EconomicProof, EconomicProofError
 from .economics import CostBreakdown, STRICT_MIN_NET_PROFIT_USD
 from .opportunity_discovery import OpportunityCandidate
 
@@ -28,6 +28,8 @@ class OpportunityEconomicEvaluation:
     proof: EconomicProof
 
     def __post_init__(self) -> None:
+        if self.candidate.simulation.initial_amount != self.candidate.loan_amount:
+            raise OpportunityEconomicsError("candidate loan amount does not match simulation")
         if self.proof.route_hash.lower() != self.candidate.simulation.route_hash.lower():
             raise OpportunityEconomicsError("economic proof route does not match discovered candidate")
         expected_quotes = tuple(leg.quote_hash.lower() for leg in self.candidate.simulation.legs)
@@ -73,6 +75,8 @@ def evaluate_discovered_opportunities(
 
     evaluations: list[OpportunityEconomicEvaluation] = []
     for candidate in items:
+        if candidate.simulation.initial_amount != candidate.loan_amount:
+            raise OpportunityEconomicsError("candidate loan amount does not match simulation")
         try:
             proof = build_proof_for(candidate)
         except EconomicProofError as exc:
