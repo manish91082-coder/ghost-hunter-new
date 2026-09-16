@@ -6,7 +6,7 @@
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
 - Latest verified software/project commit: `eea845af1388ea619c54ffc4faf8a34d215e2aa1`
-- Latest repository-side procedure/launch worksheet commit: `eea845af1388ea619c54ffc4faf8a34d215e2aa1`
+- Latest repository-side procedure/launch worksheet commit: `c755539dd5f22e85deace15e8196089119aa783f`
 - Current Phase-19 CI certification: workflow run `456` / run ID `35074699670` **GREEN** on `eea845af1388ea619c54ffc4faf8a34d215e2aa1`; dependency install, Foundry install, Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and full Phase-19 unittest suite all passed
 - Previous Phase-19 CI certification: workflow run `451` / run ID `35070288544` **GREEN** on `7506b41c1e7ec876b39ae8428896c374a48b0181`
 - Previous Phase-19 CI certification: workflow run `446` / run ID `35067167421` **GREEN** on `2caa8ff285fa98e061dc22da82502bff2765b812`
@@ -41,7 +41,7 @@
 - Consolidated external evidence session coordinator: `scripts/validate_consolidated_evidence_session.py`
 - Consolidated external evidence session coordinator tests: `tests/phase19/test_consolidated_evidence_session_validator.py`
 - External gate launch packet: `PHASE19_EXTERNAL_GATE_LAUNCH_PACKET.md`
-- One-shot external gate session worksheet: `PHASE19_OPERATOR_ONE_SHOT_SESSION.md`
+- One-shot external gate session worksheet: `PHASE19_OPERATOR_ONE_SHOT_SESSION.md` (frozen to verified artifact `eea845af...`)
 - Shadow/staging evidence validator: `scripts/validate_shadow_staging_evidence.py`
 - Shadow/staging evidence validator tests: `tests/phase19/test_shadow_staging_evidence_validator.py`
 - Historical deployment-record forensic finding: older commit `8460c589ef6b82b1da08d73624f29d0cd63d2549` contains `v2/v3` records asserting a Polygon Mainnet deployment at `0x24056bCA6538693aE94Cc97E82f21Ee4EC7f1286` with deployment tx `0x92bc4dc8b3450332c281445fb4443f8725586b18e880a063e0892af2c28c595a`; these are historical repository claims only and are not accepted as current production-authority evidence
@@ -107,12 +107,14 @@ The shadow/staging validator is offline-only and checks exact artifact identity,
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-Workflow run `456` / run ID `35074699670` completed **GREEN** on frozen artifact `eea845af1388ea619c54ffc4faf8a34d215e2aa1`. The complete Phase-19 deterministic pipeline passed dependency setup, Foundry setup, Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Phase-19 unittest suite. This certifies the repository-side shadow/staging validator and consolidated coordinator integration now present on that artifact.
+Workflow run `456` / run ID `35074699670` completed **GREEN** on frozen artifact `eea845af1388ea619c54ffc4faf8a34d215e2aa1`. The complete Phase-19 deterministic pipeline passed dependency setup, Foundry setup, Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Phase-19 unittest suite. This certifies the repository-side shadow/staging validator and consolidated coordinator integration on that artifact. fileciteturn231file0
+
+A documentation consistency audit found the one-shot external worksheet still pointed at the superseded `7506b41...` anchor; that drift was corrected and committed as `c755539dd5f22e85deace15e8196089119aa783f`, with the worksheet now explicitly frozen to `eea845af...`. fileciteturn239file0
 
 The shadow/staging lane is repository-ready at the offline-validation boundary, but no independently evidenced staging execution artifact exists yet. No production gate has been promoted from repository tests, historical deployment claims, public/fork observations, vendor availability, or estimated economics.
 
 ## NEXT ATOMIC ACTION
-Freeze artifact `eea845af1388ea619c54ffc4faf8a34d215e2aa1` as the current repository verification anchor and proceed immediately to the single controlled external-evidence session for A/B/C/D. Supply only externally controlled, non-secret evidence records, then run the consolidated offline coordinator and independent review. Keep realized-PnL, live signing, public broadcast, and live-capital locks intact until their own acceptance chains are complete.
+Proceed directly to the single controlled external-evidence session for A/B/C/D using the frozen artifact `eea845af1388ea619c54ffc4faf8a34d215e2aa1` and the updated one-shot worksheet. Capture only externally controlled, non-secret evidence records, then run the consolidated offline coordinator and independent review. Keep realized-PnL, live signing, public broadcast, and live-capital locks intact until their own acceptance chains are complete.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
