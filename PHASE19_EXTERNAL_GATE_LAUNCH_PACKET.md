@@ -7,8 +7,8 @@ Compress the remaining production-gate work into one controlled evidence session
 
 ## Frozen Artifact
 
-- Verified software artifact: `7506b41c1e7ec876b39ae8428896c374a48b0181`
-- Latest completed CI certification: workflow run `451` on that artifact
+- Verified software artifact: `eea845af1388ea619c54ffc4faf8a34d215e2aa1`
+- Latest completed CI certification: workflow run `456` on that artifact
 - Production authorization is NOT implied by CI.
 
 ## One-Session Inputs
@@ -47,9 +47,9 @@ The signing key remains outside repository/chat/evidence artifacts.
 
 ## Lane C: Private Relay
 
-Current external research confirms Polygon Private Mempool is live and provides private transaction submission that bypasses the public mempool; Polygon states its free tier is broadly available, while its current access page still directs users to request access/details. This makes it a current candidate infrastructure path, not automatic approval for this project. citeturn347250search1turn467650search0
+Current external research confirms Polygon Private Mempool is live and provides private transaction submission that bypasses the public mempool; Polygon states its free tier is broadly available, while its current access page still directs users to request access/details. This makes it a current candidate infrastructure path, not automatic approval for this project.
 
-Polygon also documents that bloXroute offers private transaction submission on Polygon. This is a second current candidate path. citeturn601520search0
+Polygon also documents that bloXroute offers private transaction submission on Polygon. This is a second current candidate path.
 
 Acceptance for this project remains stricter than vendor availability:
 
