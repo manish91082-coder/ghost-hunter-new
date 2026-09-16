@@ -64,7 +64,8 @@ class ConsolidatedEvidenceSessionValidatorTests(unittest.TestCase):
             self.assertEqual(main([str(manifest)]), 2)
 
     def test_manifest_with_existing_validator_file_reports_review_required(self):
-        with tempfile.TemporaryDirectory() as temp:
+        repo_root = Path(__file__).resolve().parents[2]
+        with tempfile.TemporaryDirectory(dir=repo_root) as temp:
             root = Path(temp)
             evidence = root / "relay.json"
             evidence.write_text(
@@ -85,7 +86,7 @@ class ConsolidatedEvidenceSessionValidatorTests(unittest.TestCase):
             lanes = {
                 "signer": {"status": "BLOCKED"},
                 "polygon_authority": {"status": "BLOCKED"},
-                "private_relay": {"status": "GREEN", "evidence_file": str(evidence.relative_to(Path(__file__).resolve().parents[2]))},
+                "private_relay": {"status": "GREEN", "evidence_file": str(evidence.relative_to(repo_root))},
                 "shadow_staging": {"status": "BLOCKED"},
                 "realized_pnl": {"status": "BLOCKED"},
             }
