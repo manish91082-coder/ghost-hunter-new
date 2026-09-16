@@ -5,8 +5,8 @@ This coordinator never contacts production infrastructure, signs, submits,
 broadcasts, or releases capital. It validates the session manifest structure,
 runs only the approved offline lane validators, and binds accepted evidence to
 the session's immutable artifact, executor, signer, private relay, operator,
-and witness identities. Missing or contradictory lanes remain BLOCKED/FAILED
-rather than being inferred GREEN.
+witness, and cross-lane provenance identities. Missing or contradictory lanes
+remain BLOCKED/FAILED rather than being inferred GREEN.
 """
 from __future__ import annotations
 
@@ -48,6 +48,7 @@ VALIDATORS = {
 
 HEX40 = re.compile(r"^0x[0-9a-fA-F]{40}$")
 GIT_SHA = re.compile(r"^[0-9a-fA-F]{40}$")
+SHA256_HEX = re.compile(r"^0x[0-9a-fA-F]{64}$")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -77,6 +78,13 @@ def _artifact(record: dict[str, object], field: str) -> str:
     return value
 
 
+def _hash(record: dict[str, Any], field: str) -> str:
+    value = _nonempty_text(record, field).lower()
+    if not SHA256_HEX.fullmatch(value):
+        raise ValueError(f"{field} must be a 0x-prefixed 32-byte SHA-256 digest")
+    return value
+
+
 def _read_json_object(path: Path, label: str) -> dict[str, Any]:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -91,6 +99,7 @@ def _bind_lane_identities(
     lane: str,
     evidence: dict[str, Any],
     manifest: dict[str, object],
+    accepted_evidence: dict[str, dict[str, Any]],
 ) -> None:
     manifest_artifact = _artifact(manifest, "verified_artifact_commit")
     manifest_executor = _address(manifest, "intended_executor")
@@ -147,6 +156,24 @@ def _bind_lane_identities(
                 f"expected {expected}, observed {actual.strip()}"
             )
 
+    if lane == "shadow_staging" and "polygon_authority" in accepted_evidence:
+        authority_hash = _hash(accepted_evidence["polygon_authority"], "evidence_hash")
+        linked_hash = _hash(evidence, "authority_evidence_identity")
+        if linked_hash != authority_hash:
+            raise ValueError(
+                "lane shadow_staging: authority_evidence_identity does not match "
+                "accepted polygon_authority evidence_hash"
+            )
+
+    if lane == "realized_pnl" and "shadow_staging" in accepted_evidence:
+        shadow_hash = _hash(accepted_evidence["shadow_staging"], "evidence_hash")
+        linked_hash = _hash(evidence, "execution_evidence_identity")
+        if linked_hash != shadow_hash:
+            raise ValueError(
+                "lane realized_pnl: execution_evidence_identity does not match "
+                "accepted shadow_staging evidence_hash"
+            )
+
 
 def _resolve_evidence_file(session_root: Path, evidence_path: str, lane: str) -> Path:
     relative = Path(evidence_path)
@@ -194,6 +221,7 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError("lanes must contain exactly the required lane names")
 
         results: dict[str, dict[str, object]] = {}
+        accepted_evidence: dict[str, dict[str, Any]] = {}
         repo_root = Path(__file__).resolve().parents[1]
         session_root = manifest_path.parent
         for lane in REQUIRED_LANES:
@@ -226,7 +254,7 @@ def main(argv: list[str] | None = None) -> int:
             if completed.returncode == 0:
                 try:
                     evidence = _read_json_object(candidate, lane)
-                    _bind_lane_identities(lane, evidence, manifest)
+                    _bind_lane_identities(lane, evidence, manifest, accepted_evidence)
                 except ValueError as exc:
                     results[lane] = {
                         "status": "FAILED",
@@ -234,6 +262,7 @@ def main(argv: list[str] | None = None) -> int:
                         "reason": str(exc),
                     }
                     continue
+                accepted_evidence[lane] = evidence
                 results[lane] = {"status": "GREEN", "validation": "ACCEPTED_FOR_INDEPENDENT_REVIEW"}
             else:
                 results[lane] = {
