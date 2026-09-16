@@ -65,9 +65,11 @@ Current parallel lanes:
 A single consolidated controlled external evidence session should capture every currently satisfiable lane. No secrets are combined into the evidence bundle.
 
 ## CURRENT EXTERNAL INFRASTRUCTURE RESEARCH
-- Polygon Labs states that Polygon Private Mempool is live for private transaction submission and describes a private path that bypasses the public mempool. Polygon's current access page provides an access-request flow. This is a current candidate path, not automatic project approval or accepted production evidence. citeturn295191search0turn295191search1turn295191search2
-- Polygon Labs also identifies bloXroute as providing private transaction submission on Polygon. This is a second current candidate path, not automatic project approval. citeturn295191search1
-- Candidate infrastructure discovery does not replace the project's explicit requirement for an approved production endpoint, external authentication/configuration, controlled observation, and independent provenance.
+- Polygon Labs' April 2, 2026 launch post states Polygon Private Mempool is live and provides a private transaction-submission path that bypasses the public mempool, with a stated free tier. citeturn700408search2
+- Polygon's current Private Mempool access page is still presented as a request-access flow. citeturn700408search1
+- Polygon's August 24, 2026 follow-up again states Private Mempool is live and describes a private submission path, while also describing partner availability through bloXroute. citeturn700408search3
+- These sources create an intentional project-level distinction: vendor/platform availability is research evidence, while project approval/authentication is an external controlled fact that must be captured separately before any production gate is promoted.
+- Polygon support guidance also distinguishes public RPC from private provider options and identifies private providers such as Infura, Alchemy, and QuickNode as possible RPC sources, while not endorsing a single provider. citeturn700408search4
 
 ## SAFETY
 Evidence first. Contradictory or missing evidence is UNKNOWN/BLOCKED. Private execution has no public fallback. No live signing, public broadcast, production execution authorization, or live capital is granted during Phase 19 certification. Private keys and relay authentication material never enter repository code, fixtures, logs, or chat.
@@ -102,14 +104,16 @@ The external gate launch packet and one-shot session worksheet compress signer, 
 ## CHECKPOINT
 Workflow run `451` / run ID `35070288544` completed **GREEN** after the surgical fixture-path repair from run `450`. The complete Phase-19 deterministic pipeline is GREEN on commit `7506b41c1e7ec876b39ae8428896c374a48b0181`.
 
-The repository-side acceleration machinery is now complete enough to move to external evidence closure rather than adding repetitive validation layers. Current official external research confirms that Polygon Private Mempool is live and that its current access page provides an access-request path; this keeps vendor discovery separate from project approval. citeturn295191search0turn295191search1turn295191search2
+The repository-side acceleration machinery is now complete enough to move to external evidence closure rather than adding repetitive validation layers. Fresh official research confirms Private Mempool is live and documents both a stated free tier and a current request-access page; the project intentionally treats this difference as an approval/provenance distinction, not as evidence to promote a production gate. citeturn700408search1turn700408search2turn700408search3
 
-The one-shot operator worksheet now provides the exact frozen-artifact sequence for signer challenge/verification, read-only Polygon authority observation, private-relay evidence validation, identical-artifact staging capture, and final consolidated validation. No production authorization is implied by the worksheet.
+The one-shot operator worksheet now provides the exact frozen-artifact sequence for signer challenge/verification, read-only Polygon authority observation, private-relay evidence validation, identical-artifact staging capture, and final consolidated validation. No production authorization is implied by the worksheet. fileciteturn212file0
+
+At the present checkpoint, the external evidence session cannot be completed autonomously from repository state alone because the remaining acceptance chain requires operator-supplied project approvals, externally held signer action, authenticated production infrastructure, and controlled staging/settlement observations that are not present in the repository. This is not treated as a repository failure; the missing inputs remain explicitly BLOCKED.
 
 No production gate has been promoted from repository tests, historical deployment claims, public/fork observations, vendor availability, or estimated economics.
 
 ## NEXT ATOMIC ACTION
-Execute `PHASE19_OPERATOR_ONE_SHOT_SESSION.md` from the frozen artifact `7506b41c1e7ec876b39ae8428896c374a48b0181` in one controlled external-evidence window. Capture all available A/B/C/D lanes together, then run the consolidated offline coordinator and independent review. Keep realized-PnL and all live-execution/capital locks intact until their own acceptance chains are complete.
+Use the frozen artifact `7506b41c1e7ec876b39ae8428896c374a48b0181` to enter the controlled external-evidence session and supply only the minimum required operator-side inputs for A/B/C/D. Once those non-secret evidence records exist, run the consolidated offline coordinator and independent review in the same session. Keep realized-PnL, live signing, public broadcast, and live-capital locks intact until their own acceptance chains are complete.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
