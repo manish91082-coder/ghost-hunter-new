@@ -36,12 +36,14 @@ class SignerEvidencePackagerTests(unittest.TestCase):
                 verifier = dict(verifier, **extra)
                 src.write_text(json.dumps(verifier), encoding="utf-8")
             rc = main(args)
-            return rc, out
+            packaged = out.read_text(encoding="utf-8") if out.is_file() else None
+            return rc, packaged
 
     def test_packages_verified_output(self):
-        rc, out = self._run(VALID)
+        rc, packaged = self._run(VALID)
         self.assertEqual(rc, 0)
-        record = json.loads(out.read_text(encoding="utf-8"))
+        self.assertIsNotNone(packaged)
+        record = json.loads(packaged)
         self.assertEqual(record["challenge"], "0x" + "55" * 32)
         self.assertEqual(record["certification_ref"], "CI-482")
 
