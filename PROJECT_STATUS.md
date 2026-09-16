@@ -6,7 +6,7 @@
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
 - Latest verified software/project commit: `7506b41c1e7ec876b39ae8428896c374a48b0181`
-- Latest repository-side procedure/test commit: `7506b41c1e7ec876b39ae8428896c374a48b0181`
+- Latest repository-side procedure/launch packet commit: `66ae7badab6b43bf177ea3c615bb594277cf6d11`
 - Current Phase-19 CI certification: workflow run `451` / run ID `35070288544` **GREEN** on `7506b41c1e7ec876b39ae8428896c374a48b0181`; dependency install, Foundry install, Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and full Phase-19 unittest suite all passed
 - Previous Phase-19 CI certification: workflow run `446` / run ID `35067167421` **GREEN** on `2caa8ff285fa98e061dc22da82502bff2765b812`
 - Previous Phase-19 CI certification: workflow run `442` / run ID `35065382193` **GREEN** on `7f5a839bd5968961f23dff27b9dfa8da41539993`
@@ -39,6 +39,7 @@
 - Consolidated external evidence session protocol: `PHASE19_CONSOLIDATED_EXTERNAL_EVIDENCE_SESSION.md`
 - Consolidated external evidence session coordinator: `scripts/validate_consolidated_evidence_session.py`
 - Consolidated external evidence session coordinator tests: `tests/phase19/test_consolidated_evidence_session_validator.py`
+- External gate launch packet: `PHASE19_EXTERNAL_GATE_LAUNCH_PACKET.md`
 - Historical deployment-record forensic finding: older commit `8460c589ef6b82b1da08d73624f29d0cd63d2549` contains `v2/v3` records asserting a Polygon Mainnet deployment at `0x24056bCA6538693aE94Cc97E82f21Ee4EC7f1286` with deployment tx `0x92bc4dc8b3450332c281445fb4443f8725586b18e880a063e0892af2c28c595a`; these are historical repository claims only and are not accepted as current production-authority evidence
 - Production readiness decision: **NOT ACHIEVED**
 - Controlled production signer identity: **BLOCKED**. No fresh externally held production-signer challenge signature and provenance record is present.
@@ -62,6 +63,11 @@ Current parallel lanes:
 
 A single consolidated controlled external evidence session should capture every currently satisfiable lane. No secrets are combined into the evidence bundle.
 
+## CURRENT EXTERNAL INFRASTRUCTURE RESEARCH
+- Polygon Labs states that Polygon Private Mempool is live for private transaction submission and that its free tier is broadly available; Polygon's current access page also provides an access-request path. This is a current candidate path, not automatic project approval or accepted production evidence. citeturn347250search1turn467650search0
+- Polygon Labs also identifies bloXroute as providing private transaction submission on Polygon. This is a second current candidate path, not automatic project approval. citeturn601520search0
+- Candidate infrastructure discovery does not replace the project's explicit requirement for an approved production endpoint, external authentication/configuration, controlled observation, and independent provenance.
+
 ## SAFETY
 Evidence first. Contradictory or missing evidence is UNKNOWN/BLOCKED. Private execution has no public fallback. No live signing, public broadcast, production execution authorization, or live capital is granted during Phase 19 certification. Private keys and relay authentication material never enter repository code, fixtures, logs, or chat.
 
@@ -81,6 +87,8 @@ The private-relay boundary accepts only explicit HTTPS configuration with an exp
 
 The consolidated session coordinator validates the session manifest structure and invokes only existing offline lane validators for evidence files that are actually present. Missing evidence remains BLOCKED; one lane cannot infer GREEN for another.
 
+The external gate launch packet compresses signer, Polygon authority, private relay, and identical-artifact shadow/staging preparation into one controlled session checklist while keeping realized PnL as a separately controlled settlement gate.
+
 ## P0 BLOCKERS
 1. Controlled production signer identity proof.
 2. Controlled production Polygon provider authority proof using approved endpoints and intended deployed executor.
@@ -91,14 +99,14 @@ The consolidated session coordinator validates the session manifest structure an
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-Workflow run `451` / run ID `35070288544` completed **GREEN** after the surgical fixture-path repair from run `450`. Run `450` failed only because its coordinator test attempted to convert a temporary directory outside the repository root into a repository-relative path. The consolidated coordinator implementation itself remains intentionally repository-root confined, and the repaired fixture now stays inside that boundary. The complete Phase-19 deterministic pipeline is GREEN on commit `7506b41c1e7ec876b39ae8428896c374a48b0181`.
+Workflow run `451` / run ID `35070288544` completed **GREEN** after the surgical fixture-path repair from run `450`. The complete Phase-19 deterministic pipeline is GREEN on commit `7506b41c1e7ec876b39ae8428896c374a48b0181`.
 
-The consolidated coordinator is now CI-certified as a repository-side validation entry point. It does not establish production approval, provenance, signing authority, or live execution authorization.
+The repository-side acceleration machinery is now complete enough to move to external evidence closure rather than adding repetitive validation layers. Current official external research identified two live Polygon private-submission candidate paths, but neither is promoted to project approval without operator-controlled approval/authentication evidence.
 
-No production gate has been promoted from repository tests, historical deployment claims, public/fork observations, or estimated economics.
+No production gate has been promoted from repository tests, historical deployment claims, public/fork observations, vendor availability, or estimated economics.
 
 ## NEXT ATOMIC ACTION
-Freeze the verified artifact identity at `7506b41c1e7ec876b39ae8428896c374a48b0181` and transition from repository-side CI work to the single controlled external-evidence session. Capture all independently satisfiable lanes together, then run the consolidated coordinator for offline validation and independent review. Keep signer, live signing, public broadcast, realized-PnL, and live-capital locks intact until their own acceptance chains are complete.
+Start the controlled external evidence session from the frozen artifact `7506b41c1e7ec876b39ae8428896c374a48b0181`: capture all independently satisfiable A/B/C/D lanes in one window, then run the consolidated offline coordinator and independent review. Keep realized-PnL and all live-execution/capital locks intact until their own acceptance chains are complete.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
