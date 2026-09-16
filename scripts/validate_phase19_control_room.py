@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Fail-closed consistency checks for Phase-19 control-room metadata.
-
-This gate checks repository-side coordination artifacts only. It never treats
-repository evidence as production authority and never handles secrets.
-"""
+"""Fail-closed consistency checks for Phase-19 control-room metadata."""
 from __future__ import annotations
 
 import argparse
@@ -57,7 +53,6 @@ def main(argv: list[str] | None = None) -> int:
             return fail(f"{label} is not bound to frozen artifact {args.expected_artifact}")
 
     required_status_fragments = (
-        "Production readiness decision: **NOT ACHIEVED**",
         "Live capital: **LOCKED**",
         "**LIVE SIGNING = BLOCKED**",
         "**PUBLIC BROADCAST = BLOCKED**",
@@ -66,6 +61,13 @@ def main(argv: list[str] | None = None) -> int:
     for fragment in required_status_fragments:
         if fragment not in status:
             return fail(f"canonical safety/control statement missing from PROJECT_STATUS.md: {fragment}")
+
+    readiness_markers = (
+        "Production readiness: **NOT ACHIEVED**",
+        "Production readiness decision: **NOT ACHIEVED**",
+    )
+    if not any(marker in status for marker in readiness_markers):
+        return fail("canonical production-readiness statement missing from PROJECT_STATUS.md")
 
     if "No public fallback" not in packet and "No public fallback" not in plan:
         return fail("private execution public-fallback prohibition is missing")
@@ -78,7 +80,6 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, subprocess.CalledProcessError):
         return fail("unable to resolve repository HEAD")
 
-    # Documentation/status commits can move HEAD; baseline must remain reachable.
     try:
         subprocess.check_call(
             ["git", "merge-base", "--is-ancestor", args.expected_engineering_baseline, head],
@@ -89,7 +90,6 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, subprocess.CalledProcessError):
         return fail(f"verified engineering baseline {args.expected_engineering_baseline} is not reachable from HEAD {head}")
 
-    # Production evidence files must stay outside the repository workspace.
     tracked = subprocess.check_output(["git", "ls-files"], cwd=root, text=True).splitlines()
     forbidden_prefixes = ("external_evidence/", "phase19_external_session/", "external-session/")
     tracked_evidence = [p for p in tracked if p.startswith(forbidden_prefixes)]
