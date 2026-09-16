@@ -1,7 +1,7 @@
 import unittest
 from decimal import Decimal
 
-from phantomx.economic_proof import build_economic_proof
+from phantomx.economic_proof import EconomicProof, build_economic_proof
 from phantomx.economics import CostBreakdown
 from phantomx.opportunity_discovery import OpportunityCandidate
 from phantomx.opportunity_economics import OpportunityEconomicEvaluation
@@ -62,9 +62,9 @@ class OpportunityExecutionTests(unittest.TestCase):
             "uniswap_v3_router": "0x" + "05" * 20,
         }
 
-    def _assemble(self):
+    def _assemble(self, evaluation=None):
         return assemble_proven_opportunity(
-            self.evaluation,
+            evaluation or self.evaluation,
             **self.addresses,
             nonce=7,
             deadline=2000,
@@ -84,30 +84,21 @@ class OpportunityExecutionTests(unittest.TestCase):
         self.assertEqual(assembly.envelope.nonce, 7)
 
     def test_below_floor_evaluation_is_rejected_before_assembly(self):
-        bad_proof = build_economic_proof(
+        bad_proof = EconomicProof(
+            schema_version=1,
             route_hash=self.evaluation.candidate.simulation.route_hash,
             quote_hashes=tuple(leg.quote_hash for leg in self.evaluation.candidate.simulation.legs),
             valuation_hash="0x" + "55" * 32,
             final_settlement_usd=Decimal("100.74"),
             loan_principal_usd=Decimal("100.00"),
-            costs=CostBreakdown(),
+            costs=CostBreakdown(flash_loan_fee=Decimal("0.30")),
             max_gas_usd=Decimal("0"),
             max_relay_usd=Decimal("0"),
+            minimum_net_profit_usd=Decimal("0.20"),
         )
         evaluation = OpportunityEconomicEvaluation(candidate=self.evaluation.candidate, proof=bad_proof)
         with self.assertRaises(OpportunityExecutionError):
-            assemble_proven_opportunity(
-                evaluation,
-                **self.addresses,
-                nonce=7,
-                deadline=2000,
-                amount_out_min_first=1090,
-                amount_out_min_second=1110,
-                minimum_surplus=1,
-                gas_limit=500000,
-                max_fee_per_gas=100,
-                max_priority_fee_per_gas=10,
-            )
+            self._assemble(evaluation)
 
     def test_unsupported_discovery_path_fails_closed(self):
         candidate = OpportunityCandidate(
@@ -119,21 +110,7 @@ class OpportunityExecutionTests(unittest.TestCase):
         )
         evaluation = OpportunityEconomicEvaluation(candidate=candidate, proof=self.evaluation.proof)
         with self.assertRaises(OpportunityExecutionError):
-            self._assemble_with(evaluation)
-
-    def _assemble_with(self, evaluation):
-        return assemble_proven_opportunity(
-            evaluation,
-            **self.addresses,
-            nonce=7,
-            deadline=2000,
-            amount_out_min_first=1090,
-            amount_out_min_second=1110,
-            minimum_surplus=1,
-            gas_limit=500000,
-            max_fee_per_gas=100,
-            max_priority_fee_per_gas=10,
-        )
+            self._assemble(evaluation)
 
 
 if __name__ == "__main__":
