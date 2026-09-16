@@ -33,8 +33,6 @@ class OpportunityEconomicEvaluation:
         expected_quotes = tuple(leg.quote_hash.lower() for leg in self.candidate.simulation.legs)
         if tuple(item.lower() for item in self.proof.quote_hashes) != expected_quotes:
             raise OpportunityEconomicsError("economic proof quotes do not match discovered candidate")
-        if self.proof.loan_principal_usd < 0:
-            raise OpportunityEconomicsError("loan principal valuation cannot be negative")
 
     @property
     def net_profit_usd(self) -> Decimal:
@@ -102,6 +100,7 @@ def evaluate_discovered_opportunities(
         key=lambda item: (
             item.net_profit_usd,
             -item.candidate.loan_amount,
+            item.candidate.venue_path,
         ),
     )
     return OpportunityEconomicsResult(evaluated=tuple(evaluations), best=best)
