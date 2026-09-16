@@ -123,9 +123,7 @@ def build_mvp_candidate(
         raise MvpPipelineError("deadline must be positive")
     if request.gas_limit <= 0:
         raise MvpPipelineError("gas_limit must be positive")
-    if request.max_fee_per_gas < request.max_priority_fee_per_gas >= 0:
-        pass
-    elif request.max_priority_fee_per_gas < 0 or request.max_fee_per_gas < request.max_priority_fee_per_gas:
+    if request.max_priority_fee_per_gas < 0 or request.max_fee_per_gas < request.max_priority_fee_per_gas:
         raise MvpPipelineError("invalid EIP-1559 fee bounds")
     if request.amount_out_min_first <= 0 or request.amount_out_min_second <= 0:
         raise MvpPipelineError("per-leg minimum outputs must be positive")
