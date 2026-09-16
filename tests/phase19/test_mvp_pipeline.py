@@ -106,7 +106,7 @@ class MvpPipelineTests(unittest.TestCase):
             valuation=UsdValuation("0x" + "99" * 32, Decimal("100.36"), Decimal("100.00")),
             costs=CostBreakdown(gas=Decimal("0.20"), relay=Decimal("0.05"), other=Decimal("0.10")),
         )
-        with self.assertRaises(MvpPipelineError.__mro__[1]):
+        with self.assertRaises(ValueError):
             build_mvp_candidate(
                 rpc,
                 QuickSwapV2ExactQuoter(rpc, ROUTER),
