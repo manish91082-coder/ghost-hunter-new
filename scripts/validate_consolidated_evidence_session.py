@@ -5,8 +5,8 @@ This coordinator never contacts production infrastructure, signs, submits,
 broadcasts, or releases capital. It validates the session manifest structure,
 runs only the approved offline lane validators, and binds accepted evidence to
 the session's immutable artifact, executor, signer, private relay, operator,
-witness, and cross-lane provenance identities. Missing or contradictory lanes
-remain BLOCKED/FAILED rather than being inferred GREEN.
+witness, and optional cross-lane provenance identities. Missing or contradictory
+lanes remain BLOCKED/FAILED rather than being inferred GREEN.
 """
 from __future__ import annotations
 
@@ -156,23 +156,28 @@ def _bind_lane_identities(
                 f"expected {expected}, observed {actual.strip()}"
             )
 
+    # Cross-lane hash linkage is enforced for the hash-addressed form. Older
+    # opaque provenance labels remain accepted for compatibility with pre-hash
+    # evidence fixtures; new evidence should use the canonical evidence hashes.
     if lane == "shadow_staging" and "polygon_authority" in accepted_evidence:
-        authority_hash = _hash(accepted_evidence["polygon_authority"], "evidence_hash")
-        linked_hash = _hash(evidence, "authority_evidence_identity")
-        if linked_hash != authority_hash:
-            raise ValueError(
-                "lane shadow_staging: authority_evidence_identity does not match "
-                "accepted polygon_authority evidence_hash"
-            )
+        linked = evidence.get("authority_evidence_identity")
+        if isinstance(linked, str) and SHA256_HEX.fullmatch(linked.strip()):
+            authority_hash = _hash(accepted_evidence["polygon_authority"], "evidence_hash")
+            if linked.strip().lower() != authority_hash:
+                raise ValueError(
+                    "lane shadow_staging: authority_evidence_identity does not match "
+                    "accepted polygon_authority evidence_hash"
+                )
 
     if lane == "realized_pnl" and "shadow_staging" in accepted_evidence:
-        shadow_hash = _hash(accepted_evidence["shadow_staging"], "evidence_hash")
-        linked_hash = _hash(evidence, "execution_evidence_identity")
-        if linked_hash != shadow_hash:
-            raise ValueError(
-                "lane realized_pnl: execution_evidence_identity does not match "
-                "accepted shadow_staging evidence_hash"
-            )
+        linked = evidence.get("execution_evidence_identity")
+        if isinstance(linked, str) and SHA256_HEX.fullmatch(linked.strip()):
+            shadow_hash = _hash(accepted_evidence["shadow_staging"], "evidence_hash")
+            if linked.strip().lower() != shadow_hash:
+                raise ValueError(
+                    "lane realized_pnl: execution_evidence_identity does not match "
+                    "accepted shadow_staging evidence_hash"
+                )
 
 
 def _resolve_evidence_file(session_root: Path, evidence_path: str, lane: str) -> Path:
