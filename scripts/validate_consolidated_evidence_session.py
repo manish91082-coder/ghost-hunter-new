@@ -4,9 +4,9 @@
 This coordinator never contacts production infrastructure, signs, submits,
 broadcasts, or releases capital. It validates the session manifest structure,
 runs only the approved offline lane validators, and binds accepted evidence to
-the session's immutable artifact, executor, signer, operator, and witness
-identities. Missing or contradictory lanes remain BLOCKED/FAILED rather than
-being inferred GREEN.
+the session's immutable artifact, executor, signer, private relay, operator,
+and witness identities. Missing or contradictory lanes remain BLOCKED/FAILED
+rather than being inferred GREEN.
 """
 from __future__ import annotations
 
@@ -31,6 +31,7 @@ REQUIRED_MANIFEST = {
     "verified_artifact_commit",
     "intended_executor",
     "expected_signer",
+    "intended_private_relay",
     "operator_identity",
     "witness_identity",
     "observed_at_utc",
@@ -94,6 +95,7 @@ def _bind_lane_identities(
     manifest_artifact = _artifact(manifest, "verified_artifact_commit")
     manifest_executor = _address(manifest, "intended_executor")
     manifest_signer = _address(manifest, "expected_signer")
+    manifest_relay = _nonempty_text(manifest, "intended_private_relay")
     operator = _nonempty_text(manifest, "operator_identity")
     witness = _nonempty_text(manifest, "witness_identity")
 
@@ -109,6 +111,12 @@ def _bind_lane_identities(
             "executor": manifest_executor,
             "expected_signer": manifest_signer,
             "observed_owner": manifest_signer,
+            "operator_identity": operator,
+            "witness_identity": witness,
+        }
+    elif lane == "private_relay":
+        checks = {
+            "relay_name": manifest_relay,
             "operator_identity": operator,
             "witness_identity": witness,
         }
@@ -171,6 +179,7 @@ def main(argv: list[str] | None = None) -> int:
         _artifact(manifest, "verified_artifact_commit")
         _address(manifest, "intended_executor")
         _address(manifest, "expected_signer")
+        _nonempty_text(manifest, "intended_private_relay")
         for field in (
             "operator_identity",
             "witness_identity",
@@ -197,10 +206,6 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError(f"lane {lane}: status must be GREEN, BLOCKED, or FAILED")
             if evidence_path is not None and not isinstance(evidence_path, str):
                 raise ValueError(f"lane {lane}: evidence_file must be text when supplied")
-
-            if lane not in VALIDATORS:
-                results[lane] = {"status": "BLOCKED", "validation": "NOT_AVAILABLE"}
-                continue
 
             if not evidence_path:
                 results[lane] = {"status": "BLOCKED", "validation": "MISSING_EVIDENCE_FILE"}
