@@ -13,7 +13,7 @@ class CrossLaneProvenanceBindingTests(unittest.TestCase):
         data = {
             "schema_version": 1,
             "session_id": "sess-cross-lane",
-            "verified_artifact_commit": "2caa8ff285fa98e061dc22da82502bff2765b812",
+            "verified_artifact_commit": "e117b6550686cf5e0ff787d9bd7d85e83996db07",
             "intended_executor": "0x1111111111111111111111111111111111111111",
             "expected_signer": "0x2222222222222222222222222222222222222222",
             "intended_private_relay": "approved-relay",
@@ -50,7 +50,7 @@ class CrossLaneProvenanceBindingTests(unittest.TestCase):
                 root,
                 "shadow",
                 schema_version=1,
-                artifact_commit="2caa8ff285fa98e061dc22da82502bff2765b812",
+                artifact_commit="e117b6550686cf5e0ff787d9bd7d85e83996db07",
                 executor_identity="0x1111111111111111111111111111111111111111",
                 expected_signer="0x2222222222222222222222222222222222222222",
                 authority_evidence_identity="0x" + "9" * 64,
@@ -90,7 +90,7 @@ class CrossLaneProvenanceBindingTests(unittest.TestCase):
             shadow_path = self._evidence(
                 root,
                 "shadow",
-                artifact_commit="2caa8ff285fa98e061dc22da82502bff2765b812",
+                artifact_commit="e117b6550686cf5e0ff787d9bd7d85e83996db07",
                 executor_identity="0x1111111111111111111111111111111111111111",
                 expected_signer="0x2222222222222222222222222222222222222222",
                 authority_evidence_identity="0x" + "2" * 64,
@@ -120,7 +120,7 @@ class CrossLaneProvenanceBindingTests(unittest.TestCase):
             shadow_path = self._evidence(
                 root,
                 "shadow",
-                artifact_commit="2caa8ff285fa98e061dc22da82502bff2765b812",
+                artifact_commit="e117b6550686cf5e0ff787d9bd7d85e83996db07",
                 executor_identity="0x1111111111111111111111111111111111111111",
                 expected_signer="0x2222222222222222222222222222222222222222",
                 operator_identity="operator",
@@ -130,7 +130,7 @@ class CrossLaneProvenanceBindingTests(unittest.TestCase):
             pnl_path = self._evidence(
                 root,
                 "pnl",
-                artifact_commit="2caa8ff285fa98e061dc22da82502bff2765b812",
+                artifact_commit="e117b6550686cf5e0ff787d9bd7d85e83996db07",
                 execution_evidence_identity="0x" + "9" * 64,
                 operator_identity="operator",
                 witness_identity="witness",
@@ -157,7 +157,7 @@ class CrossLaneProvenanceBindingTests(unittest.TestCase):
             shadow_path = self._evidence(
                 root,
                 "shadow",
-                artifact_commit="2caa8ff285fa98e061dc22da82502bff2765b812",
+                artifact_commit="e117b6550686cf5e0ff787d9bd7d85e83996db07",
                 executor_identity="0x1111111111111111111111111111111111111111",
                 expected_signer="0x2222222222222222222222222222222222222222",
                 operator_identity="operator",
@@ -167,7 +167,7 @@ class CrossLaneProvenanceBindingTests(unittest.TestCase):
             pnl_path = self._evidence(
                 root,
                 "pnl",
-                artifact_commit="2caa8ff285fa98e061dc22da82502bff2765b812",
+                artifact_commit="e117b6550686cf5e0ff787d9bd7d85e83996db07",
                 execution_evidence_identity="0x" + "3" * 64,
                 operator_identity="operator",
                 witness_identity="witness",
