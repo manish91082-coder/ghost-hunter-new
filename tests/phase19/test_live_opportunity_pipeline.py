@@ -3,9 +3,11 @@ from decimal import Decimal
 
 from phantomx.economic_proof import build_economic_proof
 from phantomx.economics import CostBreakdown
+from phantomx.executor_authority import ExecutorAuthorityEvidence
 from phantomx.live_opportunity_pipeline import (
     LiveOpportunityPipelineError,
     discover_and_prepare_best_opportunity_execution,
+    discover_prepare_and_preflight_best_opportunity,
 )
 from phantomx.quickswap_v2 import QuickSwapV2ExactQuoter
 from phantomx.uniswap_v3 import UniswapV3ExactQuoter
@@ -113,6 +115,17 @@ class LiveOpportunityPipelineTests(unittest.TestCase):
             max_priority_fee_per_gas=10,
         )
 
+    def _authority(self, owner=None, block=0x1234):
+        return ExecutorAuthorityEvidence(
+            schema_version=1,
+            chain_id=137,
+            executor=self.addresses["executor"],
+            owner=owner or self.addresses["sender"],
+            observed_block=block,
+            runtime_code_hash="0x" + "99" * 32,
+            attesting_provider_names=("fake-primary", "fake-secondary"),
+        )
+
     def test_concrete_discovery_flows_into_economics_and_assembly(self):
         discovery, economics, assembly = self._prepare()
         self.assertEqual(len(discovery.evaluated), 2)
@@ -149,6 +162,80 @@ class LiveOpportunityPipelineTests(unittest.TestCase):
                 gas_limit=500000,
                 max_fee_per_gas=100,
                 max_priority_fee_per_gas=10,
+            )
+
+    def test_complete_live_pipeline_reaches_evm_preflight(self):
+        discovery, economics, assembly, preflight = discover_prepare_and_preflight_best_opportunity(
+            self.rpc,
+            self.quickswap,
+            self.uniswap,
+            token_pairs=((A, B),),
+            loan_amounts=(1000,),
+            uniswap_fee=500,
+            build_proof_for=self._proof,
+            **self.addresses,
+            nonce=7,
+            deadline=2000,
+            amount_out_min_first=1090,
+            amount_out_min_second=1110,
+            minimum_surplus=1,
+            gas_limit=500000,
+            max_fee_per_gas=100,
+            max_priority_fee_per_gas=10,
+            now=1500,
+            executor_authority=self._authority(),
+        )
+        self.assertEqual(len(discovery.evaluated), 2)
+        self.assertEqual(economics.best.candidate.loan_amount, assembly.intent.loan_amount)
+        self.assertTrue(preflight.passed)
+        self.assertEqual(preflight.block_number, 0x1234)
+        self.assertEqual(preflight.intent_hash, assembly.intent_hash)
+        self.assertEqual(preflight.authority_evidence_hash, self._authority().evidence_hash)
+
+    def test_preflight_failure_is_wrapped_and_never_reaches_signer(self):
+        with self.assertRaises(LiveOpportunityPipelineError):
+            discover_prepare_and_preflight_best_opportunity(
+                self.rpc,
+                self.quickswap,
+                self.uniswap,
+                token_pairs=((A, B),),
+                loan_amounts=(1000,),
+                uniswap_fee=500,
+                build_proof_for=self._proof,
+                **self.addresses,
+                nonce=7,
+                deadline=2000,
+                amount_out_min_first=1090,
+                amount_out_min_second=1110,
+                minimum_surplus=1,
+                gas_limit=500000,
+                max_fee_per_gas=100,
+                max_priority_fee_per_gas=10,
+                now=2500,
+                executor_authority=self._authority(),
+            )
+
+    def test_preflight_rejects_executor_owner_mismatch(self):
+        with self.assertRaises(LiveOpportunityPipelineError):
+            discover_prepare_and_preflight_best_opportunity(
+                self.rpc,
+                self.quickswap,
+                self.uniswap,
+                token_pairs=((A, B),),
+                loan_amounts=(1000,),
+                uniswap_fee=500,
+                build_proof_for=self._proof,
+                **self.addresses,
+                nonce=7,
+                deadline=2000,
+                amount_out_min_first=1090,
+                amount_out_min_second=1110,
+                minimum_surplus=1,
+                gas_limit=500000,
+                max_fee_per_gas=100,
+                max_priority_fee_per_gas=10,
+                now=1500,
+                executor_authority=self._authority(owner="0x" + "06" * 20),
             )
 
 
