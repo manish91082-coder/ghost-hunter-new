@@ -23,9 +23,13 @@ class OpportunityPipelineTests(unittest.TestCase):
         self.b = "0x" + "bb" * 20
         q1 = snapshot("quickswap_v2", self.a, self.b, 1000, 1100, 30, "0x" + "11" * 20)
         q2 = snapshot("uniswap_v3", self.b, self.a, 1100, 1120, 500, "0x" + "22" * 20)
-        simulation = simulate_two_leg(q1, q2)
-        self.candidate_1 = OpportunityCandidate(self.a, self.b, "quickswap_v2->uniswap_v3", 1000, simulation)
-        self.candidate_2 = OpportunityCandidate(self.a, self.b, "quickswap_v2->uniswap_v3", 2000, simulation)
+        simulation_1 = simulate_two_leg(q1, q2)
+        self.candidate_1 = OpportunityCandidate(self.a, self.b, "quickswap_v2->uniswap_v3", 1000, simulation_1)
+
+        q3 = snapshot("quickswap_v2", self.a, self.b, 2000, 2200, 30, "0x" + "11" * 20)
+        q4 = snapshot("uniswap_v3", self.b, self.a, 2200, 2240, 500, "0x" + "22" * 20)
+        simulation_2 = simulate_two_leg(q3, q4)
+        self.candidate_2 = OpportunityCandidate(self.a, self.b, "quickswap_v2->uniswap_v3", 2000, simulation_2)
         self.addresses = {
             "executor": "0x" + "01" * 20,
             "sender": "0x" + "02" * 20,
