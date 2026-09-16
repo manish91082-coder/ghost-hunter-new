@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Batch/offline Phase-19 gate console.
+"""Batch/offline Phase-19 evidence-session manifest preparer.
 
-Builds one deterministic session manifest from the standard evidence layout and
-runs the consolidated coordinator once. This tool never contacts production,
-signs, submits, broadcasts, or releases capital.
+Builds one deterministic session manifest from the standard segregated evidence
+layout. Presence of a file is not acceptance: lanes stay BLOCKED until the
+consolidated offline coordinator validates the referenced evidence. This tool
+never contacts production, signs, submits, broadcasts, or releases capital.
 """
 from __future__ import annotations
 
@@ -69,7 +70,7 @@ def main(argv: list[str] | None = None) -> int:
         for lane, relative_path in LANE_FILES.items():
             candidate = workspace / relative_path
             if candidate.is_file():
-                lanes[lane] = {"status": "GREEN", "evidence_file": relative_path}
+                lanes[lane] = {"status": "BLOCKED", "evidence_file": relative_path}
             else:
                 lanes[lane] = {"status": "BLOCKED"}
 
@@ -88,11 +89,13 @@ def main(argv: list[str] | None = None) -> int:
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         counts = {status: sum(1 for item in lanes.values() if item["status"] == status) for status in ("GREEN", "BLOCKED", "FAILED")}
+        referenced = sum(1 for item in lanes.values() if "evidence_file" in item)
         print(json.dumps({
             "status": "MANIFEST_READY",
             "session_id": session_id,
             "artifact_commit": artifact,
             "manifest": str(output),
+            "evidence_files_referenced": referenced,
             "lane_counts": counts,
         }, sort_keys=True, separators=(",", ":")))
         return 0
