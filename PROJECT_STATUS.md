@@ -6,8 +6,8 @@
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
 - Latest verified software/project commit: `7f5a839bd5968961f23dff27b9dfa8da41539993`
-- Current Phase-19 CI: workflow run `442` / run ID `35065382193` **GREEN** on `7f5a839bd5968961f23dff27b9dfa8da41539993`; all primary steps completed successfully: dependency install, Foundry install, Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and full Phase-19 unittest suite
-- Latest completed Phase-19 CI certification: run `35065382193` / workflow run `442` **GREEN** on authority-validator test commit `7f5a839bd5968961f23dff27b9dfa8da41539993`
+- Latest repository-side procedure commit: `fa63a0a7faf8e3f03b710deb3c4bb4b6b700b67f`
+- Current Phase-19 CI certification: workflow run `442` / run ID `35065382193` **GREEN** on `7f5a839bd5968961f23dff27b9dfa8da41539993`; all primary steps passed: dependency install, Foundry install, Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and full Phase-19 unittest suite
 - Prior completed Phase-19 CI certification: run `35018490583` / workflow run `439` **GREEN** on certified software commit `ebf794537c531a1241426a2bca9f355e205e44fc`
 - Final executable implementation: `d018f8aea32d7db5aa012b02dcaacab87435af4c`
 - Recovered-settlement certification `#420`: **GREEN**
@@ -23,17 +23,17 @@
 - Quorum recovery provenance boundary: `03e2c93ee8b1116d38b81332f45f84265b4a5c3d`
 - Quorum recovery provenance certification `#435`: **GREEN**
 - Final Phase-19 adversarial recovery/settlement matrix: `d018f8aea32d7db5aa012b02dcaacab87435af4c`
-- Final matrix certification `#436`: **GREEN**. The hardened final matrix workflow completed successfully across Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Phase-19 unittest suite.
-- Production-readiness gate audit: `PHASE19_PRODUCTION_READINESS_AUDIT.md`
-- Production-readiness audit certification `#437`: **GREEN**. The audit record was committed and the complete Phase-19 workflow passed on the audit commit.
+- Final matrix certification `#436`: **GREEN**
+- Production-readiness audit certification `#437`: **GREEN**
 - Controlled signer evidence intake specification: `PHASE19_SIGNER_EVIDENCE_INTAKE.md`
 - Controlled signer evidence validator: `scripts/validate_signer_evidence.py` (`ebf794537c531a1241426a2bca9f355e205e44fc`)
 - Controlled Polygon authority evidence intake specification: `PHASE19_PRODUCTION_AUTHORITY_EVIDENCE_INTAKE.md`
+- Controlled Polygon authority observation runbook: `PHASE19_PRODUCTION_AUTHORITY_OBSERVATION_RUNBOOK.md`
 - Controlled Polygon authority evidence validator: `scripts/validate_production_authority_evidence.py`
 - Controlled Polygon authority validator tests: `tests/phase19/test_production_authority_evidence_validator.py`
 - Production readiness decision: **NOT ACHIEVED**
-- Controlled production signer identity: **BLOCKED**. No fresh externally held production-signer challenge signature and provenance record is present; the signer runbook explicitly states mechanism-level CI is insufficient for this gate.
-- Controlled production Polygon provider authority: **BLOCKED**. The repository-side authority observation path and offline evidence validator are prepared and CI-certified, but no controlled production observation evidence from explicitly approved endpoints is present.
+- Controlled production signer identity: **BLOCKED**. No fresh externally held production-signer challenge signature and provenance record is present.
+- Controlled production Polygon provider authority: **BLOCKED**. Repository-side observer, evidence contract, validator, tests, and controlled observation runbook are prepared and CI-certified, but no controlled production observation evidence from explicitly approved endpoints is present.
 - Controlled production private relay: **BLOCKED**. Explicit HTTPS private-relay configuration is required and public fallback is forbidden, but no approved production relay proof/evidence is present.
 - Controlled shadow/staging: **BLOCKED**. No independently evidenced production-like shadow/staging execution artifact using the identical immutable chain is present.
 - Realized live PnL: **BLOCKED**. No controlled live-mainnet realized settlement evidence exists and live capital remains locked.
@@ -48,21 +48,13 @@ Evidence first. Contradictory or missing evidence is UNKNOWN/BLOCKED. Private ex
 `LIVE BLOCK → DATA/RPC QUORUM → EXACT QUOTES → ROUTE ENGINE → LOAN OPTIMIZER → EXACT COST MODEL → WORST-CASE NET PNL → AI RANKING → EVM PREFLIGHT → GOVERNOR → SIGNER → PRIVATE SUBMIT → ON-CHAIN EXECUTOR → RECEIPT AUDITOR → REALIZED NET PNL`
 
 ## VERIFIED CAPABILITIES
-Deterministic economics, immutable authorization/envelope binding, quote and simulation evidence, EVM preflight, Governor, signer verification, durable nonce/transaction state, private-only submission, recovery, receipt reconciliation, executor controls, and authority quorum/provenance/freshness controls are implemented. #420, #423, #427, #430, #432, #435, #436, #437, and #442 provide the latest certified gates.
+Deterministic economics, immutable authorization/envelope binding, quote and simulation evidence, EVM preflight, Governor, signer verification, durable nonce/transaction state, private-only submission, recovery, receipt reconciliation, executor controls, and authority quorum/provenance/freshness controls are implemented. #420, #423, #427, #430, #432, #435, #436, #437, and #442 provide certified repository-side gates.
 
-The production chain observer is read-only and requires a unique quorum-backed decision. fileciteturn1534file0L2-L2
+The production chain observer is read-only and requires a unique quorum-backed decision.
 
-The execution-observation path requires an exact, previously persisted and fresh quorum record before lifecycle persistence. fileciteturn1545file0L2-L2
+The production authority module remains environment-driven and read-only, requiring explicit operator-supplied provider configuration and validating HTTPS endpoints, executor identity, and expected signer before authority observation.
 
-Settlement reconciliation has a dedicated quorum boundary, and the lower-level settlement primitive is explicitly treated as an already-admitted path. fileciteturn1548file0L2-L2
-
-Recovery mutation has the same quorum provenance boundary for DROP, REPLACED, and REORGED evidence. fileciteturn1549file0L2-L2
-
-The production signer verifier can generate a fresh 32-byte challenge and independently verify an externally supplied 65-byte signature without receiving private-key material. fileciteturn1577file0L2-L2
-
-The production authority module remains environment-driven and read-only, requiring explicit operator-supplied provider configuration and validating HTTPS endpoints, executor identity, and expected signer before authority observation. fileciteturn1564file0L2-L2
-
-The production private-relay assembly requires explicit HTTPS configuration and `private=true` and has no public fallback. fileciteturn1573file0L2-L2
+The controlled authority evidence validator checks Polygon chain identity, common-block consistency, owner/signer binding, runtime-code identity, quorum membership, canonical evidence hash, and required provenance fields without network access, signing, submission, or broadcast.
 
 ## P0 BLOCKERS
 1. Controlled production signer identity proof.
@@ -74,14 +66,14 @@ The production private-relay assembly requires explicit HTTPS configuration and 
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-Workflow run `442` / run ID `35065382193` has now completed **GREEN** on software commit `7f5a839bd5968961f23dff27b9dfa8da41539993`. All primary Phase-19 workflow steps passed, including the Polygon fork execution probe and full Phase-19 unittest suite.
+Workflow run `442` / run ID `35065382193` is **GREEN**. The authority validator coverage and all earlier Phase-19 deterministic controls are CI-certified.
 
-This GREEN result certifies repository-side deterministic verification of the new Polygon authority evidence validator coverage. It does **not** constitute controlled production authority proof, signer proof, private-relay proof, staging proof, realized live PnL, or production authorization.
+The next repository-side procedure is now documented in `PHASE19_PRODUCTION_AUTHORITY_OBSERVATION_RUNBOOK.md`. It defines the controlled, observation-only sequence: freeze approved inputs, validate HTTPS providers, prove chain 137, select a common block, observe owner and runtime code, require quorum agreement, verify owner-to-signer binding, construct the non-secret evidence package, run the offline validator, and obtain independent review.
 
-The signer gate remains BLOCKED pending real external evidence. The Polygon authority gate remains BLOCKED pending controlled observations from explicitly approved production endpoints.
+This procedure is preparation only. It does not create production authority proof until actual observations from explicitly approved production endpoints are externally captured and independently reviewed.
 
 ## NEXT ATOMIC ACTION
-Proceed to the controlled production Polygon authority observation procedure: collect the required non-secret quorum evidence from explicitly approved HTTPS Polygon providers against the intended chain-137 executor and expected signer, then validate the resulting evidence package offline. Do not use public/fork endpoints as production authority evidence. Keep signer, relay, shadow, realized-PnL, and live-capital gates locked.
+Execute the controlled production Polygon authority observation procedure using explicitly approved production endpoints and the intended deployed executor. Capture only the required non-secret evidence package, then run `scripts/validate_production_authority_evidence.py` offline. If no approved production endpoints/executor/signer are available, keep the gate BLOCKED and do not substitute public/fork infrastructure. Keep signer, relay, shadow, realized-PnL, and live-capital gates locked.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
