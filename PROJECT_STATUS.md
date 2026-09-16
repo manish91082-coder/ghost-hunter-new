@@ -11,9 +11,9 @@
 - Documentation-only synchronization commits after the verified engineering baseline do not supersede that verified engineering commit.
 - Previous verified Phase-19 CI certification: workflow run `490` / run ID `35093381297` **GREEN** on `46ab733fa4eca81c24eeaf087c9c44a71eb987e6`
 - External evidence session artifact remains frozen at `e117b6550686cf5e0ff787d9bd7d85e83996db07` until a deliberate new evidence session is started; newer toolchain commits do not retroactively alter that evidence identity
-- Latest refreshed external gate packet commit: `eddcc2379769d3151af4091832566db6ae1ea3f6`
-- Latest refreshed one-shot external gate worksheet commit: `36718fca0eae97b7ad03b648766cfaad3407f545`
-- Latest repository-side procedure/launch worksheet commit before refresh: `095e9295244d350374fc40dadc8d80f2d1287831`
+- External gate launch packet currently present at `PHASE19_EXTERNAL_GATE_LAUNCH_PACKET.md`; its frozen evidence identity is `e117b655...`
+- One-shot external gate worksheet is maintained as a repository-side procedure artifact; its frozen evidence identity is `e117b655...`
+- Latest repository-side procedure/launch worksheet refresh lineage includes `eddcc2379769d3151af4091832566db6ae1ea3f6`, `36718fca0eae97b7ad03b648766cfaad3407f545`, and `095e9295244d350374fc40dadc8d80f2d1287831`
 - Recovered-settlement certification `#420`: **GREEN**
 - Production chain observation adapter: `77c3c457...`
 - Read-only transaction/receipt RPC allowlist: `64f96d8b...`
@@ -41,8 +41,6 @@
 - Batched Phase-19 gate console: `scripts/phase19_gate_console.py`
 - Consolidated coordinator binds accepted signer, Polygon authority, private relay, shadow/staging, and realized-PnL evidence to manifest-level signer, executor, artifact, private-relay, operator, and witness identities; absolute evidence paths are rejected and relative paths resolve from the external manifest workspace
 - Cross-lane provenance binding: canonical evidence hashes may be joined authority → shadow/staging → realized-PnL; mismatches fail closed while legacy opaque fixture labels remain accepted for compatibility
-- External gate launch packet is refreshed to verified artifact `fc0df125...`
-- One-shot external gate session worksheet is refreshed to verified artifact `fc0df125...`
 - Shadow/staging evidence validator: `scripts/validate_shadow_staging_evidence.py`
 - Realized-PnL evidence validator: `scripts/validate_realized_pnl_evidence.py`
 - Realized-PnL provenance rule: arithmetic validation does not constitute independent proof of actual settlement
