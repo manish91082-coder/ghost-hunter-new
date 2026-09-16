@@ -7,8 +7,8 @@ Close as many independently satisfiable production evidence lanes as possible in
 
 ## Frozen Artifact
 
-- Verified artifact commit: `7506b41c1e7ec876b39ae8428896c374a48b0181`
-- CI certification: Phase-19 workflow run `451` GREEN
+- Verified artifact commit: `eea845af1388ea619c54ffc4faf8a34d215e2aa1`
+- CI certification: Phase-19 workflow run `456` GREEN
 - This worksheet does not authorize production execution or live capital.
 
 ## Session Rules
@@ -27,7 +27,7 @@ Close as many independently satisfiable production evidence lanes as possible in
 PowerShell:
 
 ```powershell
-git checkout 7506b41c1e7ec876b39ae8428896c374a48b0181
+git checkout eea845af1388ea619c54ffc4faf8a34d215e2aa1
 git rev-parse HEAD
 python -m unittest discover -s tests/phase19 -v
 ```
@@ -35,7 +35,7 @@ python -m unittest discover -s tests/phase19 -v
 Expected artifact identity:
 
 ```text
-7506b41c1e7ec876b39ae8428896c374a48b0181
+eea845af1388ea619c54ffc4faf8a34d215e2aa1
 ```
 
 ## Lane B: Production Signer Identity
