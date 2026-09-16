@@ -13,7 +13,7 @@ class ConsolidatedEvidenceSessionValidatorTests(unittest.TestCase):
         data = {
             "schema_version": 1,
             "session_id": "sess-001",
-            "verified_artifact_commit": "2caa8ff285fa98e061dc22da82502bff2765b812",
+            "verified_artifact_commit": "e117b6550686cf5e0ff787d9bd7d85e83996db07",
             "intended_executor": "0x1111111111111111111111111111111111111111",
             "expected_signer": "0x2222222222222222222222222222222222222222",
             "intended_private_relay": "approved-relay",
@@ -38,6 +38,12 @@ class ConsolidatedEvidenceSessionValidatorTests(unittest.TestCase):
             root = Path(temp)
             manifest = self._manifest(root)
             self.assertEqual(main([str(manifest)]), 0)
+
+    def test_frozen_artifact_mismatch_is_rejected_before_lane_validation(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            manifest = self._manifest(root, verified_artifact_commit="2caa8ff285fa98e061dc22da82502bff2765b812")
+            self.assertEqual(main([str(manifest)]), 2)
 
     def test_unknown_lane_is_rejected(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -142,7 +148,7 @@ class ConsolidatedEvidenceSessionValidatorTests(unittest.TestCase):
             }
             shadow = {
                 "schema_version": 1,
-                "artifact_commit": "2caa8ff285fa98e061dc22da82502bff2765b812",
+                "artifact_commit": "e117b6550686cf5e0ff787d9bd7d85e83996db07",
                 "executor_identity": "0x1111111111111111111111111111111111111111",
                 "expected_signer": "0x2222222222222222222222222222222222222222",
                 "route_proof_identity": "route",
