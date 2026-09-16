@@ -29,8 +29,9 @@ def amount_result(value):
 
 
 class FakeRpc:
-    def __init__(self):
+    def __init__(self, quickswap_result=None):
         self.calls = []
+        self.quickswap_result = quickswap_result or array_result([1000, 900])
 
     def call(self, method, params):
         self.calls.append((method, params))
@@ -39,10 +40,7 @@ class FakeRpc:
         if method == "eth_getBlockByNumber": return {"timestamp": "0x1000"}
         if method == "eth_call":
             to = params[0]["to"]
-            if to == ROUTER:
-                # Route direction is inferred from the quoted path and only
-                # the amount continuity matters for this unit fixture.
-                return array_result([1000, 900])
+            if to == ROUTER: return self.quickswap_result
             if to == FACTORY: return address_result(POOL)
             if to == QUOTER: return amount_result(1100)
         raise AssertionError((method, params))
@@ -69,7 +67,7 @@ class CrossVenueRouteTests(unittest.TestCase):
         self.assertTrue(all(x[1][1] == "0x1234" for x in eth_calls))
 
     def test_uniswap_to_quickswap_reverses_venue_order_at_same_block(self):
-        rpc = FakeRpc()
+        rpc = FakeRpc(quickswap_result=array_result([1100, 1100]))
         context = MarketBlockSnapshot(137, 0x9999, 0x2000)
         route = build_uniswap_to_quickswap_route(
             rpc, QuickSwapV2ExactQuoter(rpc, ROUTER),
