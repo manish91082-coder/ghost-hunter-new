@@ -21,9 +21,9 @@ The project goal is not Phase-19. The goal is a working, evidence-backed Polygon
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Latest verified engineering commit: `9721d023103223357d112a3522d647a58204592e`
-- Latest verified Phase-19 CI certification: workflow run `539` / run ID `35136908600` **GREEN** on `9721d023103223357d112a3522d647a58204592e`; checkout, Python/dependencies, Foundry install, Solidity compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Phase-19 unittest suite all completed successfully.
-- Run `538` had one test-only failure in the newly added opportunity-execution regression: the below-floor fixture accidentally evaluated above the strict floor. The fixture was corrected; no product-code defect was established by that failure. Run `539` then passed the complete 684-test suite.
+- Latest verified engineering commit: `d7cb30e48b46e41ae7e4a0dbf7a015eec118dc07`
+- Latest verified Phase-19 CI certification: workflow run `545` / run ID `35138800418` **GREEN** on `d7cb30e48b46e41ae7e4a0dbf7a015eec118dc07`; checkout, Python/dependencies, Foundry install, Solidity compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Phase-19 unittest suite all completed successfully; the unittest suite reported **687 tests, 0 failures, 0 errors**.
+- Run `544` had one test-only failure in `test_complete_frontier_is_evaluated_and_best_is_selected`: the reverse-route frontier fixture declared `loan_amount=2000` while reusing a simulation with `initial_amount=1000`. The product hardening correctly rejected that mismatch. The fixture was corrected without changing the production guard, and run `545` then passed the complete 687-test suite.
 - `phantomx/opportunity_execution.py` now provides the narrow hand-off from a strictly profitable `OpportunityEconomicEvaluation` to deterministic `assemble_execution`, with exact venue-path validation and no quoting, valuation, signing, submission, or broadcast.
 - `tests/phase19/test_opportunity_execution.py` covers profitable discovery-to-execution binding, strict below-floor rejection before assembly, and unsupported venue-path fail-closed behavior.
 - Concrete cross-venue discovery integration remains present in `phantomx/cross_venue_discovery.py`: one canonical Polygon block is acquired once and reused across both supported venue directions and the full supplied loan-size frontier.
