@@ -1,0 +1,1 @@
+Repository-side Phase-19 control-room consistency validation was added to detect coordination drift.
