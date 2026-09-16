@@ -5,9 +5,10 @@
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Latest verified software/project commit: `2caa8ff285fa98e061dc22da82502bff2765b812`
-- Latest repository-side procedure commit: `39fb31cce875e99cff32b171d45b62eb88c597cb`
-- Current Phase-19 CI certification: workflow run `446` / run ID `35067167421` **GREEN** on `2caa8ff285fa98e061dc22da82502bff2765b812`; all primary steps passed: dependency install, Foundry install, Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and full Phase-19 unittest suite
+- Latest verified software/project commit: `0f4257956d265e63d0bdd39fc339bce80b5585d1`
+- Latest repository-side procedure/test commit: `0f4257956d265e63d0bdd39fc339bce80b5585d1`
+- Current Phase-19 CI run: workflow run `450` / run ID `35069957633` **IN PROGRESS** on `0f4257956d265e63d0bdd39fc339bce80b5585d1`; dependency installation is in progress and remaining deterministic steps are pending
+- Latest completed Phase-19 CI certification: workflow run `446` / run ID `35067167421` **GREEN** on `2caa8ff285fa98e061dc22da82502bff2765b812`; all primary steps passed
 - Previous Phase-19 CI certification: workflow run `442` / run ID `35065382193` **GREEN** on `7f5a839bd5968961f23dff27b9dfa8da41539993`
 - Final executable implementation: `d018f8aea32d7db5aa012b02dcaacab87435af4c`
 - Recovered-settlement certification `#420`: **GREEN**
@@ -36,6 +37,8 @@
 - Controlled private-relay evidence validator tests: `tests/phase19/test_private_relay_evidence_validator.py`
 - Accelerated parallel gate plan: `PHASE19_ACCELERATED_GATE_PLAN.md`
 - Consolidated external evidence session protocol: `PHASE19_CONSOLIDATED_EXTERNAL_EVIDENCE_SESSION.md`
+- Consolidated external evidence session coordinator: `scripts/validate_consolidated_evidence_session.py`
+- Consolidated external evidence session coordinator tests: `tests/phase19/test_consolidated_evidence_session_validator.py`
 - Historical deployment-record forensic finding: older commit `8460c589ef6b82b1da08d73624f29d0cd63d2549` contains `v2/v3` records asserting a Polygon Mainnet deployment at `0x24056bCA6538693aE94Cc97E82f21Ee4EC7f1286` with deployment tx `0x92bc4dc8b3450332c281445fb4443f8725586b18e880a063e0892af2c28c595a`; these are historical repository claims only and are not accepted as current production-authority evidence
 - Production readiness decision: **NOT ACHIEVED**
 - Controlled production signer identity: **BLOCKED**. No fresh externally held production-signer challenge signature and provenance record is present.
@@ -76,6 +79,8 @@ The controlled authority evidence validator checks Polygon chain identity, commo
 
 The private-relay boundary accepts only explicit HTTPS configuration with an explicit `private=true` assertion and no public fallback. Authentication material is sourced externally and is intentionally excluded from the evidence package and routine representation. The private-relay evidence validator is offline-only and validates schema, HTTPS/private assertions, external authentication configuration assertion, prohibited material markers, provenance, and canonical evidence integrity.
 
+The consolidated session coordinator validates the session manifest structure and invokes only the existing offline lane validators for evidence files that are actually present. Missing evidence remains BLOCKED; one lane cannot infer GREEN for another.
+
 ## P0 BLOCKERS
 1. Controlled production signer identity proof.
 2. Controlled production Polygon provider authority proof using approved endpoints and intended deployed executor.
@@ -86,14 +91,14 @@ The private-relay boundary accepts only explicit HTTPS configuration with an exp
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-Workflow run `446` / run ID `35067167421` has completed **GREEN**. Private-relay evidence intake, offline validation, and adversarial validator coverage are CI-certified.
+Workflow run `446` / run ID `35067167421` is the latest completed **GREEN** certification. The accelerated plan and consolidated session protocol are repository-defined, and the session coordinator has now been added with adversarial unit coverage. Workflow run `450` / run ID `35069957633` is currently validating that coordinator and its tests on commit `0f4257956d265e63d0bdd39fc339bce80b5585d1`.
 
-The accelerated plan is now implemented as a concrete consolidated external-evidence session protocol. The session protocol permits signer, Polygon authority, private relay, and identical-artifact shadow/staging observations to be captured in one controlled session where their external prerequisites are simultaneously available, while realized PnL remains dependent on a separately controlled observation/submission chain.
+The coordinator is designed to collapse repetitive operator validation into one offline command after evidence capture. It does not establish production approval, provenance, signing authority, or live execution authorization.
 
-No production gate has been promoted from repository tests or historical deployment claims.
+No production gate has been promoted from repository tests, historical deployment claims, public/fork observations, or estimated economics.
 
 ## NEXT ATOMIC ACTION
-Execute the consolidated external evidence session when approved external inputs are available. Capture all independently satisfiable lanes in one session, run each lane's offline validator, retain independent witness/provenance, and promote only gates with complete accepted evidence. Keep signer, live signing, public broadcast, realized-PnL, and live-capital locks intact until their own acceptance chains are complete.
+Observe workflow run `450` to completion. If GREEN, freeze the final verified artifact identity and use the consolidated session coordinator as the single offline validation entry point for the next controlled external-evidence session. If CI fails, repair only the failed coordinator/test boundary. Keep signer, live signing, public broadcast, realized-PnL, and live-capital locks intact until their own acceptance chains are complete.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
