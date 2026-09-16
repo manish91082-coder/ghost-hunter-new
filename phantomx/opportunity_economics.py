@@ -63,8 +63,9 @@ def evaluate_discovered_opportunities(
 
     ``build_proof_for`` is the boundary where real valuation and complete
     transaction-attributable cost evidence must be supplied. Discovery itself
-    remains valuation-independent. No partial economic ranking is returned if
-    any candidate fails proof construction.
+    remains valuation-independent. Below-floor proofs are retained as evidence
+    and excluded from selection; an evaluator failure aborts the pass instead
+    of returning a partial ranking.
     """
     items = tuple(candidates)
     if not items:
@@ -114,16 +115,18 @@ def make_economic_proof_builder(
     max_relay_usd: Decimal | int | str,
     minimum_net_profit_usd: Decimal | int | str = STRICT_MIN_NET_PROFIT_USD,
 ) -> Callable[[OpportunityCandidate], EconomicProof]:
-    """Create an explicit-proof builder from caller-supplied valuation/cost evidence.
+    """Create an evidence-to-proof adapter that preserves below-floor proofs.
 
     ``valuation_for`` returns ``(valuation_hash, final_settlement_usd,
-    loan_principal_usd)``. The caller remains responsible for providing genuine,
-    evidence-backed valuation data.
+    loan_principal_usd)``. The caller remains responsible for supplying genuine,
+    evidence-backed valuation data. Selection still occurs only when the proof
+    exceeds the strict minimum net-profit floor.
     """
     def build(candidate: OpportunityCandidate) -> EconomicProof:
         valuation_hash, final_settlement_usd, loan_principal_usd = valuation_for(candidate)
         costs = costs_for(candidate)
-        return build_economic_proof(
+        return EconomicProof(
+            schema_version=1,
             route_hash=candidate.simulation.route_hash,
             quote_hashes=tuple(leg.quote_hash for leg in candidate.simulation.legs),
             valuation_hash=valuation_hash,
