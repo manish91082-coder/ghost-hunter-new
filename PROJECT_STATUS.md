@@ -10,6 +10,7 @@
 - Frozen external evidence artifact remains `e117b6550686cf5e0ff787d9bd7d85e83996db07`; engineering commits after that artifact do not retroactively alter its identity
 - Consolidated external-evidence validator now enforces that the session manifest `verified_artifact_commit` equals the frozen external evidence artifact
 - Operator preflight now requires the frozen artifact to be present in local git history and requires current HEAD to descend from that artifact, removing the brittle historical head allow-list while retaining fail-closed ancestry validation
+- Current repository scan found no remaining occurrences of the retired operator-preflight allow-list heads in indexed repository search
 - Required external-evidence validators remain present for signer, Polygon authority, private relay, shadow/staging, and realized PnL
 - Certification PR `#1`: **OPEN / MERGE CONFLICTS**; merge is not required for external evidence capture
 - External evidence handoff issue `#2`: **OPEN / BLOCKED**; no current production evidence package has been accepted
