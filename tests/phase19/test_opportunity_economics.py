@@ -106,6 +106,24 @@ class OpportunityEconomicsTests(unittest.TestCase):
                 ),
             )
 
+    def test_candidate_loan_amount_must_match_simulation_before_evaluation(self):
+        malformed = OpportunityCandidate(
+            token_a=self.token_a,
+            token_b=self.token_b,
+            venue_path=self.candidate.venue_path,
+            loan_amount=2000,
+            simulation=self.simulation,
+        )
+        called = []
+
+        def unexpected_evaluator(candidate):
+            called.append(candidate)
+            return self._proof(self.candidate)
+
+        with self.assertRaises(OpportunityEconomicsError):
+            evaluate_discovered_opportunities((malformed,), unexpected_evaluator)
+        self.assertEqual(called, [])
+
     def test_no_strictly_profitable_candidate_fails_closed(self):
         with self.assertRaises(OpportunityEconomicsError):
             evaluate_discovered_opportunities(
