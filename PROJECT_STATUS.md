@@ -5,11 +5,10 @@
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Latest verified software/project commit: `0f4257956d265e63d0bdd39fc339bce80b5585d1`
-- Latest repository-side procedure/test commit: `0f4257956d265e63d0bdd39fc339bce80b5585d1`
-- Current Phase-19 CI run: workflow run `450` / run ID `35069957633` **IN PROGRESS** on `0f4257956d265e63d0bdd39fc339bce80b5585d1`; dependency installation is in progress and remaining deterministic steps are pending
+- Latest verified software/project commit: `7506b41c1e7ec876b39ae8428896c374a48b0181`
+- Latest repository-side procedure/test commit: `7506b41c1e7ec876b39ae8428896c374a48b0181`
 - Latest completed Phase-19 CI certification: workflow run `446` / run ID `35067167421` **GREEN** on `2caa8ff285fa98e061dc22da82502bff2765b812`; all primary steps passed
-- Previous Phase-19 CI certification: workflow run `442` / run ID `35065382193` **GREEN** on `7f5a839bd5968961f23dff27b9dfa8da41539993`
+- Failed coordinator certification: workflow run `450` / run ID `35069957633` **FAILED** only in the consolidated-session test `test_manifest_with_existing_validator_file_reports_review_required`; the failure was an invalid test fixture path calculation (`TemporaryDirectory` outside the repository root), while compile, EVM integration, Polygon fork smoke, Polygon fork execution probe, and the broader unittest suite otherwise passed until that single test error
 - Final executable implementation: `d018f8aea32d7db5aa012b02dcaacab87435af4c`
 - Recovered-settlement certification `#420`: **GREEN**
 - Production chain observation adapter: `77c3c457...`
@@ -79,7 +78,7 @@ The controlled authority evidence validator checks Polygon chain identity, commo
 
 The private-relay boundary accepts only explicit HTTPS configuration with an explicit `private=true` assertion and no public fallback. Authentication material is sourced externally and is intentionally excluded from the evidence package and routine representation. The private-relay evidence validator is offline-only and validates schema, HTTPS/private assertions, external authentication configuration assertion, prohibited material markers, provenance, and canonical evidence integrity.
 
-The consolidated session coordinator validates the session manifest structure and invokes only the existing offline lane validators for evidence files that are actually present. Missing evidence remains BLOCKED; one lane cannot infer GREEN for another.
+The consolidated session coordinator validates the session manifest structure and invokes only existing offline lane validators for evidence files that are actually present. Missing evidence remains BLOCKED; one lane cannot infer GREEN for another.
 
 ## P0 BLOCKERS
 1. Controlled production signer identity proof.
@@ -91,14 +90,12 @@ The consolidated session coordinator validates the session manifest structure an
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-Workflow run `446` / run ID `35067167421` is the latest completed **GREEN** certification. The accelerated plan and consolidated session protocol are repository-defined, and the session coordinator has now been added with adversarial unit coverage. Workflow run `450` / run ID `35069957633` is currently validating that coordinator and its tests on commit `0f4257956d265e63d0bdd39fc339bce80b5585d1`.
+Workflow run `450` / run ID `35069957633` failed on one coordinator unit-test fixture path calculation. The production/economic test families shown in the job log otherwise passed, including all existing authority, relay, signer, submission, recovery, and strict-profit controls. The failure is isolated to test setup rather than the underlying production-boundary implementation.
 
-The coordinator is designed to collapse repetitive operator validation into one offline command after evidence capture. It does not establish production approval, provenance, signing authority, or live execution authorization.
-
-No production gate has been promoted from repository tests, historical deployment claims, public/fork observations, or estimated economics.
+The failed fixture used a temporary directory outside the repository root and then incorrectly attempted to convert that absolute path to a repository-relative evidence path. This is being repaired by creating the temporary fixture directory underneath the repository root for that test, preserving the coordinator's intentional repository-root confinement.
 
 ## NEXT ATOMIC ACTION
-Observe workflow run `450` to completion. If GREEN, freeze the final verified artifact identity and use the consolidated session coordinator as the single offline validation entry point for the next controlled external-evidence session. If CI fails, repair only the failed coordinator/test boundary. Keep signer, live signing, public broadcast, realized-PnL, and live-capital locks intact until their own acceptance chains are complete.
+Run the repaired consolidated-session coordinator through Phase-19 CI. If GREEN, freeze the repaired artifact identity and proceed directly to the consolidated external-evidence session preparation/execution path. No production gate promotion is permitted from this CI repair.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
