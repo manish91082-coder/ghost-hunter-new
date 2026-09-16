@@ -6,7 +6,7 @@
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
 - Latest verified software/project commit: `2caa8ff285fa98e061dc22da82502bff2765b812`
-- Latest repository-side procedure commit: `c3fcd6df0e05a9bd5a722724ba428650d956982b`
+- Latest repository-side procedure commit: `39fb31cce875e99cff32b171d45b62eb88c597cb`
 - Current Phase-19 CI certification: workflow run `446` / run ID `35067167421` **GREEN** on `2caa8ff285fa98e061dc22da82502bff2765b812`; all primary steps passed: dependency install, Foundry install, Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and full Phase-19 unittest suite
 - Previous Phase-19 CI certification: workflow run `442` / run ID `35065382193` **GREEN** on `7f5a839bd5968961f23dff27b9dfa8da41539993`
 - Final executable implementation: `d018f8aea32d7db5aa012b02dcaacab87435af4c`
@@ -35,6 +35,7 @@
 - Controlled private-relay evidence validator: `scripts/validate_private_relay_evidence.py`
 - Controlled private-relay evidence validator tests: `tests/phase19/test_private_relay_evidence_validator.py`
 - Accelerated parallel gate plan: `PHASE19_ACCELERATED_GATE_PLAN.md`
+- Consolidated external evidence session protocol: `PHASE19_CONSOLIDATED_EXTERNAL_EVIDENCE_SESSION.md`
 - Historical deployment-record forensic finding: older commit `8460c589ef6b82b1da08d73624f29d0cd63d2549` contains `v2/v3` records asserting a Polygon Mainnet deployment at `0x24056bCA6538693aE94Cc97E82f21Ee4EC7f1286` with deployment tx `0x92bc4dc8b3450332c281445fb4443f8725586b18e880a063e0892af2c28c595a`; these are historical repository claims only and are not accepted as current production-authority evidence
 - Production readiness decision: **NOT ACHIEVED**
 - Controlled production signer identity: **BLOCKED**. No fresh externally held production-signer challenge signature and provenance record is present.
@@ -47,7 +48,7 @@
 - Economic invariant: realized net profit must be **strictly greater than $0.20 after all applicable costs**
 
 ## ACCELERATION MODE
-Independent production-evidence lanes are now treated as parallel workstreams instead of serial micro-steps. Repository-safe preparation, CI verification, forensic review, and evidence packaging advance concurrently. Only evidence-dependent gate promotion remains serialized.
+Independent production-evidence lanes are processed as parallel workstreams instead of serial micro-steps. Repository-safe preparation, CI verification, forensic review, and evidence packaging advance concurrently. Evidence-dependent gate promotion remains independently serialized.
 
 Current parallel lanes:
 - A: Polygon production authority evidence
@@ -56,7 +57,7 @@ Current parallel lanes:
 - D: identical-artifact shadow/staging evidence
 - E: realized economics/PnL evidence
 
-A single controlled external evidence session should capture every currently satisfiable lane rather than requiring separate sessions. No secrets are combined into the evidence bundle.
+A single consolidated controlled external evidence session should capture every currently satisfiable lane. No secrets are combined into the evidence bundle.
 
 ## SAFETY
 Evidence first. Contradictory or missing evidence is UNKNOWN/BLOCKED. Private execution has no public fallback. No live signing, public broadcast, production execution authorization, or live capital is granted during Phase 19 certification. Private keys and relay authentication material never enter repository code, fixtures, logs, or chat.
@@ -85,14 +86,14 @@ The private-relay boundary accepts only explicit HTTPS configuration with an exp
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-Workflow run `446` / run ID `35067167421` has completed **GREEN**. Private-relay evidence intake, offline validator, and adversarial validator coverage are CI-certified.
+Workflow run `446` / run ID `35067167421` has completed **GREEN**. Private-relay evidence intake, offline validation, and adversarial validator coverage are CI-certified.
 
-A new accelerated parallel-gate plan is now documented in `PHASE19_ACCELERATED_GATE_PLAN.md`. The plan explicitly permits concurrent preparation and one controlled evidence session across signer, Polygon authority, private relay, shadow/staging, and realized-economics lanes while preserving independent acceptance criteria.
+The accelerated plan is now implemented as a concrete consolidated external-evidence session protocol. The session protocol permits signer, Polygon authority, private relay, and identical-artifact shadow/staging observations to be captured in one controlled session where their external prerequisites are simultaneously available, while realized PnL remains dependent on a separately controlled observation/submission chain.
 
-Current research note: Polygon has an actively documented Private Mempool for private transaction submission on Polygon, launched in 2026 with a free starting tier. Polygon states that reads continue through existing RPC providers while submission uses the private path. Access/approval is handled separately, so this is a candidate production infrastructure option rather than automatic project authorization. Current Polygon support/documentation also distinguishes private/dedicated provider infrastructure from public endpoints for production use. Current QuickNode and Alchemy documentation confirms Polygon PoS mainnet chain ID 137 and the 2026 migration from Erigon-specific methods to Bor-compatible behavior.
+No production gate has been promoted from repository tests or historical deployment claims.
 
 ## NEXT ATOMIC ACTION
-Operate in accelerated mode: prepare and execute one consolidated controlled external-evidence session covering all currently satisfiable independent lanes. For any lane lacking approved external inputs, keep it BLOCKED while continuing repository-safe work on the other lanes. Validate every evidence package offline and require independent provenance review before any gate promotion.
+Execute the consolidated external evidence session when approved external inputs are available. Capture all independently satisfiable lanes in one session, run each lane's offline validator, retain independent witness/provenance, and promote only gates with complete accepted evidence. Keep signer, live signing, public broadcast, realized-PnL, and live-capital locks intact until their own acceptance chains are complete.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
