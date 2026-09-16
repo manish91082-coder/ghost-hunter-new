@@ -16,6 +16,7 @@ class RealizedPnlSessionBindingTests(unittest.TestCase):
             "verified_artifact_commit": "fc0df125ee6d0ea694b976ff7d86622b9e45eb15",
             "intended_executor": "0x1111111111111111111111111111111111111111",
             "expected_signer": "0x2222222222222222222222222222222222222222",
+            "intended_private_relay": "approved-relay",
             "operator_identity": "operator",
             "witness_identity": "witness",
             "observed_at_utc": "2026-09-16T10:00:00Z",
