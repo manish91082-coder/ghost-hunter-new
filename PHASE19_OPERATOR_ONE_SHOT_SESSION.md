@@ -7,9 +7,10 @@ Close as many independently satisfiable production evidence lanes as possible in
 
 ## Frozen Artifact
 
-- Verified artifact commit: `eea845af1388ea619c54ffc4faf8a34d215e2aa1`
-- CI certification: Phase-19 workflow run `456` GREEN
+- Verified artifact commit: `fc0df125ee6d0ea694b976ff7d86622b9e45eb15`
+- CI certification: Phase-19 workflow run `467` GREEN
 - This worksheet does not authorize production execution or live capital.
+- Evidence collected for any other artifact commit is not interchangeable with this session.
 
 ## Session Rules
 
@@ -21,13 +22,15 @@ Close as many independently satisfiable production evidence lanes as possible in
 6. Any contradiction remains UNKNOWN/BLOCKED.
 7. No public fallback is permitted for private submission.
 8. Do not broadcast a live transaction as part of this evidence session.
+9. The consolidated coordinator must bind accepted evidence to the session artifact, executor, signer, operator, and witness identities.
+10. Evidence paths in the session manifest are relative to the external session workspace. Absolute paths are rejected.
 
 ## Stage 0: Artifact Freeze
 
 PowerShell:
 
 ```powershell
-git checkout eea845af1388ea619c54ffc4faf8a34d215e2aa1
+git checkout fc0df125ee6d0ea694b976ff7d86622b9e45eb15
 git rev-parse HEAD
 python -m unittest discover -s tests/phase19 -v
 ```
@@ -35,7 +38,7 @@ python -m unittest discover -s tests/phase19 -v
 Expected artifact identity:
 
 ```text
-eea845af1388ea619c54ffc4faf8a34d215e2aa1
+fc0df125ee6d0ea694b976ff7d86622b9e45eb15
 ```
 
 ## Lane B: Production Signer Identity
@@ -90,13 +93,13 @@ Acceptance requires Polygon chain 137, one common block, runtime-code identity, 
 
 Use an endpoint that has actually been approved for this project and whose authentication is externally configured. Do not place credentials in the evidence package.
 
-Current Polygon research confirms Private Mempool is live and describes a private transaction-submission path that bypasses the public mempool. Polygon's current access page is still an access-request flow, so availability must not be treated as project approval. A second current candidate path is bloXroute private submission on Polygon. These are discovery inputs only; the project's evidence standard remains stricter.
-
 Capture the non-secret observation record, then validate:
 
 ```powershell
 python scripts/validate_private_relay_evidence.py private_relay_evidence.json
 ```
+
+Vendor availability is not project approval. No public fallback is permitted.
 
 ## Lane D: Identical-Artifact Shadow / Staging
 
@@ -120,13 +123,13 @@ The staging evidence must demonstrate that the artifact, authority inputs, signe
 
 ## Consolidated Validation
 
-Build one session manifest referencing only evidence files that actually exist. Then run:
+Build one session manifest referencing only evidence files that actually exist inside the external session workspace. Then run from the verified repository checkout:
 
 ```powershell
 python scripts/validate_consolidated_evidence_session.py session_manifest.json
 ```
 
-The coordinator must never infer GREEN from a missing file. A successful coordinator result means the available evidence is structurally valid and ready for review; it does not itself grant production authorization.
+The coordinator must never infer GREEN from a missing file. A successful coordinator result means the available evidence is structurally valid and bound to the session identities; it does not itself grant production authorization.
 
 ## Lane E: Realized Settlement / PnL
 
@@ -147,13 +150,15 @@ This lane remains locked until all prerequisite production gates are separately 
 ## End-of-Session Review
 
 ```text
-[ ] Frozen artifact verified
+[ ] Frozen artifact verified: fc0df125ee6d0ea694b976ff7d86622b9e45eb15
 [ ] Signer evidence externally produced and independently verified
 [ ] Polygon authority quorum evidence captured
 [ ] Private relay observation evidence captured
 [ ] Identical-artifact shadow/staging evidence captured
+[ ] Evidence files are inside the external session workspace
 [ ] Consolidated manifest created
 [ ] Offline validators passed for every evidence-backed lane
+[ ] Session identity bindings passed
 [ ] Independent witness reviewed the evidence
 [ ] No secret material entered any artifact/log/chat
 [ ] No production broadcast occurred
