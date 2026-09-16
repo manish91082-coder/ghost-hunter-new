@@ -7,8 +7,8 @@
 - Branch: `phase-19-e2e-harness`
 - Latest verified software/project commit: `7f5a839bd5968961f23dff27b9dfa8da41539993`
 - Latest repository-side procedure/test commit: `2caa8ff285fa98e061dc22da82502bff2765b812`
-- Current Phase-19 CI certification: workflow run `442` / run ID `35065382193` **GREEN** on `7f5a839bd5968961f23dff27b9dfa8da41539993`; all primary steps passed: dependency install, Foundry install, Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and full Phase-19 unittest suite
-- Prior completed Phase-19 CI certification: run `35018490583` / workflow run `439` **GREEN** on certified software commit `ebf794537c531a1241426a2bca9f355e205e44fc`
+- Current Phase-19 CI certification: workflow run `446` / run ID `35067167421` **GREEN** on `2caa8ff285fa98e061dc22da82502bff2765b812`; all primary steps passed: dependency install, Foundry install, Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and full Phase-19 unittest suite
+- Previous Phase-19 CI certification: workflow run `442` / run ID `35065382193` **GREEN** on `7f5a839bd5968961f23dff27b9dfa8da41539993`
 - Final executable implementation: `d018f8aea32d7db5aa012b02dcaacab87435af4c`
 - Recovered-settlement certification `#420`: **GREEN**
 - Production chain observation adapter: `77c3c457...`
@@ -38,7 +38,7 @@
 - Production readiness decision: **NOT ACHIEVED**
 - Controlled production signer identity: **BLOCKED**. No fresh externally held production-signer challenge signature and provenance record is present.
 - Controlled production Polygon provider authority: **BLOCKED**. Repository-side observer, evidence contract, validator, tests, and controlled observation runbook are prepared and CI-certified, but no controlled production observation evidence from explicitly approved endpoints is present.
-- Controlled production private relay: **BLOCKED**. HTTPS/private assertion/evidence tooling is now prepared and adversarially tested in the repository, but no approved production relay proof/evidence is present.
+- Controlled production private relay: **BLOCKED**. HTTPS/private assertion/evidence tooling and adversarial validation are CI-certified, but no approved production relay observation evidence is present.
 - Controlled shadow/staging: **BLOCKED**. No independently evidenced production-like shadow/staging execution artifact using the identical immutable chain is present.
 - Realized live PnL: **BLOCKED**. No controlled live-mainnet realized settlement evidence exists and live capital remains locked.
 - Live mainnet execution: **BLOCKED**
@@ -52,7 +52,7 @@ Evidence first. Contradictory or missing evidence is UNKNOWN/BLOCKED. Private ex
 `LIVE BLOCK → DATA/RPC QUORUM → EXACT QUOTES → ROUTE ENGINE → LOAN OPTIMIZER → EXACT COST MODEL → WORST-CASE NET PNL → AI RANKING → EVM PREFLIGHT → GOVERNOR → SIGNER → PRIVATE SUBMIT → ON-CHAIN EXECUTOR → RECEIPT AUDITOR → REALIZED NET PNL`
 
 ## VERIFIED CAPABILITIES
-Deterministic economics, immutable authorization/envelope binding, quote and simulation evidence, EVM preflight, Governor, signer verification, durable nonce/transaction state, private-only submission, recovery, receipt reconciliation, executor controls, and authority quorum/provenance/freshness controls are implemented. #420, #423, #427, #430, #432, #435, #436, #437, and #442 provide certified repository-side gates.
+Deterministic economics, immutable authorization/envelope binding, quote and simulation evidence, EVM preflight, Governor, signer verification, durable nonce/transaction state, private-only submission, recovery, receipt reconciliation, executor controls, and authority quorum/provenance/freshness controls are implemented. #420, #423, #427, #430, #432, #435, #436, #437, #442, and #446 provide certified repository-side gates.
 
 The production chain observer is read-only and requires a unique quorum-backed decision.
 
@@ -60,7 +60,7 @@ The production authority module remains environment-driven and read-only, requir
 
 The controlled authority evidence validator checks Polygon chain identity, common-block consistency, owner/signer binding, runtime-code identity, quorum membership, canonical evidence hash, and required provenance fields without network access, signing, submission, or broadcast.
 
-The private-relay boundary accepts only explicit HTTPS configuration with an explicit `private=true` assertion and no public fallback. Authentication material is sourced externally and is intentionally excluded from the evidence package and routine representation. The new evidence validator is offline-only and validates schema, HTTPS/private assertions, external authentication configuration assertion, prohibited material markers, provenance, and canonical evidence integrity.
+The private-relay boundary accepts only explicit HTTPS configuration with an explicit `private=true` assertion and no public fallback. Authentication material is sourced externally and is intentionally excluded from the evidence package and routine representation. The private-relay evidence validator is offline-only and validates schema, HTTPS/private assertions, external authentication configuration assertion, prohibited material markers, provenance, and canonical evidence integrity.
 
 ## P0 BLOCKERS
 1. Controlled production signer identity proof.
@@ -72,14 +72,12 @@ The private-relay boundary accepts only explicit HTTPS configuration with an exp
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-Workflow run `442` / run ID `35065382193` is **GREEN**. The authority validator coverage and all earlier Phase-19 deterministic controls are CI-certified.
+Workflow run `446` / run ID `35067167421` has completed **GREEN**. The private-relay evidence intake, offline validator, and validator adversarial coverage are now CI-certified on commit `2caa8ff285fa98e061dc22da82502bff2765b812`. This certifies repository-side deterministic verification only; it does not establish approval, reachability, or successful authentication of any real production relay.
 
-Repository-side private-relay evidence intake, offline validation, and adversarial validator coverage have now been added. The current repository-side implementation is preparation only and does not constitute proof that any real production relay is approved or reachable.
-
-The new validator intentionally refuses to accept non-HTTPS, non-private, missing-authentication, unknown-field, prohibited-material, provenance-missing, or tampered evidence packages.
+The historical Polygon deployment records remain forensic-only and do not satisfy production authority acceptance.
 
 ## NEXT ATOMIC ACTION
-Verify the new private-relay evidence validator through the Phase-19 CI workflow. If CI fails, repair only the failing boundary. If CI passes, proceed to a controlled external private-relay observation against an explicitly approved production private endpoint and retain only non-secret evidence. Keep signer, Polygon authority, shadow, realized-PnL, and live-capital gates locked.
+Proceed to the next production-gate boundary: controlled external Polygon authority observation and controlled external private-relay observation. Only explicitly approved production endpoints/configuration may generate evidence. Retain non-secret evidence, validate it offline, obtain independent provenance review, and promote gates only on accepted evidence. Keep signer, shadow, realized-PnL, live signing, public broadcast, and live-capital gates locked.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
