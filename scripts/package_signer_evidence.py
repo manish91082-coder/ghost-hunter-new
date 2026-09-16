@@ -13,6 +13,8 @@ import sys
 from pathlib import Path
 from typing import Any, Sequence
 
+from phantomx.hashing import keccak256_hex
+
 _HEX32_RE = re.compile(r"^0x[0-9a-fA-F]{64}$")
 _HEX65_RE = re.compile(r"^0x[0-9a-fA-F]{130}$")
 _ADDR_RE = re.compile(r"^0x[0-9a-fA-F]{40}$")
@@ -52,10 +54,17 @@ def _load_verifier_output(path: Path) -> dict[str, Any]:
     recovered = _match(record["recovered_address"], _ADDR_RE, "recovered_address")
     if expected != recovered:
         raise ValueError("recovered_address does not match expected_address")
-    _match(record["challenge_hash"], _HASH_RE, "challenge_hash")
-    _match(record["evidence_hash"], _HASH_RE, "evidence_hash")
-    _match(record["signature"], _HEX65_RE, "signature")
-    return record
+    challenge_hash = _match(record["challenge_hash"], _HASH_RE, "challenge_hash")
+    signature = _match(record["signature"], _HEX65_RE, "signature")
+    evidence_hash = _match(record["evidence_hash"], _HASH_RE, "evidence_hash")
+    return {
+        **record,
+        "expected_address": expected,
+        "recovered_address": recovered,
+        "challenge_hash": challenge_hash,
+        "signature": signature,
+        "evidence_hash": evidence_hash,
+    }
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -76,14 +85,23 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         verifier = _load_verifier_output(args.verifier_output)
         challenge = _match(args.challenge, _HEX32_RE, "challenge")
+        expected_challenge_hash = keccak256_hex(bytes.fromhex(challenge[2:]))
+        if verifier["challenge_hash"] != expected_challenge_hash:
+            raise ValueError("challenge does not match verifier challenge_hash")
+        expected_evidence_hash = keccak256_hex(
+            (verifier["challenge_hash"] + verifier["recovered_address"]).encode("ascii")
+        )
+        if verifier["evidence_hash"] != expected_evidence_hash:
+            raise ValueError("evidence_hash does not match verifier challenge/address")
+
         package = {
             "schema_version": 1,
-            "expected_address": verifier["expected_address"].lower(),
-            "recovered_address": verifier["recovered_address"].lower(),
+            "expected_address": verifier["expected_address"],
+            "recovered_address": verifier["recovered_address"],
             "challenge": challenge,
-            "challenge_hash": verifier["challenge_hash"].lower(),
-            "signature": verifier["signature"].lower(),
-            "evidence_hash": verifier["evidence_hash"].lower(),
+            "challenge_hash": verifier["challenge_hash"],
+            "signature": verifier["signature"],
+            "evidence_hash": verifier["evidence_hash"],
             "verifier_commit": _text(args.verifier_commit, "verifier_commit"),
             "certification_ref": _text(args.certification_ref, "certification_ref"),
             "operator_identity": _text(args.operator_identity, "operator_identity"),
