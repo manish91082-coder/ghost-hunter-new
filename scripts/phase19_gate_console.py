@@ -28,6 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--artifact-commit", required=True, help="Frozen 40-character git commit")
     parser.add_argument("--executor", required=True, help="Intended executor EVM address")
     parser.add_argument("--signer", required=True, help="Expected signer EVM address")
+    parser.add_argument("--private-relay", required=True, help="Intended approved private relay name")
     parser.add_argument("--operator", required=True, help="Operator identity")
     parser.add_argument("--witness", required=True, help="Independent witness identity")
     parser.add_argument("--session-id", default=None)
@@ -60,10 +61,11 @@ def main(argv: list[str] | None = None) -> int:
         artifact = _require_sha(args.artifact_commit)
         executor = _require_address(args.executor, "--executor")
         signer = _require_address(args.signer, "--signer")
+        private_relay = args.private_relay.strip()
         operator = args.operator.strip()
         witness = args.witness.strip()
-        if not operator or not witness:
-            raise ValueError("--operator and --witness must be non-empty")
+        if not private_relay or not operator or not witness:
+            raise ValueError("--private-relay, --operator and --witness must be non-empty")
 
         session_id = args.session_id or datetime.now(timezone.utc).strftime("phase19-%Y%m%dT%H%M%SZ")
         lanes = {}
@@ -80,6 +82,7 @@ def main(argv: list[str] | None = None) -> int:
             "verified_artifact_commit": artifact,
             "intended_executor": executor,
             "expected_signer": signer,
+            "intended_private_relay": private_relay,
             "operator_identity": operator,
             "witness_identity": witness,
             "observed_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
