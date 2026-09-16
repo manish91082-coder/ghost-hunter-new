@@ -7,8 +7,8 @@ Compress the remaining production-gate work into one controlled evidence session
 
 ## Frozen Artifact
 
-- Verified engineering artifact: `fc0df125ee6d0ea694b976ff7d86622b9e45eb15`
-- Latest completed CI certification: workflow run `467` on that artifact
+- Verified engineering artifact: `e117b6550686cf5e0ff787d9bd7d85e83996db07`
+- Latest completed CI certification: workflow run `482` on that artifact
 - Production authorization is NOT implied by CI.
 - Any evidence collected for a different artifact must be rejected or recollected.
 
@@ -60,7 +60,7 @@ No public fallback is permitted.
 
 ## Lane D: Identical-Artifact Shadow / Staging
 
-Run the production-like flow without live capital using the exact frozen artifact identity `fc0df125ee6d0ea694b976ff7d86622b9e45eb15`:
+Run the production-like flow without live capital using the exact frozen artifact identity `e117b6550686cf5e0ff787d9bd7d85e83996db07`:
 
 `artifact identity → quotes/context → route/loan/economic proof → authority evidence → governed signer boundary → private-submit boundary simulation/controlled staging path → receipt/reconciliation evidence`
 
@@ -90,13 +90,14 @@ Live capital remains locked until all prerequisite gates are independently evide
 - Any secret material in evidence = reject and rotate/contain as required.
 - No live signing or public broadcast is authorized by this packet.
 - No live capital deployment is authorized by this packet.
-- Evidence accepted by the consolidated coordinator must bind to the manifest artifact, executor, signer, operator, and witness identities.
+- Evidence accepted by the consolidated coordinator must bind to the manifest artifact, executor, signer, private relay, operator, and witness identities.
 - Evidence files must be referenced with relative paths inside the external session workspace; absolute paths are rejected.
+- Where upstream evidence hashes are available, authority → shadow/staging → realized-PnL provenance hashes must match exactly.
 
 ## Operator Capture Checklist
 
 ```text
-[ ] Frozen artifact commit confirmed: fc0df125ee6d0ea694b976ff7d86622b9e45eb15
+[ ] Frozen artifact commit confirmed: e117b6550686cf5e0ff787d9bd7d85e83996db07
 [ ] Executor address confirmed
 [ ] Expected signer address confirmed
 [ ] Approved Polygon providers + quorum confirmed
@@ -107,6 +108,7 @@ Live capital remains locked until all prerequisite gates are independently evide
 [ ] Fresh Polygon authority quorum evidence captured
 [ ] Fresh private-relay observation evidence captured
 [ ] Identical-artifact shadow/staging evidence captured
+[ ] Cross-lane provenance identities/hashes captured where available
 [ ] All non-secret evidence copied into the external session workspace
 [ ] Consolidated offline coordinator executed from the verified repository
 [ ] Each lane independently reviewed
