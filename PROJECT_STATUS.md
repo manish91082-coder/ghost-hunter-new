@@ -6,7 +6,7 @@
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
 - Latest verified software/project commit: `7506b41c1e7ec876b39ae8428896c374a48b0181`
-- Latest repository-side procedure/launch worksheet commit: `570f38f34e7a3d8fa188d372e8737d84b6e0fa3d`
+- Latest repository-side procedure/launch worksheet commit: `eea845af1388ea619c54ffc4faf8a34d215e2aa1`
 - Current Phase-19 CI certification: workflow run `451` / run ID `35070288544` **GREEN** on `7506b41c1e7ec876b39ae8428896c374a48b0181`; dependency install, Foundry install, Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and full Phase-19 unittest suite all passed
 - Previous Phase-19 CI certification: workflow run `446` / run ID `35067167421` **GREEN** on `2caa8ff285fa98e061dc22da82502bff2765b812`
 - Previous Phase-19 CI certification: workflow run `442` / run ID `35065382193` **GREEN** on `7f5a839bd5968961f23dff27b9dfa8da41539993`
@@ -41,12 +41,14 @@
 - Consolidated external evidence session coordinator tests: `tests/phase19/test_consolidated_evidence_session_validator.py`
 - External gate launch packet: `PHASE19_EXTERNAL_GATE_LAUNCH_PACKET.md`
 - One-shot external gate session worksheet: `PHASE19_OPERATOR_ONE_SHOT_SESSION.md`
+- Shadow/staging evidence validator: `scripts/validate_shadow_staging_evidence.py`
+- Shadow/staging evidence validator tests: `tests/phase19/test_shadow_staging_evidence_validator.py`
 - Historical deployment-record forensic finding: older commit `8460c589ef6b82b1da08d73624f29d0cd63d2549` contains `v2/v3` records asserting a Polygon Mainnet deployment at `0x24056bCA6538693aE94Cc97E82f21Ee4EC7f1286` with deployment tx `0x92bc4dc8b3450332c281445fb4443f8725586b18e880a063e0892af2c28c595a`; these are historical repository claims only and are not accepted as current production-authority evidence
 - Production readiness decision: **NOT ACHIEVED**
 - Controlled production signer identity: **BLOCKED**. No fresh externally held production-signer challenge signature and provenance record is present.
 - Controlled production Polygon provider authority: **BLOCKED**. Repository-side observer, evidence contract, validator, tests, and runbook are prepared and CI-certified, but no controlled production observation evidence from explicitly approved endpoints is present.
 - Controlled production private relay: **BLOCKED**. HTTPS/private assertion/evidence tooling and adversarial validation are CI-certified, but no approved production relay observation evidence is present.
-- Controlled shadow/staging: **BLOCKED**. No independently evidenced production-like shadow/staging execution artifact using the identical immutable chain is present.
+- Controlled shadow/staging: **BLOCKED**. A dedicated offline validator is now prepared for an exact frozen-artifact shadow/staging record, but no independently evidenced staging execution artifact is present.
 - Realized live PnL: **BLOCKED**. No controlled live-mainnet realized settlement evidence exists and live capital remains locked.
 - Live mainnet execution: **BLOCKED**
 - Live capital: **LOCKED**
@@ -92,6 +94,8 @@ The consolidated session coordinator validates the session manifest structure an
 
 The external gate launch packet and one-shot session worksheet compress signer, Polygon authority, private relay, and identical-artifact shadow/staging preparation into one controlled session while keeping realized PnL as a separately controlled settlement gate.
 
+The new shadow/staging validator is offline-only and checks exact artifact identity, EVM identities, route/economic/authority/submission-policy proof identities, staging environment identity, operator/witness provenance, explicit `SHADOW_STAGING` mode, `live_capital=false`, `broadcast=false`, allowed outcome, and canonical evidence hash. It never contacts production or authorizes execution.
+
 ## P0 BLOCKERS
 1. Controlled production signer identity proof.
 2. Controlled production Polygon provider authority proof using approved endpoints and intended deployed executor.
@@ -102,18 +106,16 @@ The external gate launch packet and one-shot session worksheet compress signer, 
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-Workflow run `451` / run ID `35070288544` completed **GREEN** after the surgical fixture-path repair from run `450`. The complete Phase-19 deterministic pipeline is GREEN on commit `7506b41c1e7ec876b39ae8428896c374a48b0181`.
+Workflow run `451` / run ID `35070288544` completed **GREEN** on frozen artifact `7506b41c1e7ec876b39ae8428896c374a48b0181`. The repository-side acceleration machinery is now complete enough to move to external evidence closure rather than adding repetitive validation layers.
 
-The repository-side acceleration machinery is now complete enough to move to external evidence closure rather than adding repetitive validation layers. Fresh official research confirms Private Mempool is live and documents both a stated free tier and a current request-access page; the project intentionally treats this difference as an approval/provenance distinction, not as evidence to promote a production gate. citeturn700408search1turn700408search2turn700408search3
+The shadow/staging lane has now been brought to the same offline-validation standard as signer, Polygon authority, and private relay. The consolidated coordinator invokes this validator when a real staging evidence file is present; missing evidence remains BLOCKED. No live capital or broadcast is accepted by the validator.
 
-The one-shot operator worksheet now provides the exact frozen-artifact sequence for signer challenge/verification, read-only Polygon authority observation, private-relay evidence validation, identical-artifact staging capture, and final consolidated validation. No production authorization is implied by the worksheet. fileciteturn212file0
-
-At the present checkpoint, the external evidence session cannot be completed autonomously from repository state alone because the remaining acceptance chain requires operator-supplied project approvals, externally held signer action, authenticated production infrastructure, and controlled staging/settlement observations that are not present in the repository. This is not treated as a repository failure; the missing inputs remain explicitly BLOCKED.
+Fresh official research confirms Private Mempool is live, while access/approval remains an external controlled fact. citeturn700408search1turn700408search2turn700408search3
 
 No production gate has been promoted from repository tests, historical deployment claims, public/fork observations, vendor availability, or estimated economics.
 
 ## NEXT ATOMIC ACTION
-Use the frozen artifact `7506b41c1e7ec876b39ae8428896c374a48b0181` to enter the controlled external-evidence session and supply only the minimum required operator-side inputs for A/B/C/D. Once those non-secret evidence records exist, run the consolidated offline coordinator and independent review in the same session. Keep realized-PnL, live signing, public broadcast, and live-capital locks intact until their own acceptance chains are complete.
+Run the freshly updated repository-side pipeline for the shadow/staging validator/coordinator changes. Once that CI is GREEN, freeze the latest verified test/artifact anchor and proceed immediately to the one controlled external evidence session for A/B/C/D. Keep realized-PnL and all live-execution/capital locks intact.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
