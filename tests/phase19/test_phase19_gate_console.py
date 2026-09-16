@@ -18,6 +18,7 @@ class Phase19GateConsoleTests(unittest.TestCase):
                 "--artifact-commit", "eea845af1388ea619c54ffc4faf8a34d215e2aa1",
                 "--executor", "0x1111111111111111111111111111111111111111",
                 "--signer", "0x2222222222222222222222222222222222222222",
+                "--private-relay", "relay-test",
                 "--operator", "operator",
                 "--witness", "witness",
                 "--session-id", "sess-test",
@@ -26,6 +27,7 @@ class Phase19GateConsoleTests(unittest.TestCase):
             self.assertEqual(rc, 0)
             data = json.loads(output.read_text(encoding="utf-8"))
             self.assertEqual(data["verified_artifact_commit"], "eea845af1388ea619c54ffc4faf8a34d215e2aa1")
+            self.assertEqual(data["intended_private_relay"], "relay-test")
             self.assertEqual(data["lanes"]["signer"]["status"], "BLOCKED")
             self.assertEqual(data["lanes"]["signer"]["evidence_file"], "signer/signer_evidence.json")
             self.assertEqual(data["lanes"]["polygon_authority"]["status"], "BLOCKED")
@@ -40,6 +42,20 @@ class Phase19GateConsoleTests(unittest.TestCase):
                 "--artifact-commit", "not-a-sha",
                 "--executor", "0x1111111111111111111111111111111111111111",
                 "--signer", "0x2222222222222222222222222222222222222222",
+                "--private-relay", "relay-test",
+                "--operator", "operator",
+                "--witness", "witness",
+            ])
+            self.assertEqual(rc, 2)
+
+    def test_rejects_empty_private_relay(self):
+        with tempfile.TemporaryDirectory() as temp:
+            rc = main([
+                temp,
+                "--artifact-commit", "eea845af1388ea619c54ffc4faf8a34d215e2aa1",
+                "--executor", "0x1111111111111111111111111111111111111111",
+                "--signer", "0x2222222222222222222222222222222222222222",
+                "--private-relay", "   ",
                 "--operator", "operator",
                 "--witness", "witness",
             ])
