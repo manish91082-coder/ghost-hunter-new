@@ -6,9 +6,9 @@
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
 - Latest verified software/project commit: `eea845af1388ea619c54ffc4faf8a34d215e2aa1`
-- Latest repository-side procedure/launch worksheet commit: `c755539dd5f22e85deace15e8196089119aa783f`
+- Latest repository-side procedure/launch worksheet commit: `095e9295244d350374fc40dadc8d80f2d1287831`
 - Current Phase-19 CI certification: workflow run `456` / run ID `35074699670` **GREEN** on `eea845af1388ea619c54ffc4faf8a34d215e2aa1`; dependency install, Foundry install, Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and full Phase-19 unittest suite all passed
-- Previous Phase-19 CI certification: workflow run `451` / run ID `35070288544` **GREEN** on `7506b41c1e7ec876b39ae8428896c374a48b0181`
+- Previous Phase-19 CI certification: workflow run `451` / run ID `35070288544` **GREEN** on `7506b41c1e7ec8766b39ae8428896c374a48b0181`
 - Previous Phase-19 CI certification: workflow run `446` / run ID `35067167421` **GREEN** on `2caa8ff285fa98e061dc22da82502bff2765b812`
 - Previous Phase-19 CI certification: workflow run `442` / run ID `35065382193` **GREEN** on `7f5a839bd5968961f23dff27b9dfa8da41539993`
 - Final executable implementation: `d018f8aea32d7db5aa012b02dcaacab87435af4c`
@@ -40,7 +40,7 @@
 - Consolidated external evidence session protocol: `PHASE19_CONSOLIDATED_EXTERNAL_EVIDENCE_SESSION.md`
 - Consolidated external evidence session coordinator: `scripts/validate_consolidated_evidence_session.py`
 - Consolidated external evidence session coordinator tests: `tests/phase19/test_consolidated_evidence_session_validator.py`
-- External gate launch packet: `PHASE19_EXTERNAL_GATE_LAUNCH_PACKET.md`
+- External gate launch packet: `PHASE19_EXTERNAL_GATE_LAUNCH_PACKET.md` (frozen to verified artifact `eea845af...`)
 - One-shot external gate session worksheet: `PHASE19_OPERATOR_ONE_SHOT_SESSION.md` (frozen to verified artifact `eea845af...`)
 - Shadow/staging evidence validator: `scripts/validate_shadow_staging_evidence.py`
 - Shadow/staging evidence validator tests: `tests/phase19/test_shadow_staging_evidence_validator.py`
@@ -68,11 +68,11 @@ Current parallel lanes:
 A single consolidated controlled external evidence session should capture every currently satisfiable lane. No secrets are combined into the evidence bundle.
 
 ## CURRENT EXTERNAL INFRASTRUCTURE RESEARCH
-- Polygon Labs' April 2, 2026 launch post states Polygon Private Mempool is live and provides a private transaction-submission path that bypasses the public mempool, with a stated free tier. citeturn700408search2
-- Polygon's current Private Mempool access page is still presented as a request-access flow. citeturn700408search1
-- Polygon's August 24, 2026 follow-up again states Private Mempool is live and describes a private submission path, while also describing partner availability through bloXroute. citeturn700408search3
+- Polygon Labs' April 2, 2026 launch post states Polygon Private Mempool is live and provides a private transaction-submission path that bypasses the public mempool, with a stated free tier.
+- Polygon's current Private Mempool access page is still presented as a request-access flow.
+- Polygon's August 24, 2026 follow-up again states Private Mempool is live and describes a private submission path, while also describing partner availability through bloXroute.
 - These sources create an intentional project-level distinction: vendor/platform availability is research evidence, while project approval/authentication is an external controlled fact that must be captured separately before any production gate is promoted.
-- Polygon support guidance also distinguishes public RPC from private provider options and identifies private providers such as Infura, Alchemy, and QuickNode as possible RPC sources, while not endorsing a single provider. citeturn700408search4
+- Polygon support guidance also distinguishes public RPC from private provider options and identifies private providers such as Infura, Alchemy, and QuickNode as possible RPC sources, while not endorsing a single provider.
 
 ## SAFETY
 Evidence first. Contradictory or missing evidence is UNKNOWN/BLOCKED. Private execution has no public fallback. No live signing, public broadcast, production execution authorization, or live capital is granted during Phase 19 certification. Private keys and relay authentication material never enter repository code, fixtures, logs, or chat.
@@ -107,14 +107,14 @@ The shadow/staging validator is offline-only and checks exact artifact identity,
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-Workflow run `456` / run ID `35074699670` completed **GREEN** on frozen artifact `eea845af1388ea619c54ffc4faf8a34d215e2aa1`. The complete Phase-19 deterministic pipeline passed dependency setup, Foundry setup, Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Phase-19 unittest suite. This certifies the repository-side shadow/staging validator and consolidated coordinator integration on that artifact. fileciteturn231file0
+Workflow run `456` / run ID `35074699670` completed **GREEN** on frozen artifact `eea845af1388ea619c54ffc4faf8a34d215e2aa1`. The complete Phase-19 deterministic pipeline passed dependency setup, Foundry setup, Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Phase-19 unittest suite. This certifies the repository-side shadow/staging validator and consolidated coordinator integration on that artifact.
 
-A documentation consistency audit found the one-shot external worksheet still pointed at the superseded `7506b41...` anchor; that drift was corrected and committed as `c755539dd5f22e85deace15e8196089119aa783f`, with the worksheet now explicitly frozen to `eea845af...`. fileciteturn239file0
+The external gate launch packet had one remaining documentation drift and has now been corrected in commit `095e9295244d350374fc40dadc8d80f2d1287831`, so both the launch packet and one-shot worksheet reference the same verified artifact `eea845af...`.
 
 The shadow/staging lane is repository-ready at the offline-validation boundary, but no independently evidenced staging execution artifact exists yet. No production gate has been promoted from repository tests, historical deployment claims, public/fork observations, vendor availability, or estimated economics.
 
 ## NEXT ATOMIC ACTION
-Proceed directly to the single controlled external-evidence session for A/B/C/D using the frozen artifact `eea845af1388ea619c54ffc4faf8a34d215e2aa1` and the updated one-shot worksheet. Capture only externally controlled, non-secret evidence records, then run the consolidated offline coordinator and independent review. Keep realized-PnL, live signing, public broadcast, and live-capital locks intact until their own acceptance chains are complete.
+Proceed directly to the single controlled external-evidence session for A/B/C/D using frozen artifact `eea845af1388ea619c54ffc4faf8a34d215e2aa1` and the corrected launch packet/worksheet. Capture only externally controlled, non-secret evidence records, then run the consolidated offline coordinator and independent review. Keep realized-PnL, live signing, public broadcast, and live-capital locks intact until their own acceptance chains are complete.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
