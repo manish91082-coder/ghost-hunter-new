@@ -13,7 +13,7 @@ class RealizedPnlSessionBindingTests(unittest.TestCase):
         data = {
             "schema_version": 1,
             "session_id": "sess-pnl",
-            "verified_artifact_commit": "fc0df125ee6d0ea694b976ff7d86622b9e45eb15",
+            "verified_artifact_commit": "e117b6550686cf5e0ff787d9bd7d85e83996db07",
             "intended_executor": "0x1111111111111111111111111111111111111111",
             "expected_signer": "0x2222222222222222222222222222222222222222",
             "intended_private_relay": "approved-relay",
@@ -35,7 +35,7 @@ class RealizedPnlSessionBindingTests(unittest.TestCase):
     def _evidence(self, root: Path, **overrides):
         record = {
             "schema_version": 1,
-            "artifact_commit": "fc0df125ee6d0ea694b976ff7d86622b9e45eb15",
+            "artifact_commit": "e117b6550686cf5e0ff787d9bd7d85e83996db07",
             "execution_evidence_identity": "exec-proof-1",
             "settlement_evidence_identity": "settlement-proof-1",
             "gross_profit_usd": "1.50",
