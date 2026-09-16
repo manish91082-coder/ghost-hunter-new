@@ -5,10 +5,10 @@
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Latest verified software/project commit: `eea845af1388ea619c54ffc4faf8a34d215e2aa1`
-- Latest unverified acceleration commits: `fa0248c7a427949809baf7fd59ae199eaa54495e` (batched gate console), `eb11a60783bd5da60d5e4ce7cfcc3b06ac5379d9` (shadow fixture aligned to frozen artifact)
-- CI verification for the new acceleration commits is pending; no GREEN certification is claimed until GitHub Actions verifies them.
-- Last verified Phase-19 CI certification: workflow run `456` / run ID `35074699670` **GREEN** on `eea845af1388ea619c54ffc4faf8a34d215e2aa1`; dependency install, Foundry install, Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and full Phase-19 unittest suite all passed
+- Latest verified software/project commit: `a2ed8e2989b37a750f25bf564a4322732129058e`
+- Latest verified acceleration commits: `fa0248c7a427949809baf7fd59ae199eaa54495e` (batched gate console) and `eb11a60783bd5da60d5e4ce7cfcc3b06ac5379d9` (shadow fixture aligned to frozen artifact), both superseded by verified downstream state `a2ed8e...`
+- Latest verified Phase-19 CI certification: workflow run `464` / run ID `35082135017` **GREEN** on `a2ed8e2989b37a750f25bf564a4322732129058e`; dependency install, Foundry install, Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, full Phase-19 unittest suite, and post-verification steps all passed
+- Previous verified Phase-19 CI certification: workflow run `456` / run ID `35074699670` **GREEN** on `eea845af1388ea619c54ffc4faf8a34d215e2aa1`
 - Latest repository-side procedure/launch worksheet commit: `095e9295244d350374fc40dadc8d80f2d1287831`
 - Recovered-settlement certification `#420`: **GREEN**
 - Production chain observation adapter: `77c3c457...`
@@ -35,10 +35,10 @@
 - Consolidated external evidence session protocol: `PHASE19_CONSOLIDATED_EXTERNAL_EVIDENCE_SESSION.md`
 - Consolidated external evidence session coordinator: `scripts/validate_consolidated_evidence_session.py`
 - New batched Phase-19 gate console: `scripts/phase19_gate_console.py`
-- External gate launch packet: `PHASE19_EXTERNAL_GATE_LAUNCH_PACKET.md` (frozen to verified artifact `eea845af...`)
-- One-shot external gate session worksheet: `PHASE19_OPERATOR_ONE_SHOT_SESSION.md` (frozen to verified artifact `eea845af...`)
+- External gate launch packet: `PHASE19_EXTERNAL_GATE_LAUNCH_PACKET.md` (frozen to prior verified artifact `eea845af...`; must be reissued before any external evidence is accepted against a newer artifact)
+- One-shot external gate session worksheet: `PHASE19_OPERATOR_ONE_SHOT_SESSION.md` (frozen to prior verified artifact `eea845af...`; must be reissued before any external evidence is accepted against a newer artifact)
 - Shadow/staging evidence validator: `scripts/validate_shadow_staging_evidence.py`
-- Shadow/staging validator tests now use the frozen verified artifact `eea845af...`
+- Shadow/staging validator tests use a frozen verified-artifact fixture; latest CI-verified code is `a2ed8e...`
 - Historical deployment-record forensic finding: older commit `8460c589ef6b82b1da08d73624f29d0cd63d2549` contains historical Polygon deployment assertions; these remain forensic only and are not accepted as current production-authority evidence
 - Production readiness decision: **NOT ACHIEVED**
 - Controlled production signer identity: **BLOCKED**. No fresh externally held production-signer challenge signature and provenance record is present.
@@ -62,7 +62,9 @@ Current lanes:
 - D: identical-artifact shadow/staging evidence
 - E: realized economics/PnL evidence
 
-The new gate console creates one deterministic session manifest from the standard segregated evidence workspace so the operator can prepare all lanes in one pass instead of manually assembling repeated single-lane commands.
+The batched gate console creates one deterministic session manifest from the standard segregated evidence workspace so the operator can prepare all lanes in one pass instead of manually assembling repeated single-lane commands. Presence of an evidence file remains **BLOCKED** until its dedicated validator accepts the evidence.
+
+Current integration hardening target: the consolidated coordinator must bind manifest-level artifact, executor, and signer identities to the corresponding accepted lane evidence before any lane can be treated as externally reviewable.
 
 ## SAFETY
 Evidence first. Contradictory or missing evidence is UNKNOWN/BLOCKED. Private execution has no public fallback. No live signing, public broadcast, production execution authorization, or live capital is granted during Phase 19 certification. Private keys and relay authentication material never enter repository code, fixtures, logs, or chat.
@@ -80,9 +82,9 @@ Evidence first. Contradictory or missing evidence is UNKNOWN/BLOCKED. Private ex
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-The repository reached the verified shadow/staging-validator baseline at `eea845af...` with Phase-19 CI run `456` GREEN. After that baseline, the project was deliberately changed to eliminate the repeated micro-loop: a batched gate-console utility was added and the shadow validator fixture was aligned to the frozen artifact. Those changes are currently **UNVERIFIED PENDING CI** and therefore do not replace the last verified artifact until CI passes.
+The repository now has a **CI-verified Phase-19 acceleration baseline at `a2ed8e...` with workflow run `464` GREEN**. The previously pending batched gate-console and shadow-fixture changes are therefore verified as part of the current branch state. The remaining repository-safe gate hardening is cross-lane identity binding; it does not authorize production execution.
 
-The next execution cycle must prioritize verification of the new acceleration commits, then move immediately to any newly available external evidence. If no external evidence exists, continue repository-safe engineering rather than generating documentation-only churn.
+External evidence lanes remain separately blocked until genuine controlled evidence is supplied and independently validated. External gate launch documents frozen to `eea845af...` must be regenerated for the current artifact before evidence intake is accepted.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
