@@ -34,15 +34,15 @@ class Phase19GateConsoleTests(unittest.TestCase):
 
     def test_rejects_bad_artifact(self):
         with tempfile.TemporaryDirectory() as temp:
-            with self.assertRaises(SystemExit):
-                main([
-                    temp,
-                    "--artifact-commit", "not-a-sha",
-                    "--executor", "0x1111111111111111111111111111111111111111",
-                    "--signer", "0x2222222222222222222222222222222222222222",
-                    "--operator", "operator",
-                    "--witness", "witness",
-                ])
+            rc = main([
+                temp,
+                "--artifact-commit", "not-a-sha",
+                "--executor", "0x1111111111111111111111111111111111111111",
+                "--signer", "0x2222222222222222222222222222222222222222",
+                "--operator", "operator",
+                "--witness", "witness",
+            ])
+            self.assertEqual(rc, 2)
 
 
 if __name__ == "__main__":
