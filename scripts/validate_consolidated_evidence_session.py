@@ -38,6 +38,11 @@ REQUIRED_MANIFEST = {
     "lanes",
 }
 
+# The external evidence session is deliberately frozen to this exact
+# engineering artifact. A caller cannot substitute a newer or unrelated
+# commit and still obtain a reviewable session manifest.
+FROZEN_EXTERNAL_ARTIFACT = "e117b6550686cf5e0ff787d9bd7d85e83996db07"
+
 VALIDATORS = {
     "signer": "scripts/validate_signer_evidence.py",
     "polygon_authority": "scripts/validate_production_authority_evidence.py",
@@ -208,7 +213,12 @@ def main(argv: list[str] | None = None) -> int:
         if manifest["schema_version"] != 1:
             raise ValueError("unsupported manifest schema version")
         _nonempty_text(manifest, "session_id")
-        _artifact(manifest, "verified_artifact_commit")
+        manifest_artifact = _artifact(manifest, "verified_artifact_commit")
+        if manifest_artifact != FROZEN_EXTERNAL_ARTIFACT:
+            raise ValueError(
+                "verified_artifact_commit must match the frozen external evidence artifact "
+                f"{FROZEN_EXTERNAL_ARTIFACT}"
+            )
         _address(manifest, "intended_executor")
         _address(manifest, "expected_signer")
         _nonempty_text(manifest, "intended_private_relay")
