@@ -32,8 +32,8 @@ The project goal is not Phase-19. The goal is a working, evidence-backed Polygon
 - Consolidated external-evidence validator hard-binds the session manifest artifact identity to the frozen external artifact.
 - Operator preflight requires the frozen artifact in local history and current HEAD to descend from it.
 - Required external-evidence validators remain present for signer, Polygon authority, private relay, shadow/staging, and realized PnL.
-- Certification PR `#1`: **OPEN / MERGE CONFLICTS**; merge is not required for external evidence capture. fileciteturn1080file0L3-L15
-- External evidence handoff issue `#2`: **OPEN / BLOCKED**; genuine current production evidence has not been accepted. fileciteturn1083file0L2-L2
+- Certification PR `#1`: **OPEN / MERGE CONFLICTS**; merge is not required for external evidence capture.
+- External evidence handoff issue `#2`: **OPEN / BLOCKED**; genuine current production evidence has not been accepted.
 - Production readiness: **NOT ACHIEVED**
 - Controlled production signer identity: **BLOCKED**
 - Controlled production Polygon provider authority: **BLOCKED**
