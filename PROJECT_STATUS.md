@@ -5,11 +5,11 @@
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Latest verified engineering commit: `fc0df125ee6d0ea694b976ff7d86622b9e45eb15`
-- Latest verified Phase-19 CI certification: workflow run `467` / run ID `35082865445` **GREEN** on `fc0df125ee6d0ea694b976ff7d86622b9e45eb15`; dependency install, Foundry install, Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, full Phase-19 unittest suite, and post-verification steps all passed
-- Verified acceleration sequence: `fa0248c7a427949809baf7fd59ae199eaa54495e` (batched gate console) → `eb11a60783bd5da60d5e4ce7cfcc3b06ac5379d9` (shadow fixture alignment) → `a2ed8e2989b37a750f25bf564a4322732129058e` (fail-closed gate-console tests) → `5781b473f045faeeb515d3e0e419b449afbc9e00` (cross-lane binding coordinator) → `fc0df125ee6d0ea694b976ff7d86622b9e45eb15` (binding test correction)
+- Latest verified engineering commit: `e117b6550686cf5e0ff787d9bd7d85e83996db07`
+- Latest verified Phase-19 CI certification: workflow run `482` / run ID `35086408932` **GREEN** on `e117b6550686cf5e0ff787d9bd7d85e83996db07`; dependency install, Foundry install, Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, full Phase-19 unittest suite, and post-verification steps all passed
+- Verified acceleration sequence: `fa0248c7a427949809baf7fd59ae199eaa54495e` (batched gate console) → `eb11a60783bd5da60d5e4ce7cfcc3b06ac5379d9` (shadow fixture alignment) → `a2ed8e2989b37a750f25bf564a4322732129058e` (fail-closed gate-console tests) → `5781b473f045faeeb515d3e0e419b449afbc9e00` (cross-lane binding coordinator) → `fc0df125ee6d0ea694b976ff7d86622b9e45eb15` (binding test correction) → `1d7792480798abb7844b3cc09c08e0e41fafde86` / `1c6e6fb1...` / `70aa358d...` (realized-PnL validation/provenance sequence) → `84f0c22a3350149a2c02e1aeba04da6fac13cb26` (relay-binding fixture alignment) → `06ebded9e09677e9235a4d0e18e347d9375368e6` / `aa3eb69102c9aa6de337ae4dd027a90f90291aac` / `e117b6550686cf5e0ff787d9bd7d85e83996db07` (private-relay and cross-lane provenance hardening)
 - Documentation-only synchronization commits after the verified engineering baseline do not supersede that verified engineering commit.
-- Previous verified Phase-19 CI certification: workflow run `464` / run ID `35082135017` **GREEN** on `a2ed8e2989b37a750f25bf564a4322732129058e`
+- Previous verified Phase-19 CI certification: workflow run `479` / run ID `35085815479` **GREEN** on `84f0c22a3350149a2c02e1aeba04da6fac13cb26`
 - Latest refreshed external gate packet commit: `eddcc2379769d3151af4091832566db6ae1ea3f6`
 - Latest refreshed one-shot external gate worksheet commit: `36718fca0eae97b7ad03b648766cfaad3407f545`
 - Latest repository-side procedure/launch worksheet commit before refresh: `095e9295244d350374fc40dadc8d80f2d1287831`
@@ -38,11 +38,14 @@
 - Consolidated external evidence session protocol: `PHASE19_CONSOLIDATED_EXTERNAL_EVIDENCE_SESSION.md`
 - Consolidated external evidence session coordinator: `scripts/validate_consolidated_evidence_session.py`
 - Batched Phase-19 gate console: `scripts/phase19_gate_console.py`
-- Consolidated coordinator binds accepted signer, Polygon authority, and shadow/staging evidence to manifest-level signer, executor, artifact, operator, and witness identities; absolute evidence paths are rejected and relative paths resolve from the external manifest workspace
+- Consolidated coordinator binds accepted signer, Polygon authority, private relay, shadow/staging, and realized-PnL evidence to manifest-level signer, executor, artifact, private-relay, operator, and witness identities; absolute evidence paths are rejected and relative paths resolve from the external manifest workspace
+- Cross-lane provenance binding: canonical evidence hashes may be joined authority → shadow/staging → realized-PnL; mismatches fail closed while legacy opaque fixture labels remain accepted for compatibility
 - External gate launch packet is refreshed to verified artifact `fc0df125...`
 - One-shot external gate session worksheet is refreshed to verified artifact `fc0df125...`
 - Shadow/staging evidence validator: `scripts/validate_shadow_staging_evidence.py`
-- Shadow/staging validator tests use a frozen verified-artifact fixture; latest CI-verified engineering code is `fc0df125...`
+- Realized-PnL evidence validator: `scripts/validate_realized_pnl_evidence.py`
+- Realized-PnL provenance rule: arithmetic validation does not constitute independent proof of actual settlement
+- Shadow/staging validator tests use a frozen verified-artifact fixture; latest CI-verified engineering code is `e117b655...`
 - Historical deployment-record forensic finding: older commit `8460c589ef6b82b1da08d73624f29d0cd63d2549` contains historical Polygon deployment assertions; these remain forensic only and are not accepted as current production-authority evidence
 - Production readiness decision: **NOT ACHIEVED**
 - Controlled production signer identity: **BLOCKED**. No fresh externally held production-signer challenge signature and provenance record is present.
@@ -84,7 +87,7 @@ Evidence first. Contradictory or missing evidence is UNKNOWN/BLOCKED. Private ex
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-The verified engineering baseline remains **`fc0df125...` with workflow run `467` GREEN**. Session-level identity binding is implemented and CI-verified. External gate materials have now been refreshed to that exact artifact, eliminating the previous artifact-mismatch documentation hazard.
+The verified engineering baseline is now **`e117b655...` with workflow run `482` GREEN**. Cross-lane identity and canonical provenance-hash binding are implemented and CI-verified. The consolidated coordinator now rejects absolute/escaping evidence paths and binds accepted evidence to the external session identities. External gate materials remain anchored to the prior frozen artifact until they are deliberately refreshed for a new production evidence session.
 
 The remaining gates are external and evidence-backed: genuine controlled signer proof, Polygon provider authority proof, approved private relay observation, identical-artifact shadow/staging evidence, realized net-PnL evidence, and final independent re-audit. No external production evidence has been accepted yet.
 
