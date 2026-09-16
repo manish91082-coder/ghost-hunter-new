@@ -13,7 +13,6 @@ from .cross_venue_discovery import (
     UNISWAP_TO_QUICKSWAP_PATH,
     discover_cross_venue_opportunities,
 )
-from .economic_proof import EconomicProof
 from .evm_preflight import EVMPreflightResult, preflight_execution
 from .execution_assembly import ExecutionAssembly
 from .executor_authority import ExecutorAuthorityEvidence
