@@ -6,8 +6,9 @@
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
 - Latest verified software/project commit: `7f5a839bd5968961f23dff27b9dfa8da41539993`
-- Current Phase-19 CI: workflow run `442` / run ID `35065382193` **IN PROGRESS** on `7f5a839bd5968961f23dff27b9dfa8da41539993`; completed so far: dependency install, Foundry install, Solidity compilation, EVM integration, Polygon fork protocol smoke; Polygon fork execution probe is in progress and unittest suite has not started
-- Latest completed Phase-19 CI certification: run `35018490583` / workflow run `439` **GREEN** on certified software commit `ebf794537c531a1241426a2bca9f355e205e44fc`
+- Current Phase-19 CI: workflow run `442` / run ID `35065382193` **GREEN** on `7f5a839bd5968961f23dff27b9dfa8da41539993`; all primary steps completed successfully: dependency install, Foundry install, Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and full Phase-19 unittest suite
+- Latest completed Phase-19 CI certification: run `35065382193` / workflow run `442` **GREEN** on authority-validator test commit `7f5a839bd5968961f23dff27b9dfa8da41539993`
+- Prior completed Phase-19 CI certification: run `35018490583` / workflow run `439` **GREEN** on certified software commit `ebf794537c531a1241426a2bca9f355e205e44fc`
 - Final executable implementation: `d018f8aea32d7db5aa012b02dcaacab87435af4c`
 - Recovered-settlement certification `#420`: **GREEN**
 - Production chain observation adapter: `77c3c457...`
@@ -32,7 +33,7 @@
 - Controlled Polygon authority validator tests: `tests/phase19/test_production_authority_evidence_validator.py`
 - Production readiness decision: **NOT ACHIEVED**
 - Controlled production signer identity: **BLOCKED**. No fresh externally held production-signer challenge signature and provenance record is present; the signer runbook explicitly states mechanism-level CI is insufficient for this gate.
-- Controlled production Polygon provider authority: **BLOCKED**. The repository-side authority observation path and offline evidence validator are now prepared, but no controlled production observation evidence from explicitly approved endpoints is present.
+- Controlled production Polygon provider authority: **BLOCKED**. The repository-side authority observation path and offline evidence validator are prepared and CI-certified, but no controlled production observation evidence from explicitly approved endpoints is present.
 - Controlled production private relay: **BLOCKED**. Explicit HTTPS private-relay configuration is required and public fallback is forbidden, but no approved production relay proof/evidence is present.
 - Controlled shadow/staging: **BLOCKED**. No independently evidenced production-like shadow/staging execution artifact using the identical immutable chain is present.
 - Realized live PnL: **BLOCKED**. No controlled live-mainnet realized settlement evidence exists and live capital remains locked.
@@ -47,7 +48,7 @@ Evidence first. Contradictory or missing evidence is UNKNOWN/BLOCKED. Private ex
 `LIVE BLOCK → DATA/RPC QUORUM → EXACT QUOTES → ROUTE ENGINE → LOAN OPTIMIZER → EXACT COST MODEL → WORST-CASE NET PNL → AI RANKING → EVM PREFLIGHT → GOVERNOR → SIGNER → PRIVATE SUBMIT → ON-CHAIN EXECUTOR → RECEIPT AUDITOR → REALIZED NET PNL`
 
 ## VERIFIED CAPABILITIES
-Deterministic economics, immutable authorization/envelope binding, quote and simulation evidence, EVM preflight, Governor, signer verification, durable nonce/transaction state, private-only submission, recovery, receipt reconciliation, executor controls, and authority quorum/provenance/freshness controls are implemented. #420, #423, #427, #430, #432, #435, #436, and #437 provide the latest certified gates.
+Deterministic economics, immutable authorization/envelope binding, quote and simulation evidence, EVM preflight, Governor, signer verification, durable nonce/transaction state, private-only submission, recovery, receipt reconciliation, executor controls, and authority quorum/provenance/freshness controls are implemented. #420, #423, #427, #430, #432, #435, #436, #437, and #442 provide the latest certified gates.
 
 The production chain observer is read-only and requires a unique quorum-backed decision. fileciteturn1534file0L2-L2
 
@@ -73,16 +74,14 @@ The production private-relay assembly requires explicit HTTPS configuration and 
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-The latest software-side addition is the controlled Polygon authority evidence intake contract, validator, and adversarial validator tests. These are repository-side readiness infrastructure only; they do not constitute production authority proof.
+Workflow run `442` / run ID `35065382193` has now completed **GREEN** on software commit `7f5a839bd5968961f23dff27b9dfa8da41539993`. All primary Phase-19 workflow steps passed, including the Polygon fork execution probe and full Phase-19 unittest suite.
 
-GitHub Actions workflow run `442` is currently **IN PROGRESS** against the authority-validator test commit `7f5a839bd5968961f23dff27b9dfa8da41539993`. Its completed steps so far are dependency installation, Foundry installation, Solidity compilation, EVM integration, and Polygon fork protocol smoke. The Polygon fork execution probe is still running, so no GREEN claim is permitted yet.
-
-The latest completed certification remains workflow run `439` / run ID `35018490583`, GREEN on software commit `ebf794537c531a1241426a2bca9f355e205e44fc`.
+This GREEN result certifies repository-side deterministic verification of the new Polygon authority evidence validator coverage. It does **not** constitute controlled production authority proof, signer proof, private-relay proof, staging proof, realized live PnL, or production authorization.
 
 The signer gate remains BLOCKED pending real external evidence. The Polygon authority gate remains BLOCKED pending controlled observations from explicitly approved production endpoints.
 
 ## NEXT ATOMIC ACTION
-Inspect workflow run `442` to completion. If it fails, freeze and repair only the failed boundary. If it succeeds, certify the new authority-evidence validator, then proceed to the controlled production Polygon authority observation procedure without treating public/fork endpoints as production authority. Keep signer, relay, shadow, realized-PnL, and live-capital gates locked.
+Proceed to the controlled production Polygon authority observation procedure: collect the required non-secret quorum evidence from explicitly approved HTTPS Polygon providers against the intended chain-137 executor and expected signer, then validate the resulting evidence package offline. Do not use public/fork endpoints as production authority evidence. Keep signer, relay, shadow, realized-PnL, and live-capital gates locked.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
