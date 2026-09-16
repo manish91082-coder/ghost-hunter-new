@@ -6,7 +6,8 @@
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
 - Latest verified software/project commit: `7f5a839bd5968961f23dff27b9dfa8da41539993`
-- Latest Phase-19 CI certification: run `35018490583` / workflow run `439` **GREEN** on certified software commit `ebf794537c531a1241426a2bca9f355e205e44fc`; new authority-evidence commits are not yet CI-certified
+- Current Phase-19 CI: workflow run `442` / run ID `35065382193` **IN PROGRESS** on `7f5a839bd5968961f23dff27b9dfa8da41539993`; completed so far: dependency install, Foundry install, Solidity compilation, EVM integration, Polygon fork protocol smoke; Polygon fork execution probe is in progress and unittest suite has not started
+- Latest completed Phase-19 CI certification: run `35018490583` / workflow run `439` **GREEN** on certified software commit `ebf794537c531a1241426a2bca9f355e205e44fc`
 - Final executable implementation: `d018f8aea32d7db5aa012b02dcaacab87435af4c`
 - Recovered-settlement certification `#420`: **GREEN**
 - Production chain observation adapter: `77c3c457...`
@@ -72,14 +73,16 @@ The production private-relay assembly requires explicit HTTPS configuration and 
 7. Live mainnet capital deployment remains forbidden.
 
 ## CHECKPOINT
-The branch head is `7f5a839bd5968961f23dff27b9dfa8da41539993`, a test-only commit adding controlled Polygon authority evidence-validator coverage. Its parent `33e1b09a...` adds the corresponding non-secret authority evidence intake contract. These additions are repository-side readiness infrastructure and are not being treated as production authority proof.
+The latest software-side addition is the controlled Polygon authority evidence intake contract, validator, and adversarial validator tests. These are repository-side readiness infrastructure only; they do not constitute production authority proof.
 
-The latest certified Phase-19 CI run remains `35018490583` / workflow run `439`, successful on the earlier certified executable commit `ebf794537c531a1241426a2bca9f355e205e44fc`. The new authority-evidence commits do not yet have a fresh CI certification and therefore must remain uncertified until GitHub Actions executes against them.
+GitHub Actions workflow run `442` is currently **IN PROGRESS** against the authority-validator test commit `7f5a839bd5968961f23dff27b9dfa8da41539993`. Its completed steps so far are dependency installation, Foundry installation, Solidity compilation, EVM integration, and Polygon fork protocol smoke. The Polygon fork execution probe is still running, so no GREEN claim is permitted yet.
 
-The signer gate remains BLOCKED pending a fresh externally produced production-signer proof package. The new Polygon authority intake path now defines and validates common-block, provider uniqueness, Polygon chain identity, executor owner binding, runtime-code identity, quorum, evidence hash, and external provenance without handling secrets.
+The latest completed certification remains workflow run `439` / run ID `35018490583`, GREEN on software commit `ebf794537c531a1241426a2bca9f355e205e44fc`.
+
+The signer gate remains BLOCKED pending real external evidence. The Polygon authority gate remains BLOCKED pending controlled observations from explicitly approved production endpoints.
 
 ## NEXT ATOMIC ACTION
-Verify the newly added Polygon authority evidence validator through GitHub Actions. If GREEN, perform the next repository-side authority audit and prepare the controlled production observation procedure; do not infer production authority until evidence from explicitly approved endpoints is independently captured and accepted. Keep signer, relay, shadow, realized-PnL, and live-capital gates locked.
+Inspect workflow run `442` to completion. If it fails, freeze and repair only the failed boundary. If it succeeds, certify the new authority-evidence validator, then proceed to the controlled production Polygon authority observation procedure without treating public/fork endpoints as production authority. Keep signer, relay, shadow, realized-PnL, and live-capital gates locked.
 
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
