@@ -179,8 +179,6 @@ class ConsolidatedEvidenceSessionValidatorTests(unittest.TestCase):
                 "witness_identity": "witness",
             }
             path = self._write_evidence(root, "signer", evidence)
-            lanes = dict(self._manifest(root).read_text())
-            del lanes
             data = json.loads(self._manifest(root).read_text())
             data["lanes"]["signer"] = {"status": "GREEN", "evidence_file": path}
             (root / "manifest.json").write_text(json.dumps(data), encoding="utf-8")
