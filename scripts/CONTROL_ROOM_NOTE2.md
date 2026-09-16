@@ -1,0 +1,1 @@
+Control-room checks are informational and fail closed.
