@@ -7,8 +7,8 @@ Close as many independently satisfiable production evidence lanes as possible in
 
 ## Frozen Artifact
 
-- Verified artifact commit: `fc0df125ee6d0ea694b976ff7d86622b9e45eb15`
-- CI certification: Phase-19 workflow run `467` GREEN
+- Verified artifact commit: `e117b6550686cf5e0ff787d9bd7d85e83996db07`
+- CI certification: Phase-19 workflow run `482` GREEN
 - This worksheet does not authorize production execution or live capital.
 - Evidence collected for any other artifact commit is not interchangeable with this session.
 
@@ -22,15 +22,16 @@ Close as many independently satisfiable production evidence lanes as possible in
 6. Any contradiction remains UNKNOWN/BLOCKED.
 7. No public fallback is permitted for private submission.
 8. Do not broadcast a live transaction as part of this evidence session.
-9. The consolidated coordinator must bind accepted evidence to the session artifact, executor, signer, operator, and witness identities.
+9. The consolidated coordinator must bind accepted evidence to the session artifact, executor, signer, private relay, operator, and witness identities.
 10. Evidence paths in the session manifest are relative to the external session workspace. Absolute paths are rejected.
+11. Where upstream evidence hashes are available, authority → shadow/staging → realized-PnL provenance hashes must match exactly; legacy opaque fixture labels are for compatibility only.
 
 ## Stage 0: Artifact Freeze
 
 PowerShell:
 
 ```powershell
-git checkout fc0df125ee6d0ea694b976ff7d86622b9e45eb15
+git checkout e117b6550686cf5e0ff787d9bd7d85e83996db07
 git rev-parse HEAD
 python -m unittest discover -s tests/phase19 -v
 ```
@@ -38,7 +39,7 @@ python -m unittest discover -s tests/phase19 -v
 Expected artifact identity:
 
 ```text
-fc0df125ee6d0ea694b976ff7d86622b9e45eb15
+e117b6550686cf5e0ff787d9bd7d85e83996db07
 ```
 
 ## Lane B: Production Signer Identity
@@ -114,6 +115,7 @@ expected_signer
 route/economic proof identities
 authority evidence identity
 staging environment identity
+submission policy identity
 operator_identity
 witness_identity
 observed_at_utc
@@ -150,7 +152,7 @@ This lane remains locked until all prerequisite production gates are separately 
 ## End-of-Session Review
 
 ```text
-[ ] Frozen artifact verified: fc0df125ee6d0ea694b976ff7d86622b9e45eb15
+[ ] Frozen artifact verified: e117b6550686cf5e0ff787d9bd7d85e83996db07
 [ ] Signer evidence externally produced and independently verified
 [ ] Polygon authority quorum evidence captured
 [ ] Private relay observation evidence captured
@@ -159,6 +161,7 @@ This lane remains locked until all prerequisite production gates are separately 
 [ ] Consolidated manifest created
 [ ] Offline validators passed for every evidence-backed lane
 [ ] Session identity bindings passed
+[ ] Cross-lane provenance hash bindings passed where applicable
 [ ] Independent witness reviewed the evidence
 [ ] No secret material entered any artifact/log/chat
 [ ] No production broadcast occurred
