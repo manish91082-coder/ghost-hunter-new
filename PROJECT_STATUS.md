@@ -21,18 +21,20 @@ The project goal is not Phase-19. The goal is a working, evidence-backed Polygon
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Current HEAD: `25fa0c116e38e568a321dd94bce9bbc90f2e7d8d` (`refactor: remove duplicate governor test module`).
-- Latest verified engineering commit: `25fa0c116e38e568a321dd94bce9bbc90f2e7d8d`.
-- Latest verified Phase-19 CI certification: workflow run `562` / run ID `35177175070` **GREEN** on `25fa0c116e38e568a321dd94bce9bbc90f2e7d8d`; Solidity compilation, EVM integration (**14 tests**), Polygon fork protocol smoke (**3 tests**), Polygon fork execution probe (**1 test**), and the full Phase-19 unittest suite (**711 tests, 0 failures, 0 errors**) all completed successfully. The run checked out the exact current HEAD with full git history.
+- Current HEAD: `6f5750a0483b35fdb72e97b611994186969fb0c0` (`test: cover live execution coordinator bridge`).
+- Latest verified engineering commit: `6f5750a0483b35fdb72e97b611994186969fb0c0`.
+- Latest verified Phase-19 CI certification: workflow run `565` / run ID `35187371464` **GREEN** on `6f5750a0483b35fdb72e97b611994186969fb0c0`; Solidity compilation, EVM integration (**14 tests**), Polygon fork protocol smoke (**3 tests**), Polygon fork execution probe (**1 test**), and the full Phase-19 unittest suite (**717 tests, 0 failures, 0 errors**) all completed successfully. The workflow checked out the exact branch HEAD with `fetch-depth: 0`.
+- The latest increment adds focused regression coverage for `phantomx/live_execution_coordinator.py`, including both supported venue directions, fail-closed unsupported paths, preservation of coordinator errors, and non-leaking wrapping of unexpected errors. These tests exercise the orchestration boundary only; they do not create or submit live transactions.
 - The verified cleanup removes the duplicate Governor test module `tests/phase19/test_execution_governor.py`; canonical Governor coverage remains in `tests/phase19/test_governor.py` and the existing canonical pipeline tests. The canonical Governor implementation remains `phantomx/governor.py`.
 - `phantomx/live_opportunity_pipeline.py` provides concrete cross-venue discovery → complete economic evaluation → deterministic execution assembly → EVM preflight. It performs no signing, submission, broadcast, or live-capital operation.
 - `phantomx/live_canonical_governor.py` composes concrete discovery, economics, assembly, preflight, and the repository's canonical Governor before the signer boundary. It performs no signing, submission, broadcast, or live-capital operation.
 - `phantomx/execution_coordinator.py` is the durable bridge from proven route/economic evidence through nonce reservation/binding, EVM preflight, canonical Governor, signer, and transaction persistence. Failures before signing release an uncommitted nonce reservation; post-signing persistence failures retain the reservation for forensic recovery.
+- `phantomx/live_execution_coordinator.py` now bridges concrete cross-venue discovery and complete economic evaluation into `prepare_signed_execution`; it performs no public/private relay submission or live-capital operation.
 - Concrete cross-venue discovery remains pinned to one canonical Polygon block across both supported venue directions and the complete supplied loan-size frontier.
 - `phantomx/opportunity_economics.py` remains the economic binding layer: discovered candidates are joined to explicit valuation/cost evidence to create hash-bound `EconomicProof`; below-floor proofs remain evidence-only and cannot reach execution.
 - `phantomx/loan_optimizer.py` remains exact-domain and complete: all supplied integer amounts are evaluated, mixed block/chain candidates are rejected, and ties resolve to the smaller loan.
 - The economic invariant is unchanged: realized net profit must be **strictly greater than $0.20 after all applicable costs**.
-- Frozen external evidence artifact remains `e117b6550686cf5e0ff787d9bd7d85e83996db07`; engineering commits after that artifact do not retroactively alter its identity. Current HEAD is **108 commits ahead** of the frozen artifact with no commits behind it, based on GitHub commit comparison.
+- Frozen external evidence artifact remains `e117b6550686cf5e0ff787d9bd7d85e83996db07`; engineering commits after that artifact do not retroactively alter its identity. Current HEAD is **112 commits ahead** of the frozen artifact with no commits behind it, based on GitHub commit comparison.
 - Consolidated external-evidence validation remains hard-bound to the frozen external artifact and requires independent lane evidence for signer, Polygon authority, private relay, shadow/staging, and realized PnL.
 - Operator preflight still requires current HEAD to descend from the frozen artifact and rejects missing or contradictory evidence.
 - Certification PR `#1`: **OPEN / MERGE CONFLICTS**; merge is not required for external evidence capture.
