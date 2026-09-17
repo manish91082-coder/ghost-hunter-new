@@ -1,0 +1,49 @@
+name: PHANTOMX First-Hunt Read-Only Live Scan
+
+on:
+  push:
+    branches:
+      - phase-19-e2e-harness
+    paths:
+      - "phantomx/**"
+      - "scripts/first_hunt_live_scan.py"
+      - ".github/workflows/first-hunt-live-read.yml"
+  pull_request:
+    branches:
+      - master
+    paths:
+      - "phantomx/**"
+      - "scripts/first_hunt_live_scan.py"
+      - ".github/workflows/first-hunt-live-read.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  first-hunt-live-read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install Phase-19 dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
+
+      - name: Run read-only First-Hunt scan
+        run: python scripts/first_hunt_live_scan.py
+
+      - name: Upload live scan evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: phantomx-first-hunt-live-scan
+          path: artifacts/first_hunt_live_scan.json
+          if-no-files-found: error
