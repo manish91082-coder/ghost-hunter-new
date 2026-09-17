@@ -82,7 +82,7 @@ class PolygonRPCHTTPTests(unittest.TestCase):
     def test_http_failure_reports_sanitized_root_cause_class_without_endpoint(self):
         transport = self._transport()
         with patch("phantomx.polygon_rpc_http.urlopen", side_effect=URLError("secret endpoint detail")):
-            with self.assertRaisesRegex(PolygonRPCHTTPError, r"eth_chainId: HTTP transport failure [URLError: str]") as ctx:
+            with self.assertRaisesRegex(PolygonRPCHTTPError, r"eth_chainId: HTTP transport failure \[URLError: str\]") as ctx:
                 transport("eth_chainId")
         self.assertNotIn("secret endpoint detail", str(ctx.exception))
         self.assertNotIn("example.invalid", str(ctx.exception))
