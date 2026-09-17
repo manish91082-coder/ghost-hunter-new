@@ -100,7 +100,11 @@ class PolygonRPCHTTPTransport:
             with urlopen(request, timeout=float(self.config.timeout_seconds)) as response:
                 body = response.read()
         except (HTTPError, URLError, TimeoutError, OSError) as exc:
-            raise PolygonRPCHTTPError(f"{method}: HTTP transport failure") from exc
+            reason = getattr(exc, "reason", None)
+            reason_type = type(reason).__name__ if reason is not None else type(exc).__name__
+            raise PolygonRPCHTTPError(
+                f"{method}: HTTP transport failure [{type(exc).__name__}: {reason_type}]"
+            ) from exc
 
         try:
             decoded = json.loads(body.decode("utf-8"))
