@@ -2,6 +2,7 @@ import io
 import json
 import unittest
 from unittest.mock import patch
+from urllib.error import URLError
 
 from phantomx.polygon_rpc import PolygonRPCError
 from phantomx.polygon_rpc_http import PolygonRPCHTTPConfig, PolygonRPCHTTPError, PolygonRPCHTTPTransport
@@ -77,6 +78,14 @@ class PolygonRPCHTTPTests(unittest.TestCase):
         with patch("phantomx.polygon_rpc_http.urlopen", side_effect=OSError("connection failed")):
             with self.assertRaisesRegex(PolygonRPCError, "HTTP transport failure"):
                 transport("eth_chainId")
+
+    def test_http_failure_reports_sanitized_root_cause_class_without_endpoint(self):
+        transport = self._transport()
+        with patch("phantomx.polygon_rpc_http.urlopen", side_effect=URLError("secret endpoint detail")):
+            with self.assertRaisesRegex(PolygonRPCHTTPError, r"HTTP transport failure [URLError: str]") as ctx:
+                transport("eth_chainId")
+        self.assertNotIn("secret endpoint detail", str(ctx.exception))
+        self.assertNotIn("example.invalid", str(ctx.exception))
 
     def test_response_id_mismatch_is_rejected(self):
         transport = self._transport()
