@@ -18,6 +18,7 @@ from pathlib import Path
 REQUIRED_FIELDS = {
     "schema_version",
     "artifact_commit",
+    "execution_checkout_commit",
     "executor_identity",
     "expected_signer",
     "route_proof_identity",
@@ -68,6 +69,14 @@ def main(argv: list[str] | None = None) -> int:
         artifact = _text(data, "artifact_commit").lower()
         if not GIT_SHA.fullmatch(artifact):
             raise ValueError("artifact_commit must be a 40-character git SHA")
+        execution_checkout = _text(data, "execution_checkout_commit").lower()
+        if not GIT_SHA.fullmatch(execution_checkout):
+            raise ValueError("execution_checkout_commit must be a 40-character git SHA")
+        if execution_checkout != artifact:
+            raise ValueError(
+                "execution_checkout_commit must exactly match artifact_commit for identical-artifact evidence"
+            )
+
         for field in ("executor_identity", "expected_signer"):
             value = _text(data, field)
             if not HEX40.fullmatch(value):
@@ -111,6 +120,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({
             "status": "ACCEPTED_FOR_INDEPENDENT_REVIEW",
             "artifact_commit": artifact,
+            "execution_checkout_commit": execution_checkout,
             "execution_mode": result["mode"],
             "execution_outcome": result["outcome"],
             "evidence_hash": expected,
