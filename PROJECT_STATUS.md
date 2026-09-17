@@ -21,21 +21,19 @@ The project goal is not Phase-19. The goal is a working, evidence-backed Polygon
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Latest verified engineering commit: `76d6d23c541254e76d72bc331cb61175b8daf520`
-- Latest verified Phase-19 CI certification: workflow run `549` / run ID `35141013032` **GREEN** on `76d6d23c541254e76d72bc331cb61175b8daf520`; checkout, Python/dependencies, Foundry install, Solidity compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Phase-19 unittest suite all completed successfully.
-- The latest engineering increment extends `phantomx/live_opportunity_pipeline.py` from concrete cross-venue discovery → complete economic evaluation → deterministic execution assembly through the EVM preflight gate. The new boundary preserves the pinned-block/complete-frontier discipline, binds optional executor-authority evidence when supplied, and performs no signing, submission, broadcast, or live-capital operation.
-- The live preflight boundary returns immutable discovery, economics, execution-assembly, and `EVMPreflightResult` artifacts together, while collapsing any discovery, economics, assembly, or preflight failure into a fail-closed `LiveOpportunityPipelineError`.
-- `tests/phase19/test_live_opportunity_pipeline.py` now certifies the complete concrete pipeline through preflight, rejects expired execution before signer hand-off, and rejects executor-owner mismatch evidence.
-- `phantomx/opportunity_execution.py` provides the narrow hand-off from a strictly profitable `OpportunityEconomicEvaluation` to deterministic `assemble_execution`, with exact venue-path validation and no quoting, valuation, signing, submission, or broadcast.
-- `tests/phase19/test_opportunity_execution.py` covers profitable discovery-to-execution binding, strict below-floor rejection before assembly, and unsupported venue-path fail-closed behavior.
-- Concrete cross-venue discovery integration remains present in `phantomx/cross_venue_discovery.py`: one canonical Polygon block is acquired once and reused across both supported venue directions and the full supplied loan-size frontier.
-- `phantomx/opportunity_economics.py` remains the economic binding layer: discovered candidates are joined to caller-supplied valuation/cost evidence, producing hash-bound `EconomicProof`; below-floor proofs are retained as evidence and excluded from selection.
-- `phantomx/loan_optimizer.py` remains the exact-domain loan-size optimizer: every supplied integer amount is evaluated, below-floor candidates remain evidence-only, mixed chain/block comparisons are rejected, and ties resolve to the smaller loan.
-- The discovery layer is valuation-independent by design. A gross-positive route observation is not a net-profit or production-execution claim; complete valuation, fee, gas, loan, and settlement economics remain downstream gates.
+- Latest verified engineering commit: `d3c37b1c5782fc86947c00052713cd0dd14e33ad`
+- Latest verified Phase-19 CI certification: workflow run `557` / run ID `35142513955` **GREEN** on `d3c37b1c5782fc86947c00052713cd0dd14e33ad`; Solidity compilation, EVM integration (14 tests), Polygon fork protocol smoke (3 tests), Polygon fork execution probe (1 test), and the full Phase-19 unittest suite (**711 tests, 0 failures, 0 errors**) all completed successfully.
+- The current verified cleanup removes a duplicate Governor test suite; the canonical Governor implementation and its coverage remain in `phantomx/governor.py` and the existing canonical pipeline tests.
+- `phantomx/live_opportunity_pipeline.py` provides concrete cross-venue discovery → complete economic evaluation → deterministic execution assembly → EVM preflight. It performs no signing, submission, broadcast, or live-capital operation.
+- `phantomx/live_canonical_governor.py` composes concrete discovery, economics, assembly, preflight, and the repository's canonical Governor before the signer boundary. It performs no signing, submission, broadcast, or live-capital operation. 
+- `phantomx/execution_coordinator.py` is the durable bridge from proven route/economic evidence through nonce reservation/binding, EVM preflight, canonical Governor, signer, and transaction persistence. Failures before signing release an uncommitted nonce reservation; post-signing persistence failures retain the reservation for forensic recovery.
+- Concrete cross-venue discovery remains pinned to one canonical Polygon block across both supported venue directions and the complete supplied loan-size frontier.
+- `phantomx/opportunity_economics.py` remains the economic binding layer: discovered candidates are joined to explicit valuation/cost evidence to create hash-bound `EconomicProof`; below-floor proofs remain evidence-only and cannot reach execution.
+- `phantomx/loan_optimizer.py` remains exact-domain and complete: all supplied integer amounts are evaluated, mixed block/chain candidates are rejected, and ties resolve to the smaller loan.
+- The economic invariant is unchanged: realized net profit must be **strictly greater than $0.20 after all applicable costs**.
 - Frozen external evidence artifact remains `e117b6550686cf5e0ff787d9bd7d85e83996db07`; engineering commits after that artifact do not retroactively alter its identity.
-- Consolidated external-evidence validator hard-binds the session manifest artifact identity to the frozen external artifact.
-- Operator preflight requires the frozen artifact in local history and current HEAD to descend from it.
-- Required external-evidence validators remain present for signer, Polygon authority, private relay, shadow/staging, and realized PnL.
+- Consolidated external-evidence validation remains hard-bound to the frozen external artifact and requires independent lane evidence for signer, Polygon authority, private relay, shadow/staging, and realized PnL.
+- Operator preflight still requires current HEAD to descend from the frozen artifact and rejects missing or contradictory evidence.
 - Certification PR `#1`: **OPEN / MERGE CONFLICTS**; merge is not required for external evidence capture.
 - External evidence handoff issue `#2`: **OPEN / BLOCKED**; genuine current production evidence has not been accepted.
 - Production readiness: **NOT ACHIEVED**
@@ -46,7 +44,6 @@ The project goal is not Phase-19. The goal is a working, evidence-backed Polygon
 - Realized live PnL: **BLOCKED**
 - Live mainnet execution: **BLOCKED**
 - Live capital: **LOCKED**
-- Economic invariant: realized net profit must be **strictly greater than $0.20 after all applicable costs**
 
 ## OPERATING MODE
 Each `next` is a batch execution cycle: scan the complete mission state, identify the highest-value unresolved bottleneck, execute all independent repository-safe work that materially advances the mission, verify it, integrate it, and only then advance. Phase-19 is treated as an external verification gate, not as the project goal.
