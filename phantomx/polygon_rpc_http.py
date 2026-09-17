@@ -93,7 +93,11 @@ class PolygonRPCHTTPTransport:
         request = Request(
             self.config.endpoint_url,
             data=payload,
-            headers={"Content-Type": "application/json", "Accept": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": "PhantomX-ReadOnly-RPC/1.0",
+            },
             method="POST",
         )
         try:
@@ -102,8 +106,10 @@ class PolygonRPCHTTPTransport:
         except (HTTPError, URLError, TimeoutError, OSError) as exc:
             reason = getattr(exc, "reason", None)
             reason_type = type(reason).__name__ if reason is not None else type(exc).__name__
+            status = getattr(exc, "code", None)
+            status_part = f" status={status}" if isinstance(status, int) else ""
             raise PolygonRPCHTTPError(
-                f"{method}: HTTP transport failure [{type(exc).__name__}: {reason_type}]"
+                f"{method}: HTTP transport failure [{type(exc).__name__}: {reason_type}{status_part}]"
             ) from exc
 
         try:
