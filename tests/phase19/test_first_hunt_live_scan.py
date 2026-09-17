@@ -8,7 +8,7 @@ class FirstHuntLiveScanContractTests(unittest.TestCase):
     def test_scan_contract_is_explicitly_read_only(self):
         self.assertEqual(POLYGON_CHAIN_ID, 137)
         self.assertTrue(LOAN_USDC)
-        self.assertEqual(len(PAIRS), 3)
+        self.assertEqual(len(PAIRS), 7)
 
     def test_loan_frontier_is_strictly_increasing(self):
         self.assertEqual(tuple(sorted(LOAN_USDC)), LOAN_USDC)
