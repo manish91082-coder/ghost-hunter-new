@@ -74,6 +74,12 @@ PAIRS = (
     PairSpec("USDC/WETH", WETH),
     PairSpec("USDC/WPOL", WPOL),
     PairSpec("USDC/WBTC", WBTC),
+    # Exploratory read-only coverage. Each tile must prove an on-chain route
+    # exists at the pinned block before observations are retained.
+    PairSpec("USDC/DAI", DAI),
+    PairSpec("USDC/LINK", LINK),
+    PairSpec("USDC/AAVE", AAVE),
+    PairSpec("USDC/UNI", UNI),
 )
 
 
