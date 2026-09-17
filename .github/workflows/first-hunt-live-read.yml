@@ -38,6 +38,15 @@ jobs:
       - name: Install Phase-19 dependencies
         run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
 
+      - name: Diagnose Polygon RPC reachability
+        run: |
+          set -u
+          for endpoint in             "https://polygon.drpc.org/"             "https://public.1rpc.io/matic"             "https://polygon-bor-rpc.publicnode.com"; do
+            printf "RPC %s -> " "$endpoint"
+            curl --silent --show-error --max-time 8               -H "Content-Type: application/json"               --data '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}'               "$endpoint" | head -c 200 || true
+            printf "\n"
+          done
+
       - name: Run read-only First-Hunt scan
         run: python scripts/first_hunt_live_scan.py
 
