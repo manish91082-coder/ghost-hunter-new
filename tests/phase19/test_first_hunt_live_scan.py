@@ -1,7 +1,7 @@
 import json
 import unittest
 
-from scripts.first_hunt_live_scan import LOAN_USDC, PAIRS, POLYGON_CHAIN_ID
+from scripts.first_hunt_live_scan import LOAN_USDC, PAIRS, POLYGON_CHAIN_ID, UNISWAP_V3_FEE_TIERS
 
 
 class FirstHuntLiveScanContractTests(unittest.TestCase):
@@ -15,6 +15,10 @@ class FirstHuntLiveScanContractTests(unittest.TestCase):
         self.assertEqual(len(set(LOAN_USDC)), len(LOAN_USDC))
         self.assertGreaterEqual(LOAN_USDC[0], 100)
         self.assertGreaterEqual(LOAN_USDC[-1], 25000)
+
+    def test_uniswap_fee_tier_frontier_is_complete_and_unique(self):
+        self.assertEqual(UNISWAP_V3_FEE_TIERS, (100, 500, 3000, 10000))
+        self.assertEqual(len(set(UNISWAP_V3_FEE_TIERS)), len(UNISWAP_V3_FEE_TIERS))
 
     def test_artifact_profit_policy_is_non_claiming(self):
         payload = {

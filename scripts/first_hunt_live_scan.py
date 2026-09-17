@@ -23,6 +23,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from phantomx.cross_venue_discovery import discover_cross_venue_opportunities
+from phantomx.market_block import acquire_market_block
 from phantomx.polygon_rpc_http import PolygonRPCHTTPConfig, PolygonRPCHTTPTransport
 from phantomx.quickswap_v2 import QuickSwapV2ExactQuoter
 from phantomx.uniswap_v3 import UniswapV3ExactQuoter
@@ -36,7 +37,7 @@ WBTC = "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6"
 QUICKSWAP_V2_ROUTER = "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff"
 UNISWAP_V3_FACTORY = "0x1F98431c8aD98523631AE4a59f267346ea31F984"
 UNISWAP_V3_QUOTER = "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6"
-UNISWAP_V3_FEE = 500
+UNISWAP_V3_FEE_TIERS = (100, 500, 3000, 10000)
 
 DEFAULT_ENDPOINTS = (
     "https://polygon.drpc.org/",
@@ -128,17 +129,42 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
     quickswap = QuickSwapV2ExactQuoter(rpc, QUICKSWAP_V2_ROUTER)
     uniswap = UniswapV3ExactQuoter(rpc, UNISWAP_V3_FACTORY, UNISWAP_V3_QUOTER)
 
-    candidates = discover_cross_venue_opportunities(
-        rpc,
-        quickswap,
-        uniswap,
-        token_pairs=((USDC, pair.token_b) for pair in PAIRS),
-        loan_amounts=tuple(amount * 10**6 for amount in LOAN_USDC),
-        uniswap_fee=UNISWAP_V3_FEE,
-        block=None,
-    )
+    context = acquire_market_block(rpc)
 
-    observations = tuple(_quote_record(item) for item in candidates.evaluated)
+    observations: list[dict[str, Any]] = []
+    tile_results: list[dict[str, Any]] = []
+    for fee_tier in UNISWAP_V3_FEE_TIERS:
+        for pair in PAIRS:
+            try:
+                candidates = discover_cross_venue_opportunities(
+                    rpc,
+                    quickswap,
+                    uniswap,
+                    token_pairs=((USDC, pair.token_b),),
+                    loan_amounts=tuple(amount * 10**6 for amount in LOAN_USDC),
+                    uniswap_fee=fee_tier,
+                    block=context,
+                )
+                tile_observations = [_quote_record(item) for item in candidates.evaluated]
+                observations.extend(tile_observations)
+                tile_results.append({
+                    "pair": pair.name,
+                    "uniswap_fee_tier": fee_tier,
+                    "status": "SUCCESS",
+                    "observation_count": len(tile_observations),
+                })
+            except Exception as exc:
+                tile_results.append({
+                    "pair": pair.name,
+                    "uniswap_fee_tier": fee_tier,
+                    "status": "UNAVAILABLE_OR_FAILED",
+                    "error_type": type(exc).__name__,
+                    "error": str(exc),
+                })
+
+    if not observations:
+        raise RuntimeError("no complete pair/fee tier produced an exact route grid")
+
     blocks = sorted({item["block_number"] for item in observations})
     chains = sorted({item["chain_id"] for item in observations})
     gross_positive = [item for item in observations if item["gross_delta_raw"] > 0]
@@ -151,6 +177,7 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
         "gross_positive_count": len(gross_positive),
         "gross_positive_observations": gross_positive,
         "observations": observations,
+        "fee_tier_tile_results": tile_results,
         "status": "SUCCESS",
     }
 
@@ -190,7 +217,7 @@ def main() -> int:
         "chain_id_expected": POLYGON_CHAIN_ID,
         "pairs": [asdict(pair) for pair in PAIRS],
         "loan_frontier_usdc": list(LOAN_USDC),
-        "uniswap_v3_fee_tier": UNISWAP_V3_FEE,
+        "uniswap_v3_fee_tiers": list(UNISWAP_V3_FEE_TIERS),
         "successful_endpoints": results,
         "failed_endpoints": failures,
         "economic_certification": "NOT_PERFORMED",
