@@ -13,6 +13,7 @@ import json
 import os
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from decimal import Decimal
 from pathlib import Path
@@ -198,21 +199,25 @@ def main() -> int:
     results: list[dict[str, Any]] = []
     failures: list[dict[str, str]] = []
 
-    for endpoint in _endpoints():
-        try:
-            print(f"Scanning read-only Polygon endpoint: {endpoint}", flush=True)
-            result = _scan_endpoint(endpoint)
-            results.append(result)
-            print(
-                f"SUCCESS {endpoint}: observations={result['observation_count']} "
-                f"gross_positive={result['gross_positive_count']} blocks={result['blocks']}",
-                flush=True,
-            )
-            # One clean provider is enough to establish live-read availability.
-            # Additional providers remain useful for independent corroboration.
-        except Exception as exc:
-            failures.append({"endpoint": endpoint, "error": type(exc).__name__ + ": " + str(exc)})
-            print(f"FAILED {endpoint}: {type(exc).__name__}: {exc}", flush=True)
+    endpoints = _endpoints()
+    # Run independent provider scans in bounded parallelism so a slow/blocked
+    # provider does not serialize the entire hunt. Each provider remains
+    # internally read-only and uses its own pinned block context.
+    with ThreadPoolExecutor(max_workers=min(2, len(endpoints))) as pool:
+        futures = {endpoint: pool.submit(_scan_endpoint, endpoint) for endpoint in endpoints}
+        for endpoint in endpoints:
+            try:
+                print(f"Scanning read-only Polygon endpoint: {endpoint}", flush=True)
+                result = futures[endpoint].result()
+                results.append(result)
+                print(
+                    f"SUCCESS {endpoint}: observations={result['observation_count']} "
+                    f"gross_positive={result['gross_positive_count']} blocks={result['blocks']}",
+                    flush=True,
+                )
+            except Exception as exc:
+                failures.append({"endpoint": endpoint, "error": type(exc).__name__ + ": " + str(exc)})
+                print(f"FAILED {endpoint}: {type(exc).__name__}: {exc}", flush=True)
 
     artifact = {
         "schema_version": 1,
