@@ -15,6 +15,7 @@ class ShadowStagingEvidenceValidatorTests(unittest.TestCase):
         data = {
             "schema_version": 1,
             "artifact_commit": CURRENT_VERIFIED_ARTIFACT,
+            "execution_checkout_commit": CURRENT_VERIFIED_ARTIFACT,
             "executor_identity": "0x1111111111111111111111111111111111111111",
             "expected_signer": "0x2222222222222222222222222222222222222222",
             "route_proof_identity": "route-proof-1",
@@ -45,6 +46,11 @@ class ShadowStagingEvidenceValidatorTests(unittest.TestCase):
     def test_accepts_consistent_shadow_staging_evidence(self):
         with tempfile.TemporaryDirectory() as temp:
             self.assertEqual(main([str(self._evidence(Path(temp)))]), 0)
+
+    def test_rejects_execution_checkout_artifact_mismatch(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = self._evidence(Path(temp), execution_checkout_commit="0" * 40)
+            self.assertEqual(main([str(path)]), 2)
 
     def test_rejects_live_capital(self):
         with tempfile.TemporaryDirectory() as temp:
