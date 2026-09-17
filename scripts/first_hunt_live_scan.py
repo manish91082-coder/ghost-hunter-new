@@ -46,7 +46,7 @@ DEFAULT_ENDPOINTS = (
 )
 
 # Explicit frontier. Exact over this domain, not a continuous optimum claim.
-LOAN_USDC = (100, 250, 500, 1000, 2500, 5000, 10000, 25000)
+LOAN_USDC = (100, 250, 500, 750, 1000, 1500, 2500, 5000, 7500, 10000, 15000, 25000, 50000, 75000, 100000, 150000, 250000)
 
 
 class ResultOnlyTransport:
