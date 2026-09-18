@@ -11,6 +11,7 @@ on:
           - AUDIT
           - TEST
           - LIVE-HUNT
+          - STRATEGY-HUNT
           - PREPARE-STAGING
           - STAGING
           - PRODUCTION-READY-CHECK
@@ -120,6 +121,37 @@ jobs:
         with:
           name: phantomx-one-click-hunt-evidence
           path: artifacts/first_hunt_live_scan.json
+          if-no-files-found: error
+
+  strategy_hunt:
+    name: STRATEGY-HUNT / S1
+    if: ${{ inputs.mode == 'STRATEGY-HUNT' }}
+    needs: [audit, tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install Phase-19 dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
+
+      - name: Run S1 read-only QuickSwap V3 / Uniswap V3 hunt
+        run: python scripts/s1_qsv3_live_scan.py
+        env:
+          PYTHONUNBUFFERED: "1"
+
+      - name: Publish S1 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: phantomx-s1-qsv3-live-scan
+          path: artifacts/s1_qsv3_live_scan.json
           if-no-files-found: error
 
   production_gate:
