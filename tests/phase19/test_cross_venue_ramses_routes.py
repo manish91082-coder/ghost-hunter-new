@@ -99,7 +99,7 @@ class CrossVenueRamsesRouteTests(unittest.TestCase):
 
     def test_qsv3_to_ramses_v3_route_preserves_exact_leg_continuity(self):
         qs = FakeV3Quoter(A, B, 101_100, "quickswap_v3:pool", 37)
-        rv3 = FakeQuoter(B, A, 100_900, "ramses_v3:pool", 13)
+        rv3 = FakeV3Quoter(B, A, 100_900, "ramses_v3:pool", 13)
         sim = build_quickswap_v3_to_ramses_v3_route(
             None, qs, rv3, amount_in=100_000, token_a=A, token_b=B,
             ramses_tick_spacing=1, block=BLOCK,
