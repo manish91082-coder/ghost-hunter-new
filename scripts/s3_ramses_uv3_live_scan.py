@@ -28,14 +28,31 @@ from phantomx.ramses_v3 import DEFAULT_TICK_SPACINGS, RamsesV3ExactQuoter
 from phantomx.uniswap_v3 import UniswapV3ExactQuoter
 
 from first_hunt_live_scan import (
-    PAIRS,
     ResultOnlyTransport,
     UNISWAP_V3_FACTORY,
     UNISWAP_V3_FEE_TIERS,
     UNISWAP_V3_QUOTER,
-    USDC,
     _endpoints,
     dynamic_loan_frontier_usdc,
+)
+
+USDC_E = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+WETH = "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619"
+WPOL = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"
+WBTC = "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6"
+DAI = "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063"
+USDT_E = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"
+AAVE = "0xD6DF932A45C0f255f85145f286eA0b292B21C90B"
+UNI = "0xb33EaAd8d922B1083446DC23f610c2567fB5180f"
+
+PAIRS = (
+    ("USDC.e/WETH", WETH),
+    ("USDC.e/WPOL", WPOL),
+    ("USDC.e/WBTC", WBTC),
+    ("USDC.e/DAI", DAI),
+    ("USDC.e/USDT.e", USDT_E),
+    ("USDC.e/AAVE", AAVE),
+    ("USDC.e/UNI", UNI),
 )
 
 POLYGON_CHAIN_ID = 137
@@ -44,9 +61,9 @@ RAMSES_V3_QUOTER_V2 = "0x3c4532424Eb018013595e4960Fd3de5397B6f571"
 RAMSES_V3_SWAP_ROUTER = "0xdcD5F77697914E27f56FD263EF82923C8524AbAc"
 
 
-def _record(token_b: str, venue_path: str, amount: int, tick_spacing: int, sim: Any) -> dict[str, Any]:
+def _record(token_b: str, venue_path: str, amount: int, tick_spacing: int, sim: Any, flash_premium_bps: int = 5) -> dict[str, Any]:
     return {
-        "token_a": USDC,
+        "token_a": USDC_E,
         "token_b": token_b,
         "venue_path": venue_path,
         "ramses_tick_spacing": tick_spacing,
@@ -56,8 +73,10 @@ def _record(token_b: str, venue_path: str, amount: int, tick_spacing: int, sim: 
         "final_amount_usdc": str(Decimal(sim.final_amount) / Decimal(10**6)),
         "gross_delta_raw": sim.final_amount - sim.initial_amount,
         "gross_delta_usdc": str(Decimal(sim.final_amount - sim.initial_amount) / Decimal(10**6)),
-        "post_flash_premium_delta_raw": sim.final_amount - sim.initial_amount,
-        "post_flash_premium_delta_usdc": str(Decimal(sim.final_amount - sim.initial_amount) / Decimal(10**6)),
+        "flash_loan_premium_bps": flash_premium_bps,
+        "flash_loan_premium_raw": (amount * flash_premium_bps + 5000) // 10000,
+        "post_flash_premium_delta_raw": (sim.final_amount - sim.initial_amount) - ((amount * flash_premium_bps + 5000) // 10000),
+        "post_flash_premium_delta_usdc": str(Decimal((sim.final_amount - sim.initial_amount) - ((amount * flash_premium_bps + 5000) // 10000)) / Decimal(10**6)),
         "chain_id": sim.chain_id,
         "block_number": sim.block_number,
         "route_hash": sim.route_hash,
@@ -90,7 +109,7 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
     ramses = RamsesV3ExactQuoter(rpc, RAMSES_V3_FACTORY, RAMSES_V3_QUOTER_V2)
     uniswap = UniswapV3ExactQuoter(rpc, UNISWAP_V3_FACTORY, UNISWAP_V3_QUOTER)
     context = acquire_market_block(rpc)
-    aave = AaveV3PolygonDynamicReader(rpc).snapshot(USDC, context)
+    aave = AaveV3PolygonDynamicReader(rpc).snapshot(USDC_E, context)
     dynamic_ceiling_raw = compute_dynamic_loan_ceiling(
         DynamicLoanInputs(
             aave_available_raw=aave.available_liquidity_raw,
@@ -116,8 +135,8 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
                             ramses,
                             uniswap,
                             amount_in=amount,
-                            token_a=USDC,
-                            token_b=pair.token_b,
+                            token_a=USDC_E,
+                            token_b=pair[1],
                             ramses_tick_spacing=tick_spacing,
                             uniswap_fee=fee,
                             block=context,
@@ -130,8 +149,8 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
                             ramses,
                             uniswap,
                             amount_in=amount,
-                            token_a=USDC,
-                            token_b=pair.token_b,
+                            token_a=USDC_E,
+                            token_b=pair[1],
                             ramses_tick_spacing=tick_spacing,
                             uniswap_fee=fee,
                             block=context,
@@ -145,12 +164,12 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
                     )
                     for item in ceiling.evaluated:
                         if item.forward is not None:
-                            observations.append(_record(pair.token_b, "ramses_v3->uniswap_v3", item.amount, tick_spacing, item.forward))
+                            observations.append(_record(pair[1], "ramses_v3->uniswap_v3", item.amount, tick_spacing, item.forward, aave.flash_loan_premium_bps))
                         if item.reverse is not None:
-                            observations.append(_record(pair.token_b, "uniswap_v3->ramses_v3", item.amount, tick_spacing, item.reverse))
+                            observations.append(_record(pair[1], "uniswap_v3->ramses_v3", item.amount, tick_spacing, item.reverse, aave.flash_loan_premium_bps))
                     tiles.append(
                         {
-                            "pair": pair.name,
+                            "pair": pair[0],
                             "ramses_tick_spacing": tick_spacing,
                             "uniswap_fee_tier": fee,
                             "status": "SUCCESS",
@@ -239,7 +258,7 @@ def main() -> int:
         "ramses_v3_swap_router": RAMSES_V3_SWAP_ROUTER,
         "ramses_tick_spacings": list(DEFAULT_TICK_SPACINGS),
         "uniswap_v3_fee_tiers": list(UNISWAP_V3_FEE_TIERS),
-        "pairs": [p.name for p in PAIRS],
+        "pairs": [name for name, _token in PAIRS],
         "successful_endpoints": results,
         "failed_endpoints": failures,
         "economic_certification": "NOT_PERFORMED",
