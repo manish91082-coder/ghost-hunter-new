@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Phase19Executor} from "../../contracts/Phase19Executor.sol";
 
-interface Vm { function expectRevert() external; function deal(address token, address to, uint256 give) external; }
+interface Vm { function expectRevert() external; function deal(address token, address to, uint256 give, bool adjust) external; }
 interface IERC20Fork { function balanceOf(address account) external view returns (uint256); }
 interface IERC20Phase19Like { function approve(address spender, uint256 amount) external returns (bool); }
 interface IQuickSwapRouterForkExec { function getAmountsOut(uint256 amountIn, address[] calldata path) external view returns (uint256[] memory amounts); }
@@ -47,7 +47,7 @@ contract PolygonForkExecutionProbe {
         (uint256 quotedOut, uint16 dynamicFee) = IQuickSwapV3QuoterForkExec(QUICKSWAP_V3_QUOTER).quoteExactInputSingle(NATIVE_USDC, WMATIC, amountIn, 0);
         require(quotedOut > 0, "no QuickSwap V3 quote");
         require(dynamicFee > 0, "invalid dynamic fee");
-        vm.deal(NATIVE_USDC, address(this), amountIn);
+        vm.deal(NATIVE_USDC, address(this), amountIn, true);
         uint256 usdcBefore = IERC20Fork(NATIVE_USDC).balanceOf(address(this));
         uint256 wmaticBefore = IERC20Fork(WMATIC).balanceOf(address(this));
         require(IERC20Phase19Like(NATIVE_USDC).approve(QUICKSWAP_V3_ROUTER, amountIn), "approval failed");
