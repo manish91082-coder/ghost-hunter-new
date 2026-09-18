@@ -132,9 +132,9 @@ DEFAULT_STRATEGIES = StrategyRegistry(
             StrategyStatus.DISCOVERY_ONLY,
             137,
             ("Aave V3",),
-            ("Multiple Polygon venues",),
+            ("QuickSwap V3", "Ramses V3", "Uniswap V3"),
             "three_or_more_legs",
-            "Requires a separate route simulator and economic proof for multi-hop topology.",
+            "Bounded 3-venue exact-quote discovery is implemented. A dedicated 3+ leg execution path remains uncertified.",
         ),
         StrategySpec(
             "S7-STABLE-STABLE",
