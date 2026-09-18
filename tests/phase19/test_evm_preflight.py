@@ -140,7 +140,7 @@ class EVMPreflightTests(unittest.TestCase):
 
     def test_semantic_calldata_mutation_is_blocked_even_when_hashes_are_rebound(self):
         mutated = bytearray(self.envelope.calldata)
-        start = 4 + 4 * 32
+        start = 4 + 5 * 32
         mutated[start + 31] = 111
         intent, envelope, authorization = self._rebind(bytes(mutated))
         with self.assertRaisesRegex(EVMPreflightError, "first minimum"):
