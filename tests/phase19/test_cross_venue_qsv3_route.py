@@ -34,6 +34,7 @@ class FakeRPC:
     def __init__(self):
         self.calls=[]
         self.chain="0x89"; self.block="0x100"; self.ts="0x1000"
+        self.default_qs_quote = qs_quote(99,157)
     def call(self, method, params):
         self.calls.append((method,params))
         if method=="eth_chainId": return self.chain
@@ -42,7 +43,7 @@ class FakeRPC:
         if method=="eth_call":
             to=params[0]["to"]
             if to==FACTORY_QS: return addr_result(POOL_QS)
-            if to==QUOTER_QS: return qs_quote(99,157)
+            if to==QUOTER_QS: return self.default_qs_quote
             if to==FACTORY_U3: return addr_result(POOL_U3)
             if to==QUOTER_U3: return u256(98)
         raise AssertionError(method)
