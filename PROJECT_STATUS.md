@@ -80,3 +80,10 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 
 - DYN-1 is integrated by `scripts/first_hunt_live_scan.py`: live Aave reserve liquidity and `FLASHLOAN_PREMIUM_TOTAL` are read at the same pinned block; the loan domain is bounded by Aave liquidity with 5% fixed safety headroom, and each observation records both post-swap gross delta and post-flash-premium delta. Gas remains transaction-level and separate.
 - DYN-2 is now being integrated through `phantomx/dynamic_route_guard.py`: the candidate size is bounded by exact two-direction route executability and a fixed 100 bps maximum route-rate degradation policy relative to the smallest successful probe. This is exact over the supplied discrete domain only; no continuous-optimum claim is made.
+
+
+## SPEED / STRATEGY EXPANSION CONTROL
+
+- `phantomx/rpc_scheduler.py` now defines a bounded provider-fleet scheduler. A large registry may hold hundreds of non-secret provider records, but each task is assigned only to a small active subset with per-provider concurrency limits and circuit-breaker behavior.
+- `phantomx/strategy_registry.py` now tracks one canonical strategy plus discovery-only expansion candidates. Discovery registration never authorizes production execution.
+- Research confirms Polygon has current Uniswap V4 and Ramses V3 deployments; those are registered as discovery-only until exact adapters and evidence gates exist.
