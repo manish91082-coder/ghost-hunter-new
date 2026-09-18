@@ -112,5 +112,12 @@ Therefore S1 remains a **discovery frontier**, not an execution or realized-PnL 
 - The opportunity-preparation pipeline now accepts explicit QuickSwap V2/V3 router identities while retaining the legacy single-router argument only as a compatibility fallback.
 - A dedicated unit test proves a `quickswap_v3->uniswap_v3` candidate reaches calldata assembly with venue kind `2` and the correct Uniswap fee.
 
+## Latest discovery evidence
+- S2-UV4-V3 live hunt **Run #1** is green on current checkpoint HEAD.
+- S2 scanned a bounded hookless V4 grid. DRPC returned 200 observations and PublicNode returned 120 observations; both returned **0 gross-positive observations**.
+- Best observed gross delta was approximately `-$0.021222 USDC` on DRPC and `-$0.021234 USDC` on PublicNode.
+- S2 remains discovery-only; hooked V4 pools are intentionally outside the current evidence scope.
+- S3/S9/S10 Ramses cross-venue families are also discovery-only and have not produced a certified profitable candidate.
+
 ## Go-live prohibition
 Nothing in this status authorizes mainnet execution. No live transaction is authorized by the S1 discovery surface or by this Phase-19 audit state.
