@@ -1,0 +1,194 @@
+name: PHANTOMX One-Click Operator
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Deterministic operator mode"
+        required: true
+        type: choice
+        options:
+          - AUDIT
+          - TEST
+          - LIVE-HUNT
+          - PREPARE-STAGING
+          - STAGING
+          - PRODUCTION-READY-CHECK
+          - LIVE-EXECUTION
+      live_confirm:
+        description: "Required only for LIVE-EXECUTION: type LIVE-PROCEED"
+        required: false
+        type: string
+      max_hunt_minutes:
+        description: "Read-only hunt time budget"
+        required: false
+        default: "15"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phantomx-one-click-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: AUDIT
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact requested ref
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Verify canonical repository and ref
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REPOSITORY}" = "manish91082-coder/ghost-hunter-new"
+          test -n "${GITHUB_SHA}"
+          git rev-parse HEAD
+          git status --short
+
+      - name: Verify durable project memory
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s PHANTOMX_PROJECT_RESUME_MANIFEST.md
+          test -s PROJECT_STATUS.md
+          grep -F "LIVE SIGNING = BLOCKED" PROJECT_STATUS.md
+          grep -F "LIVE CAPITAL = LOCKED" PROJECT_STATUS.md
+
+      - name: Verify no tracked private-key files
+        shell: bash
+        run: |
+          set -euo pipefail
+          matches="$(git ls-files | grep -Ei '(^|/)(\.env|.*(private[_-]?key|keystore|mnemonic|seed).*|.*\.pem)$' || true)"
+          if [ -n "${matches}" ]; then
+            echo "BLOCKED: secret-like key material is tracked:"
+            echo "${matches}"
+            exit 1
+          fi
+
+  tests:
+    name: TEST / TRAINING
+    if: ${{ inputs.mode != 'AUDIT' && inputs.mode != 'LIVE-HUNT' || inputs.mode == 'TEST' || inputs.mode == 'PREPARE-STAGING' || inputs.mode == 'STAGING' || inputs.mode == 'PRODUCTION-READY-CHECK' || inputs.mode == 'LIVE-EXECUTION' }}
+    needs: audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install Phase-19 dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
+
+      - name: Run canonical deterministic suite
+        run: python -m unittest discover -s tests/phase19 -p 'test_*.py' -v
+
+      - name: Run canonical syntax check
+        run: python -m compileall -q phantomx scripts/first_hunt_live_scan.py
+
+  hunt:
+    name: LIVE-HUNT
+    if: ${{ inputs.mode == 'LIVE-HUNT' || inputs.mode == 'PREPARE-STAGING' || inputs.mode == 'STAGING' || inputs.mode == 'PRODUCTION-READY-CHECK' || inputs.mode == 'LIVE-EXECUTION' }}
+    needs: [audit, tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install Phase-19 dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
+
+      - name: Run read-only First-Hunt
+        run: python scripts/first_hunt_live_scan.py
+        env:
+          PYTHONUNBUFFERED: "1"
+
+      - name: Publish hunt evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: phantomx-one-click-hunt-evidence
+          path: artifacts/first_hunt_live_scan.json
+          if-no-files-found: error
+
+  production_gate:
+    name: PRODUCTION-READY-CHECK
+    if: ${{ inputs.mode == 'PRODUCTION-READY-CHECK' || inputs.mode == 'LIVE-EXECUTION' }}
+    needs: [audit, tests, hunt]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Verify production remains fail-closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -Eq 'LIVE SIGNING[[:space:]]*=[[:space:]]*BLOCKED' PROJECT_STATUS.md              && grep -Eq 'LIVE CAPITAL[[:space:]]*=[[:space:]]*LOCKED' PROJECT_STATUS.md; then
+            echo "Production gate is explicitly fail-closed."
+          else
+            echo "BLOCKED: production state lock is missing."
+            exit 1
+          fi
+
+      - name: Verify external evidence lanes are represented
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F "A. Polygon production authority" PHANTOMX_PROJECT_RESUME_MANIFEST.md
+          grep -F "B. production signer" PHANTOMX_PROJECT_RESUME_MANIFEST.md
+          grep -F "C. private relay" PHANTOMX_PROJECT_RESUME_MANIFEST.md
+          grep -F "D. identical-artifact shadow/staging" PHANTOMX_PROJECT_RESUME_MANIFEST.md
+          grep -F "E. realized economics / PnL" PHANTOMX_PROJECT_RESUME_MANIFEST.md
+
+      - name: LIVE-EXECUTION explicit confirmation gate
+        if: ${{ inputs.mode == 'LIVE-EXECUTION' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ inputs.live_confirm }}" = "LIVE-PROCEED" || {
+            echo "BLOCKED: LIVE-EXECUTION requires explicit confirmation token."
+            exit 1
+          }
+          echo "LIVE-EXECUTION reached the explicit confirmation gate."
+
+  live_execution:
+    name: LIVE-EXECUTION
+    if: ${{ inputs.mode == 'LIVE-EXECUTION' }}
+    needs: production_gate
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    timeout-minutes: 10
+    steps:
+      - name: Fail closed until external evidence is accepted
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "PRODUCTION environment reached."
+          echo "No transaction signer or broadcaster is invoked by this workflow yet."
+          echo "The job remains blocked until external signer, Polygon authority,"
+          echo "private relay, identical-artifact shadow/staging, and realized-PnL"
+          echo "evidence are accepted in the canonical control plane."
+          grep -F "LIVE SIGNING = BLOCKED" PROJECT_STATUS.md
+          grep -F "LIVE CAPITAL = LOCKED" PROJECT_STATUS.md
+          exit 1
