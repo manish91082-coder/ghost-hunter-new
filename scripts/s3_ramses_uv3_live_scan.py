@@ -129,6 +129,13 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
         for fee in UNISWAP_V3_FEE_TIERS:
             for pair in PAIRS:
                 try:
+                    # Fast tile gate: prove both pools exist at the pinned block
+                    # before spending the full loan frontier on quote calls.
+                    ramses_pool = ramses.resolve_pool(USDC_E, pair[1], tick_spacing, context)
+                    ramses_fee = ramses.pool_fee(ramses_pool, context)
+                    uniswap_pool = uniswap.resolve_pool(USDC_E, pair[1], fee, context)
+                    if not ramses_pool or not uniswap_pool:
+                        raise RuntimeError("required route pool is unavailable")
                     forwards = tuple(
                         build_ramses_v3_to_uniswap_v3_route(
                             rpc,
@@ -172,6 +179,9 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
                             "pair": pair[0],
                             "ramses_tick_spacing": tick_spacing,
                             "uniswap_fee_tier": fee,
+                            "ramses_pool": ramses_pool,
+                            "ramses_fee_raw": ramses_fee,
+                            "uniswap_pool": uniswap_pool,
                             "status": "SUCCESS",
                             "observation_count": len(ceiling.evaluated) * 2,
                             "dynamic_route_ceiling_usdc": str(Decimal(ceiling.max_safe_amount) / Decimal(10**6)),
