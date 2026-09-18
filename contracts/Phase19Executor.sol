@@ -184,7 +184,7 @@ contract Phase19Executor {
         if (p.deadline < block.timestamp) revert InvalidDeadline();
         if (p.tokenMid == address(0) || p.routeHash == bytes32(0) || p.intentHash == bytes32(0)) revert InvalidRoute();
         if (p.intentHash != activeIntentHash) revert ActiveExecutionMismatch();
-        bytes32 topology = routeTopologyHash(p.asset, p.tokenMid, p.firstOnQuickSwap, p.uniswapFee);
+        bytes32 topology = routeTopologyHash(p.asset, p.tokenMid, p.firstOnQuickSwap, p.quickSwapVenueKind, p.uniswapFee);
         if (p.routeCommitment != routeCommitment(p.routeHash, topology)) revert InvalidRoute();
         if (consumedIntent[p.intentHash]) revert IntentAlreadyConsumed();
         if (IERC20Phase19(asset).balanceOf(address(this)) < amount) revert InvalidLoanAmount();
