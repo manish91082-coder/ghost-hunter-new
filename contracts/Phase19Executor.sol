@@ -74,6 +74,7 @@ contract Phase19Executor {
     address public immutable aavePool;
     address public immutable quickSwapV2Router;
     address public immutable quickSwapV3Router;
+    address public immutable quickSwapRouter;
     address public immutable uniswapV3Router;
 
     uint256 private constant NOT_ENTERED = 1;
@@ -120,6 +121,7 @@ contract Phase19Executor {
         aavePool = aavePool_;
         quickSwapV2Router = quickSwapV2Router_;
         quickSwapV3Router = quickSwapV3Router_;
+        quickSwapRouter = quickSwapV2Router_;
         uniswapV3Router = uniswapV3Router_;
     }
 
@@ -226,12 +228,12 @@ contract Phase19Executor {
 
     function _swapQuickSwap(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOutMin, uint256 deadline, uint8 quickSwapVenueKind) internal returns (uint256 amountOut) {
         if (quickSwapVenueKind == 1) {
-            _approveExact(tokenIn, quickSwapV2Router, amountIn);
+            _approveExact(tokenIn, quickSwapRouter, amountIn);
             address[] memory path = new address[](2);
             path[0] = tokenIn;
             path[1] = tokenOut;
-            uint256[] memory amounts = IQuickSwapV2RouterPhase19(quickSwapV2Router).swapExactTokensForTokens(amountIn, amountOutMin, path, address(this), deadline);
-            _resetApproval(tokenIn, quickSwapV2Router);
+            uint256[] memory amounts = IQuickSwapV2RouterPhase19(quickSwapRouter).swapExactTokensForTokens(amountIn, amountOutMin, path, address(this), deadline);
+            _resetApproval(tokenIn, quickSwapRouter);
             if (amounts.length < 2 || amounts[amounts.length - 1] < amountOutMin) revert MinimumOutputFailed();
             return amounts[amounts.length - 1];
         }
