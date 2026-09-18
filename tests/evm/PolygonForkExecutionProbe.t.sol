@@ -61,6 +61,38 @@ contract PolygonForkExecutionProbe {
         require(IERC20Fork(NATIVE_USDC).balanceOf(address(this)) == usdcBefore - amountIn, "USDC not spent");
         require(IERC20Fork(WMATIC).balanceOf(address(this)) >= wmaticBefore + amountOut, "WMATIC not received");
     }
+    function test_real_aave_qsv3_uv3_full_cycle_is_atomic_and_fail_closed() public {
+        require(block.chainid == POLYGON_CHAIN_ID, "not polygon fork");
+        require(AAVE_V3_POOL.code.length > 0, "missing Aave pool");
+        require(QUICKSWAP_V3_ROUTER.code.length > 0, "missing QuickSwap V3 router");
+        require(QUICKSWAP_V3_QUOTER.code.length > 0, "missing QuickSwap V3 quoter");
+        require(UNISWAP_V3_ROUTER.code.length > 0, "missing Uniswap V3 router");
+        require(UNISWAP_V3_QUOTER_V1.code.length > 0, "missing Uniswap V3 quoter");
+        uint256 amount = 10_000_000;
+        (uint256 quickQuote, uint16 dynamicFee) = IQuickSwapV3QuoterForkExec(QUICKSWAP_V3_QUOTER).quoteExactInputSingle(NATIVE_USDC, WMATIC, amount, 0);
+        require(quickQuote > 0 && dynamicFee > 0, "invalid QuickSwap V3 quote");
+        (uint24 uniFee, uint256 uniQuote) = _findUsableUniswapFee(quickQuote, WMATIC, NATIVE_USDC);
+        require(uniQuote > 0, "invalid Uniswap V3 quote");
+        Phase19Executor executor = new Phase19Executor(AAVE_V3_POOL, QUICKSWAP_V2_ROUTER, QUICKSWAP_V3_ROUTER, UNISWAP_V3_ROUTER);
+        Phase19Executor.ExecutionParams memory p;
+        p.asset = NATIVE_USDC;
+        p.tokenMid = WMATIC;
+        p.firstOnQuickSwap = true;
+        p.quickSwapVenueKind = 2;
+        p.uniswapFee = uniFee;
+        p.amountOutMinFirst = 1;
+        p.amountOutMinSecond = 1;
+        p.minimumSurplus = type(uint256).max / 2;
+        p.deadline = block.timestamp + 300;
+        p.routeHash = QUOTE_ROUTE_HASH;
+        p.routeCommitment = executor.routeCommitment(QUOTE_ROUTE_HASH, executor.routeTopologyHash(NATIVE_USDC, WMATIC, true, 2, uniFee));
+        p.intentHash = keccak256("fork-qsv3-uv3-full-cycle");
+        vm.expectRevert();
+        executor.execute(p, amount);
+        require(!executor.activeExecution(), "active state survived rollback");
+        require(!executor.consumedIntent(p.intentHash), "intent consumed on rollback");
+        require(IERC20Fork(NATIVE_USDC).balanceOf(address(executor)) == 0, "rollback left executor USDC");
+    }
     function test_real_aave_flashloan_and_dex_callback_path_rolls_back() public {
         require(block.chainid == POLYGON_CHAIN_ID, "not polygon fork"); require(block.number > 0, "no fork block");
         require(AAVE_V3_POOL.code.length > 0, "missing Aave pool"); require(QUICKSWAP_V2_ROUTER.code.length > 0, "missing QuickSwap router"); require(UNISWAP_V3_ROUTER.code.length > 0, "missing Uniswap router");
