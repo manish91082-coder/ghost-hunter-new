@@ -100,5 +100,11 @@ Therefore S1 remains a **discovery frontier**, not an execution or realized-PnL 
 - The test uses the verified Polygon USDC `balanceAndBlacklistStates` mapping slot for fork-only balance setup; this is test infrastructure, not production logic.
 - This proves the deployed QuickSwap V3 router path can execute on a Polygon fork. It does **not** yet prove a profitable or successfully repaid two-DEX Aave flash-loan transaction.
 
+## Latest P0 evidence
+- Exact-current-HEAD Phase-19 CI run **#665** is green.
+- Polygon fork execution probe now performs a real Aave V3 flash-loan path using the canonical executor, with QuickSwap V3 as the first leg and Uniswap V3 as the second leg.
+- The probe derives live fork quotes for the two DEX legs, uses explicit QuickSwap venue kind `2`, and forces an impossible settlement surplus so the transaction must fail atomically rather than create synthetic profit evidence.
+- The test verifies executor state is clean after rollback. This is an integration/control-path proof, not a profitability or repayment certification.
+
 ## Go-live prohibition
 Nothing in this status authorizes mainnet execution. No live transaction is authorized by the S1 discovery surface or by this Phase-19 audit state.
