@@ -20,7 +20,7 @@ from .execution import ExecutionIntent, TransactionEnvelope
 from .hashing import keccak256_hex
 
 EXECUTE_SIGNATURE = "execute((address,address,bool,uint8,uint24,uint256,uint256,uint256,uint256,bytes32,bytes32,bytes32),uint256)"
-EXECUTE_WORD_COUNT = 12
+EXECUTE_WORD_COUNT = 13
 EXECUTE_TOTAL_LENGTH = 4 + EXECUTE_WORD_COUNT * 32
 
 
