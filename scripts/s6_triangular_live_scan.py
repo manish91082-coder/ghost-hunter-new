@@ -1,0 +1,217 @@
+#!/usr/bin/env python3
+"""Read-only S6 triangular arbitrage discovery on Polygon."""
+from __future__ import annotations
+
+import itertools
+import json
+import os
+import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
+from decimal import Decimal
+from pathlib import Path
+from typing import Any
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from first_hunt_live_scan import ResultOnlyTransport, _endpoints, dynamic_loan_frontier_usdc
+from phantomx.aave_v3_dynamic import AaveV3PolygonDynamicReader
+from phantomx.dynamic_market_policy import DynamicLoanInputs, compute_dynamic_loan_ceiling
+from phantomx.market_block import acquire_market_block
+from phantomx.polygon_rpc_http import PolygonRPCHTTPConfig, PolygonRPCHTTPTransport
+from phantomx.quickswap_v3 import QuickSwapV3ExactQuoter
+from phantomx.ramses_v3 import RamsesV3ExactQuoter
+from phantomx.triangular_route import simulate_multi_leg
+from phantomx.uniswap_v3 import UniswapV3ExactQuoter
+
+POLYGON_CHAIN_ID = 137
+USDC_E = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+WETH = "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619"
+WPOL = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"
+DAI = "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063"
+
+QUICKSWAP_V3_FACTORY = "0x411b0fAcC3489691f28ad58c47006AF5E3Ab3A28"
+QUICKSWAP_V3_QUOTER = "0xa15F0D7377B2A0C0c10db057f641beD21028FC89"
+RAMSES_V3_FACTORY = "0x2Bef16A0081565E72100D73CBe19B1Bd2d802380"
+RAMSES_V3_QUOTER_V2 = "0x3c4532424Eb018013595e4960Fd3de5397B6f571"
+UNISWAP_V3_FACTORY = "0x1F98431c8aD98523631AE4a59f267346ea31F984"
+UNISWAP_V3_QUOTER = "0x61fFE014bA17989E743c5F6cB21bf9697530B21e"
+
+BRIDGES = (
+    ("WETH", WETH),
+    ("WPOL", WPOL),
+    ("DAI", DAI),
+)
+VENUES = ("quickswap_v3", "ramses_v3", "uniswap_v3")
+
+
+def _quote(adapters, venue: str, amount: int, token_in: str, token_out: str, context):
+    if venue == "quickswap_v3":
+        return adapters["quickswap"].quote_snapshot(amount, token_in, token_out, context)
+    if venue == "ramses_v3":
+        return adapters["ramses"].quote_snapshot(amount, token_in, token_out, 1, context)
+    return adapters["uniswap"].quote_snapshot(amount, token_in, token_out, 500, context)
+
+
+def _record(venues, tokens, amount, sim, premium_bps):
+    premium = (amount * premium_bps + 5000) // 10000
+    return {
+        "venue_path": "->".join(venues),
+        "token_path": ["USDC.e", *tokens, "USDC.e"],
+        "loan_amount_raw": amount,
+        "loan_amount_usdc": str(Decimal(amount) / Decimal(10**6)),
+        "final_amount_raw": sim.final_amount,
+        "final_amount_usdc": str(Decimal(sim.final_amount) / Decimal(10**6)),
+        "gross_delta_raw": sim.final_amount - sim.initial_amount,
+        "gross_delta_usdc": str(Decimal(sim.final_amount - sim.initial_amount) / Decimal(10**6)),
+        "flash_loan_premium_bps": premium_bps,
+        "post_flash_premium_delta_raw": sim.final_amount - sim.initial_amount - premium,
+        "post_flash_premium_delta_usdc": str(Decimal(sim.final_amount - sim.initial_amount - premium) / Decimal(10**6)),
+        "chain_id": sim.chain_id,
+        "block_number": sim.block_number,
+        "route_hash": sim.route_hash,
+        "legs": [
+            {
+                "dex": leg.dex,
+                "pool_or_router": leg.pool_or_router,
+                "token_in": leg.token_in,
+                "token_out": leg.token_out,
+                "amount_in": leg.amount_in,
+                "amount_out": leg.amount_out,
+                "fee_raw": leg.fee_raw,
+                "gas_estimate": leg.gas_estimate,
+                "quote_hash": leg.quote_hash,
+            }
+            for leg in sim.legs
+        ],
+    }
+
+
+def _scan_endpoint(endpoint: str) -> dict[str, Any]:
+    rpc = ResultOnlyTransport(
+        PolygonRPCHTTPTransport(
+            PolygonRPCHTTPConfig(
+                provider_name=f"s6-triangular:{endpoint}",
+                endpoint_url=endpoint,
+                timeout_seconds=8.0,
+            )
+        )
+    )
+    adapters = {
+        "quickswap": QuickSwapV3ExactQuoter(rpc, QUICKSWAP_V3_FACTORY, QUICKSWAP_V3_QUOTER),
+        "ramses": RamsesV3ExactQuoter(rpc, RAMSES_V3_FACTORY, RAMSES_V3_QUOTER_V2),
+        "uniswap": UniswapV3ExactQuoter(rpc, UNISWAP_V3_FACTORY, UNISWAP_V3_QUOTER),
+    }
+    context = acquire_market_block(rpc)
+    aave = AaveV3PolygonDynamicReader(rpc).snapshot(USDC_E, context)
+    ceiling = compute_dynamic_loan_ceiling(DynamicLoanInputs(
+        aave_available_raw=aave.available_liquidity_raw,
+        route_input_ceiling_raw=aave.available_liquidity_raw,
+        price_impact_ceiling_raw=aave.available_liquidity_raw,
+        system_hard_cap_raw=None,
+        safety_headroom_bps=500,
+    ))
+    amounts = tuple(x * 10**6 for x in dynamic_loan_frontier_usdc(ceiling // 10**6))
+
+    observations: list[dict[str, Any]] = []
+    failures: list[dict[str, Any]] = []
+    for bridge_names in itertools.permutations(BRIDGES, 2):
+        first_name, first_addr = bridge_names[0]
+        second_name, second_addr = bridge_names[1]
+        tokens = (first_addr, second_addr)
+        for venues in itertools.permutations(VENUES, 3):
+            for amount in amounts:
+                try:
+                    legs = []
+                    leg_amount = amount
+                    current = USDC_E
+                    for venue, nxt in zip(venues, (*tokens, USDC_E)):
+                        leg = _quote(adapters, venue, leg_amount, current, nxt, context)
+                        legs.append(leg)
+                        leg_amount = leg.amount_out
+                        current = nxt
+                    sim = simulate_multi_leg(legs)
+                    observations.append(_record(venues, (first_name, second_name), amount, sim, aave.flash_loan_premium_bps))
+                except Exception as exc:
+                    failures.append({
+                        "tokens": ["USDC.e", first_name, second_name],
+                        "venues": venues,
+                        "amount": amount,
+                        "error_type": type(exc).__name__,
+                        "error": str(exc),
+                    })
+
+    ranked = sorted(observations, key=lambda x: x["gross_delta_raw"], reverse=True)
+    return {
+        "endpoint": endpoint,
+        "chain_id": POLYGON_CHAIN_ID,
+        "block_number": context.block_number,
+        "observation_count": len(observations),
+        "gross_positive_count": sum(x["gross_delta_raw"] > 0 for x in observations),
+        "gross_max_usdc": str(Decimal(ranked[0]["gross_delta_raw"]) / Decimal(10**6)) if ranked else "0",
+        "top_gross_observations": ranked[:30],
+        "failed_route_count": len(failures),
+        "sample_failures": failures[:20],
+        "aave_dynamic": {
+            "pool": aave.pool,
+            "available_liquidity_usdc": str(Decimal(aave.available_liquidity_raw) / Decimal(10**6)),
+            "flash_loan_premium_bps": aave.flash_loan_premium_bps,
+            "dynamic_ceiling_usdc": str(Decimal(ceiling) / Decimal(10**6)),
+            "loan_frontier_usdc": list(x / 1 for x in dynamic_loan_frontier_usdc(ceiling // 10**6)),
+        },
+        "status": "SUCCESS",
+    }
+
+
+def main() -> int:
+    Path("artifacts").mkdir(exist_ok=True)
+    started = time.time()
+    results, failures = [], []
+    endpoints = _endpoints()
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = {e: pool.submit(_scan_endpoint, e) for e in endpoints}
+        for e, future in futures.items():
+            try:
+                r = future.result()
+                results.append(r)
+                print(f"SUCCESS {e}: observations={r['observation_count']} positive={r['gross_positive_count']} max={r['gross_max_usdc']}", flush=True)
+            except Exception as exc:
+                failures.append({"endpoint": e, "error": type(exc).__name__ + ": " + str(exc)})
+                print(f"FAILED {e}: {type(exc).__name__}: {exc}", flush=True)
+    artifact = {
+        "schema_version": 1,
+        "mission": "PHANTOMX S6 TRIANGULAR READ-ONLY LIVE SCAN",
+        "strategy": "S6-TRIANGULAR",
+        "coverage": "bounded-3-venue-v3-grid",
+        "read_only": True,
+        "signing": False,
+        "submission": False,
+        "broadcast": False,
+        "live_capital": False,
+        "generated_at_unix": int(time.time()),
+        "duration_seconds": round(time.time() - started, 3),
+        "chain_id_expected": POLYGON_CHAIN_ID,
+        "base_token": USDC_E,
+        "bridge_assets": [name for name, _ in BRIDGES],
+        "venue_families": list(VENUES),
+        "ramses_tick_spacing": 1,
+        "uniswap_v3_fee_tier": 500,
+        "provenance": {
+            "git_commit_sha": os.environ.get("GITHUB_SHA", "UNKNOWN"),
+            "git_ref": os.environ.get("GITHUB_REF", "UNKNOWN"),
+            "workflow_run_id": os.environ.get("GITHUB_RUN_ID", "UNKNOWN"),
+            "workflow_run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT", "UNKNOWN"),
+        },
+        "successful_endpoints": results,
+        "failed_endpoints": failures,
+        "economic_certification": "NOT_PERFORMED",
+        "profit_claim": "NONE",
+    }
+    Path("artifacts/s6_triangular_live_scan.json").write_text(json.dumps(artifact, indent=2, sort_keys=True), encoding="utf-8")
+    return 0 if results else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
