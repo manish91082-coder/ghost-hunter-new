@@ -179,6 +179,14 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
     blocks = sorted({item["block_number"] for item in observations})
     chains = sorted({item["chain_id"] for item in observations})
     gross_positive = [item for item in observations if item["gross_delta_raw"] > 0]
+    ranked = sorted(observations, key=lambda item: item["gross_delta_raw"], reverse=True)
+    top_gross = ranked[:10]
+    by_tile: dict[str, dict[str, Any]] = {}
+    for item in observations:
+        tile = f"{item['token_b'][:10]}:{item.get('venue_path', 'unknown')}"
+        current = by_tile.get(tile)
+        if current is None or item["gross_delta_raw"] > current["gross_delta_raw"]:
+            by_tile[tile] = item
 
     return {
         "endpoint": endpoint,
@@ -186,6 +194,13 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
         "blocks": blocks,
         "observation_count": len(observations),
         "gross_positive_count": len(gross_positive),
+        "gross_max_usdc": str(Decimal(top_gross[0]["gross_delta_raw"]) / Decimal(10**6)) if top_gross else "0",
+        "top_gross_observations": top_gross,
+        "tile_maxima": sorted(
+            by_tile.values(),
+            key=lambda item: item["gross_delta_raw"],
+            reverse=True,
+        )[:20],
         "gross_positive_observations": gross_positive,
         "observations": observations,
         "fee_tier_tile_results": tile_results,
@@ -212,7 +227,8 @@ def main() -> int:
                 results.append(result)
                 print(
                     f"SUCCESS {endpoint}: observations={result['observation_count']} "
-                    f"gross_positive={result['gross_positive_count']} blocks={result['blocks']}",
+                    f"gross_positive={result['gross_positive_count']} "
+                    f"gross_max_usdc={result['gross_max_usdc']} blocks={result['blocks']}",
                     flush=True,
                 )
             except Exception as exc:
