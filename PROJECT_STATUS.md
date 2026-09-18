@@ -26,10 +26,10 @@ The project goal is not Phase-19. The goal is a working, evidence-backed Polygon
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Current HEAD at this sync: `5b3dd5aaabbe247db6b5c2d3ec6c8bd2ecb41bc2` (`feat(P0): integrate dynamic Aave loan ceiling into First-Hunt`).
-- Latest verified engineering commit at this sync: `5b3dd5aaabbe247db6b5c2d3ec6c8bd2ecb41bc2` (`feat(P0): integrate dynamic Aave loan ceiling into First-Hunt`).
-- Latest verified Phase-19 CI certification: workflow run `592` / run ID `35335002774` **GREEN** on `5b3dd5aaabbe247db6b5c2d3ec6c8bd2ecb41bc2`; Solidity compilation, EVM integration (**14 tests**), Polygon fork protocol smoke (**3 tests**), Polygon fork execution probe (**1 test**), and the full Phase-19 unittest suite (**717 tests, 0 failures, 0 errors**) all completed successfully. The workflow checked out the exact branch HEAD with `fetch-depth: 0`.
-- The latest live-discovery increment adds exact Uniswap V3 fee-tier enumeration across 100/500/3000/10000 and a read-only First-Hunt Actions scan. First-Hunt workflow run `7` / run ID `35284988643` is **GREEN**; it produced 340 exact observations on `polygon.drpc.org` and 374 on `polygon-bor-rpc.publicnode.com`, with zero gross-positive candidates. The scan is observation-only and performs no signing, submission, broadcast, or live-capital operation.
+- Current HEAD at this sync: `b19c8c08c3741a51068f6e043521452f1ece8ab4` (`fix(P0): forward scheduler circuit settings from factory`).
+- Latest verified engineering commit at this sync: `b19c8c08c3741a51068f6e043521452f1ece8ab4` (`fix(P0): forward scheduler circuit settings from factory`).
+- Latest verified Phase-19 CI certification: workflow run `596` / run ID `35343121225` **GREEN** on `b19c8c08c3741a51068f6e043521452f1ece8ab4`; Solidity compilation, EVM integration (**14 tests**), Polygon fork protocol smoke (**3 tests**), Polygon fork execution probe (**1 test**), and the full Phase-19 unittest suite (**717 tests, 0 failures, 0 errors**) all completed successfully. The workflow checked out the exact branch HEAD with `fetch-depth: 0`.
+- The latest First-Hunt runs are read-only evidence only. First-Hunt #18 uses the bounded RPC scheduler head `b19c8c08...`; verify its final outcome from Actions before treating it as current market evidence.
 - The verified cleanup removes the duplicate Governor test module `tests/phase19/test_execution_governor.py`; canonical Governor coverage remains in `tests/phase19/test_governor.py` and the existing canonical pipeline tests. The canonical Governor implementation remains `phantomx/governor.py`.
 - `phantomx/live_opportunity_pipeline.py` provides concrete cross-venue discovery → complete economic evaluation → deterministic execution assembly → EVM preflight. It performs no signing, submission, broadcast, or live-capital operation.
 - `phantomx/live_canonical_governor.py` composes concrete discovery, economics, assembly, preflight, and the repository's canonical Governor before the signer boundary. It performs no signing, submission, broadcast, or live-capital operation.
@@ -40,7 +40,7 @@ The project goal is not Phase-19. The goal is a working, evidence-backed Polygon
 - `phantomx/loan_optimizer.py` remains exact-domain and complete: all supplied integer amounts are evaluated, mixed block/chain candidates are rejected, and ties resolve to the smaller loan.
 - The economic invariant is unchanged: realized net profit must be **strictly greater than $0.20 after all applicable costs**.
 - Current First-Hunt loan frontier at this sync is expanded to 17 explicit USDC sizes from $100 through $250,000; the frontier is complete only over these supplied amounts.
-- First-Hunt run `14` / run ID `35335002759` is **GREEN** on `5b3dd5aaabbe247db6b5c2d3ec6c8bd2ecb41bc2`. It produced 920 exact observations on each of `polygon.drpc.org` and `polygon-bor-rpc.publicnode.com`, with zero gross-positive candidates; the best observed gross delta was -$0.121905. The scan remained read-only. `public.1rpc.io` returned HTTP 429 and was excluded from the successful observation set.
+- First-Hunt #16 / run ID `35341127352` is **GREEN** on `55614a3d...`; the corrected DYN-2 path reuses exact route observations rather than duplicating RPC calls. First-Hunt #18 is the current scheduler-head verification run; use only its final result for current market evidence.
 - Frozen external evidence artifact remains `e117b6550686cf5e0ff787d9bd7d85e83996db07`; engineering commits after that artifact do not retroactively alter its identity. The latest verified engineering commit is **112 commits ahead** of the frozen artifact with no commits behind it, based on GitHub commit comparison. The current HEAD adds only status documentation on top of that verified engineering commit.
 - Consolidated external-evidence validation remains hard-bound to the frozen external artifact and requires independent lane evidence for signer, Polygon authority, private relay, shadow/staging, and realized PnL.
 - Operator preflight still requires current HEAD to descend from the frozen artifact and rejects missing or contradictory evidence.
@@ -87,3 +87,9 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - `phantomx/rpc_scheduler.py` now defines a bounded provider-fleet scheduler. A large registry may hold hundreds of non-secret provider records, but each task is assigned only to a small active subset with per-provider concurrency limits and circuit-breaker behavior.
 - `phantomx/strategy_registry.py` now tracks one canonical strategy plus discovery-only expansion candidates. Discovery registration never authorizes production execution.
 - Research confirms Polygon has current Uniswap V4 and Ramses V3 deployments; those are registered as discovery-only until exact adapters and evidence gates exist.
+
+
+## CROSS-AI CONTINUITY
+- Canonical durable continuity manifest: `PHANTOMX_PROJECT_RESUME_MANIFEST.md`.
+- Any future AI/operator must read the resume manifest, then this status file, then latest relevant Actions before writing.
+- Chat memory is supportive only; Git is the durable project memory.
