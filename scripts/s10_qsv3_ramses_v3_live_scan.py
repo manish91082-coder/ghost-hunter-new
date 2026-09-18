@@ -29,6 +29,7 @@ from phantomx.ramses_v3 import DEFAULT_TICK_SPACINGS, RamsesV3ExactQuoter
 from first_hunt_live_scan import ResultOnlyTransport, _endpoints, dynamic_loan_frontier_usdc
 
 POLYGON_CHAIN_ID = 137
+SCAN_REVISION = 1
 USDC_E = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 WETH = "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619"
 WPOL = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"
@@ -222,6 +223,7 @@ def main() -> int:
     artifact = {
         "schema_version": 1,
         "mission": "PHANTOMX QS V3 <-> RAMSES V3 READ-ONLY LIVE SCAN",
+        "scan_revision": SCAN_REVISION,
         "strategy": "S10-QSV3-RAMSES-V3",
         "read_only": True,
         "signing": False,
