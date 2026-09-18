@@ -201,3 +201,9 @@ Missing lane = BLOCKED.
 - Phase-19 run #606 / ID `35347563215` is GREEN on current engineering head `fc9d181e...`.
 - Gas observation is read-only and block-pinned; gas USD conversion requires explicit valuation evidence.
 - Current First-Hunt #21 is on older head `0aef20...` and is not current-head evidence.
+
+## DYN-4 VERIFIED
+- Current HEAD: `59f1e88fd841e2e91a427eaca0329960dd759ac4`.
+- Phase-19 #615 / ID `35350779558` GREEN.
+- DYN-4 economic binding preserves exact quote settlement semantics and adds only external attributable costs: flash-loan premium, gas, relay and other explicit costs.
+- Next gate: DYN-5 final requote/state lock.
