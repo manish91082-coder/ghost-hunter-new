@@ -5,8 +5,8 @@ Establish the first executable, dependency-free adversarial policy harness for t
 
 ## Current verified baseline
 - Working branch: `phase-19-e2e-harness`
-- Current HEAD: `6a399d4f245f22b598ec70d5c35ae853dba4ef81`
-- Latest exact-current-HEAD Phase-19 CI run: **#631**, green.
+- Current HEAD: `8a30e46e509ef955eb4e1bcdc15faf869e7d61c8`
+- Latest exact-current-HEAD Phase-19 CI run: **#659**, green.
 - S1-QS-V3 live discovery remains read-only. It has **no signing, submission, broadcast, or live-capital authority**.
 - S1 live discovery evidence is not economic certification and makes no profit claim.
 
@@ -75,15 +75,23 @@ Therefore S1 remains a **discovery frontier**, not an execution or realized-PnL 
 - [x] Adversarial mutation tests
 - [x] Phase-19 CI evidence on current HEAD
 - [x] S1-QS-V3 read-only discovery surface
-- [ ] Explicit venue-kind/version in executable topology
-- [ ] QuickSwap V3 execution ABI/router certification
-- [ ] Contract-level V2/V3 separation tests
-- [ ] Python V2/V3 topology/calldata reference vectors
-- [ ] Polygon fork execution evidence for V3 path
+- [x] Explicit venue-kind/version in executable topology
+- [x] QuickSwap V3 Algebra execution ABI integrated and Polygon router address independently documented
+- [x] Contract-level V2/V3 separation tests
+- [x] Python V2/V3 topology/calldata binding and mutation tests
+- [ ] Polygon fork execution evidence for the QuickSwap V3 path
 - [ ] Production signer integration
 - [ ] Private relay evidence
 - [ ] Shadow/staging identical-artifact evidence
 - [ ] Realized PnL provenance
+
+## Latest execution-harness evidence
+- Phase-19 CI run **#659** on exact HEAD is green.
+- Solidity compilation is green.
+- Phase-19 EVM integration harness is green, including the dedicated QuickSwap V3 callback/swap/repay/settlement test.
+- Polygon fork protocol smoke harness is green.
+- Polygon fork execution probe is green, but the existing probe remains a QuickSwap V2 live-fork probe. It is not being counted as V3 execution proof.
+- Python Phase-19 unittest suite is green.
 
 ## Go-live prohibition
 Nothing in this status authorizes mainnet execution. No live transaction is authorized by the S1 discovery surface or by this Phase-19 audit state.
