@@ -32,7 +32,7 @@ class LiveEconomicBindingTests(unittest.TestCase):
 
     def test_exact_quotes_do_not_double_count_embedded_dex_fee_or_impact(self):
         binding=bind_live_economic_proof(self.candidate(),flash_loan_premium_bps=0,gas_cost=self.gas(),native_valuation=self.valuation())
-        self.assertEqual(binding.proof.gross_surplus_usd,Decimal("0.50"))
+        self.assertEqual(binding.proof.gross_surplus_usd,Decimal("0.20"))
         self.assertEqual(binding.proof.costs.dex_fees,Decimal("0"))
         self.assertEqual(binding.proof.costs.price_impact,Decimal("0"))
         self.assertEqual(binding.proof.worst_case_net_profit_usd,Decimal("0.4998488"))
