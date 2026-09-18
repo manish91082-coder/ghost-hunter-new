@@ -3,9 +3,12 @@ pragma solidity ^0.8.20;
 
 import {Phase19Executor} from "../../contracts/Phase19Executor.sol";
 
-interface Vm { function expectRevert() external; }
+interface Vm { function expectRevert() external; function deal(address token, address to, uint256 give) external; }
 interface IERC20Fork { function balanceOf(address account) external view returns (uint256); }
+interface IERC20Phase19Like { function approve(address spender, uint256 amount) external returns (bool); }
 interface IQuickSwapRouterForkExec { function getAmountsOut(uint256 amountIn, address[] calldata path) external view returns (uint256[] memory amounts); }
+interface IQuickSwapV3RouterForkExec { struct ExactInputSingleParams { address tokenIn; address tokenOut; address recipient; uint256 deadline; uint256 amountIn; uint256 amountOutMinimum; uint160 limitSqrtPrice; } function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut); }
+interface IQuickSwapV3QuoterForkExec { function quoteExactInputSingle(address tokenIn, address tokenOut, uint256 amountIn, uint160 limitSqrtPrice) external returns (uint256 amountOut, uint16 fee); }
 interface IUniswapV3FactoryForkExec { function getPool(address tokenA, address tokenB, uint24 fee) external view returns (address pool); }
 interface IUniswapV3QuoterV1ForkExec { function quoteExactInputSingle(address tokenIn, address tokenOut, uint24 fee, uint256 amountIn, uint160 sqrtPriceLimitX96) external returns (uint256 amountOut); }
 
@@ -16,6 +19,7 @@ contract PolygonForkExecutionProbe {
     address internal constant AAVE_V3_POOL = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
     address internal constant QUICKSWAP_V2_ROUTER = 0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff;
     address internal constant QUICKSWAP_V3_ROUTER = 0xf5b509bB0909a69B1c207E495f687a596C168E12;
+    address internal constant QUICKSWAP_V3_QUOTER = 0xa15F0D7377B2A0C0c10db057f641beD21028FC89;
     address internal constant UNISWAP_V3_ROUTER = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
     address internal constant UNISWAP_V3_QUOTER_V1 = 0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
     address internal constant UNISWAP_V3_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
@@ -35,6 +39,28 @@ contract PolygonForkExecutionProbe {
         revert("no usable uniswap fee tier");
     }
 
+    function test_real_quickswap_v3_router_executes_on_polygon_fork() public {
+        require(block.chainid == POLYGON_CHAIN_ID, "not polygon fork");
+        require(QUICKSWAP_V3_ROUTER.code.length > 0, "missing QuickSwap V3 router");
+        require(QUICKSWAP_V3_QUOTER.code.length > 0, "missing QuickSwap V3 quoter");
+        uint256 amountIn = 1_000_000;
+        (uint256 quotedOut, uint16 dynamicFee) = IQuickSwapV3QuoterForkExec(QUICKSWAP_V3_QUOTER).quoteExactInputSingle(NATIVE_USDC, WMATIC, amountIn, 0);
+        require(quotedOut > 0, "no QuickSwap V3 quote");
+        require(dynamicFee > 0, "invalid dynamic fee");
+        vm.deal(NATIVE_USDC, address(this), amountIn);
+        uint256 usdcBefore = IERC20Fork(NATIVE_USDC).balanceOf(address(this));
+        uint256 wmaticBefore = IERC20Fork(WMATIC).balanceOf(address(this));
+        require(IERC20Phase19Like(NATIVE_USDC).approve(QUICKSWAP_V3_ROUTER, amountIn), "approval failed");
+        uint256 amountOut = IQuickSwapV3RouterForkExec(QUICKSWAP_V3_ROUTER).exactInputSingle(
+            IQuickSwapV3RouterForkExec.ExactInputSingleParams({
+                tokenIn: NATIVE_USDC, tokenOut: WMATIC, recipient: address(this), deadline: block.timestamp + 300,
+                amountIn: amountIn, amountOutMinimum: 1, limitSqrtPrice: 0
+            })
+        );
+        require(amountOut > 0, "invalid QuickSwap V3 execution output");
+        require(IERC20Fork(NATIVE_USDC).balanceOf(address(this)) == usdcBefore - amountIn, "USDC not spent");
+        require(IERC20Fork(WMATIC).balanceOf(address(this)) >= wmaticBefore + amountOut, "WMATIC not received");
+    }
     function test_real_aave_flashloan_and_dex_callback_path_rolls_back() public {
         require(block.chainid == POLYGON_CHAIN_ID, "not polygon fork"); require(block.number > 0, "no fork block");
         require(AAVE_V3_POOL.code.length > 0, "missing Aave pool"); require(QUICKSWAP_V2_ROUTER.code.length > 0, "missing QuickSwap router"); require(UNISWAP_V3_ROUTER.code.length > 0, "missing Uniswap router");
