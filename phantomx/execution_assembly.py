@@ -58,17 +58,18 @@ def assemble_execution(
     nonce: int,
     deadline: int,
     first_on_quickswap: bool,
-    quickswap_venue_kind: int,
     amount_out_min_first: int,
     amount_out_min_second: int,
     minimum_surplus: int,
     aave_pool: str,
-    quickswap_v2_router: str,
-    quickswap_v3_router: str,
     uniswap_v3_router: str,
     gas_limit: int,
     max_fee_per_gas: int,
     max_priority_fee_per_gas: int,
+    quickswap_venue_kind: int = 1,
+    quickswap_v2_router: str | None = None,
+    quickswap_v3_router: str | None = None,
+    quickswap_router: str | None = None,
 ) -> ExecutionAssembly:
     """Assemble one exact execution package from already-proven evidence.
 
@@ -77,7 +78,7 @@ def assemble_execution(
     intent hash is produced only after calldata_hash exists, while calldata
     carries the cycle-free execution commitment hash.
     """
-    if simulation.chain_id != 137:
+    if quickswap_v2_router is None:\n        quickswap_v2_router = quickswap_router\n    if quickswap_v3_router is None:\n        quickswap_v3_router = quickswap_router if quickswap_router is not None else quickswap_v2_router\n    if quickswap_v2_router is None or quickswap_v3_router is None:\n        raise ExecutionAssemblyError("QuickSwap V2/V3 router addresses are required")\n    if simulation.chain_id != 137:
         raise ExecutionAssemblyError("Phase-19 execution is Polygon-only")
     if not economic_proof.economically_valid:
         raise ExecutionAssemblyError("economic proof is not above the strict floor")
