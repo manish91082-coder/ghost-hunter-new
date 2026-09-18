@@ -32,7 +32,6 @@ from phantomx.quickswap_v3 import QuickSwapV3ExactQuoter
 from phantomx.uniswap_v3 import UniswapV3ExactQuoter
 
 from first_hunt_live_scan import (
-    AAVE_V3_POOL,
     PAIRS,
     ResultOnlyTransport,
     SEED_LOAN_USDC,
