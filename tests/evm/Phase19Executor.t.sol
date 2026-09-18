@@ -32,6 +32,16 @@ contract Phase19ExecutorTest {
         p.routeCommitment = executor.routeCommitment(p.routeHash, executor.routeTopologyHash(address(asset), address(mid), true, 1, 3000)); p.intentHash = intent;
     }
 
+    function test_execute_quickswap_v3_real_callback_swap_repay_and_settlement() public {
+        Phase19Executor.ExecutionParams memory p = _params(bytes32(uint256(14)));
+        p.quickSwapVenueKind = 2;
+        p.routeCommitment = executor.routeCommitment(p.routeHash, executor.routeTopologyHash(address(asset), address(mid), true, 2, 3000));
+        executor.execute(p, LOAN);
+        require(asset.balanceOf(address(executor)) == 5 ether, "v3 surplus");
+        require(executor.consumedIntent(p.intentHash), "v3 intent not consumed");
+        require(asset.allowance(address(executor), address(quickV3)) == 0, "v3 approval not reset");
+    }
+
     function test_execute_real_callback_swap_repay_and_settlement() public {
         Phase19Executor.ExecutionParams memory p = _params(bytes32(uint256(1))); uint256 beforeBalance = asset.balanceOf(address(executor)); executor.execute(p, LOAN);
         require(asset.balanceOf(address(executor)) == beforeBalance + 5 ether, "surplus"); require(executor.consumedIntent(p.intentHash), "intent not consumed"); require(!executor.activeExecution(), "execution still active");
