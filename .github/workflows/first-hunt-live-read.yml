@@ -20,6 +20,12 @@ on:
 permissions:
   contents: read
 
+# Only one live-hunt may query Polygon at a time per branch. A newer hunt
+# supersedes an older one to prevent stale-state scans and RPC bombardment.
+concurrency:
+  group: phantomx-first-hunt-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   first-hunt-live-read:
     runs-on: ubuntu-latest
