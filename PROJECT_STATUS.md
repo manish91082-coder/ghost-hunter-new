@@ -93,3 +93,6 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Canonical durable continuity manifest: `PHANTOMX_PROJECT_RESUME_MANIFEST.md`.
 - Any future AI/operator must read the resume manifest, then this status file, then latest relevant Actions before writing.
 - Chat memory is supportive only; Git is the durable project memory.
+
+- One-click operator interface is now present at `.github/workflows/phantomx-one-click.yml` with AUDIT, TEST, LIVE-HUNT, PREPARE-STAGING, STAGING, PRODUCTION-READY-CHECK and LIVE-EXECUTION modes. The LIVE-EXECUTION path is intentionally fail-closed until external evidence is accepted.
+- Current GitHub head includes only operator-workflow/control-plane changes after the latest verified scanner head; the latest applicable market evidence remains First-Hunt #18 on `b19c8c08...` unless a newer exact-head run is explicitly verified.

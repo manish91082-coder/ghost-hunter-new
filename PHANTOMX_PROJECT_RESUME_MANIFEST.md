@@ -184,3 +184,10 @@ Missing lane = BLOCKED.
 
 **Next AI action:** do not add another discovery dimension blindly. First reconcile current First-Hunt evidence, then integrate exact execution-path gas and live valuation into the existing `EconomicProof` boundary. After that, build the one-click operator workflow around reusable deterministic stages. Only then promote additional strategies through the registry.
 
+
+## Latest control-plane sync
+- Current branch HEAD at sync: `a3fe1c044367332411646b7088b15c903680d44c`.
+- One-click operator workflow: `.github/workflows/phantomx-one-click.yml`.
+- Latest applicable Phase-19 regression: run `#596`, GREEN on `b19c8c08...`.
+- Latest applicable First-Hunt market evidence: run `#18`, GREEN on `b19c8c08...`; operator-only commits after that do not change the scanner inputs.
+- Private key: not tracked in current branch. Production signer identity remains an external evidence gate.
