@@ -225,3 +225,22 @@ Missing lane = BLOCKED.
 - Phase-19 #630 / ID `35364653977` GREEN.
 - S0 live-hunt #29 on `b6f291f6...` completed GREEN with zero gross-positive; use only as applicable scanner evidence until quote/economic head changes.
 - S1 dedicated automated hunt #3 on `b6f291f6...` remains in-flight; the latest trigger-cleanup change was not a scanner-code change.
+
+
+## CURRENT HEAD RECONCILIATION — 2026-09-18
+
+- GitHub branch API independently verified canonical branch `phase-19-e2e-harness` at HEAD `6a399d4f245f22b598ec70d5c35ae853dba4ef81`.
+- Latest exact-HEAD Phase-19 run: #631 / ID `35364977680`, GREEN, triggered by push to HEAD.
+- The prior status/manifest anchors referencing `b19c8c08...` and `617e203e...` are historical snapshots, not current branch HEAD.
+- Certification PR #1 remains OPEN; its head SHA now matches current branch HEAD.
+
+### S1 live evidence
+- Dedicated S1 run #3 / ID `35364241167` completed GREEN on scanner head `b6f291f6da90bd688b83cd95c717ea1e670b714c`.
+- Comparison `b6f291f6...` -> current HEAD `6a399d4...` contains only workflow/control-plane and status/manifest changes; no S1 scanner, adapter, route, dynamic-policy or strategy-registry files changed.
+- Artifact `phantomx-s1-qsv3-live-scan` was independently retrieved from run #3.
+- S1 evidence: 3 provider attempts; DRPC produced 800 observations, PublicNode produced 560 observations, 1RPC returned zero route observations; total exact route observations = 1,360; gross-positive = 0.
+- Best observed gross result: `-$0.006883` USDC on PublicNode at block `94027615`; DRPC best was `-$0.007176` at block `94027535`.
+- Aave dynamic evidence: available USDC liquidity `611558.815434`, dynamic ceiling `580980.874662`, flash premium `5 bps`; the same Aave pool identity was observed by all successful endpoints.
+- QuickSwap V3 fee is quote-derived in the scanner; observed route legs recorded dynamic fee data (example: QuickSwap V3 fee `10` raw units and Uniswap V3 tier `100`).
+- S1 artifact explicitly reports `economic_certification=NOT_PERFORMED` and `profit_claim=NONE`. Therefore S1 is live-discovery VERIFIED, but EconomicProof / exact gas / native valuation / final state-lock certification is NOT achieved.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
