@@ -27,7 +27,7 @@ def u256(value):
 
 
 def qs_quote(amount, fee):
-    return u256(amount) + u256(fee)
+    return "0x" + u256(amount)[2:] + u256(fee)[2:]
 
 
 class FakeRPC:
