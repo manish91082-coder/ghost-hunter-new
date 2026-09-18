@@ -97,6 +97,7 @@ class UniswapV3ExactQuoter:
         self.factory_address = factory_address
         self.quoter_address = quoter_address
         self.chain_id = chain_id
+        self._pool_cache: dict[tuple[str, str, int, int], str] = {}
 
     def snapshot(self) -> BlockSnapshot:
         try:
@@ -109,11 +110,17 @@ class UniswapV3ExactQuoter:
             raise UniswapV3Error("snapshot chain identity mismatch")
         if token_in.lower() == token_out.lower():
             raise UniswapV3Error("token_in and token_out must differ")
+        key = (token_in.lower(), token_out.lower(), fee, snapshot.block_number)
+        cached = self._pool_cache.get(key)
+        if cached is not None:
+            return cached
         result = self._rpc.call("eth_call", [
             {"to": self.factory_address, "data": _encode_get_pool(token_in, token_out, fee)},
             hex(snapshot.block_number),
         ])
-        return _decode_address(result)
+        pool = _decode_address(result)
+        self._pool_cache[key] = pool
+        return pool
 
     def quote(self, amount_in: int, token_in: str, token_out: str, fee: int,
               snapshot: BlockSnapshot) -> ExactQuote:

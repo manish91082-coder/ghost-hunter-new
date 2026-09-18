@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Protocol, Sequence
 
+
 from .market_block import MarketBlockSnapshot, acquire_market_block
 from .quote_engine import ExactQuote, QuoteEngineError
 from .quote_snapshot import QuoteSnapshot
@@ -120,6 +121,7 @@ class QuickSwapV3ExactQuoter:
         self.factory_address = factory_address
         self.quoter_address = quoter_address
         self.chain_id = chain_id
+        self._pool_cache: dict[tuple[str, str, int], str] = {}
 
     def snapshot(self) -> BlockSnapshot:
         try:
@@ -132,6 +134,10 @@ class QuickSwapV3ExactQuoter:
             raise QuickSwapV3Error("snapshot chain identity mismatch")
         if token_in.lower() == token_out.lower():
             raise QuickSwapV3Error("token_in and token_out must differ")
+        key = (token_in.lower(), token_out.lower(), snapshot.block_number)
+        cached = self._pool_cache.get(key)
+        if cached is not None:
+            return cached
         result = self._rpc.call(
             "eth_call",
             [
@@ -139,7 +145,9 @@ class QuickSwapV3ExactQuoter:
                 hex(snapshot.block_number),
             ],
         )
-        return _decode_pool(result)
+        pool = _decode_pool(result)
+        self._pool_cache[key] = pool
+        return pool
 
     def quote(
         self,
