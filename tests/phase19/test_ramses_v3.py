@@ -28,7 +28,7 @@ class FakeRpc:
         call = params[0]
         data = call["data"]
         block = params[1]
-        if method != "eth_call" or block != hex(100):
+        if method != "eth_call" or block not in (hex(100), hex(101)):
             raise AssertionError("unexpected RPC envelope")
         if data.startswith("0x" + GET_POOL_SELECTOR):
             return "0x" + "00" * 12 + self.pool[2:]
@@ -102,20 +102,21 @@ class RamsesV3AdapterTests(unittest.TestCase):
         self.assertEqual(quote.gas_estimate, rpc.gas_estimate)
         self.assertEqual(len(rpc.calls), 3)
 
-    def test_snapshot_mismatch_fails_closed(self):
+    def test_supplied_snapshot_block_is_used_for_pool_resolution(self):
         rpc = FakeRpc()
         quoter = RamsesV3ExactQuoter(
             rpc,
             "0x" + "33" * 20,
             "0x" + "44" * 20,
         )
-        with self.assertRaises(RamsesV3Error):
-            quoter.resolve_pool(
-                "0x" + "11" * 20,
-                "0x" + "22" * 20,
-                10,
-                snapshot(101),
-            )
+        pool = quoter.resolve_pool(
+            "0x" + "11" * 20,
+            "0x" + "22" * 20,
+            10,
+            snapshot(101),
+        )
+        self.assertEqual(pool.lower(), rpc.pool)
+        self.assertEqual(rpc.calls[-1][1][1], hex(101))
 
     def test_zero_fee_is_rejected(self):
         rpc = FakeRpc()
