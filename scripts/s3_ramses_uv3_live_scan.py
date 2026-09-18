@@ -182,7 +182,7 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
                 except (DynamicRouteGuardError, Exception) as exc:
                     tiles.append(
                         {
-                            "pair": pair.name,
+                            "pair": pair[0],
                             "ramses_tick_spacing": tick_spacing,
                             "uniswap_fee_tier": fee,
                             "status": "UNAVAILABLE_OR_FAILED",
@@ -247,6 +247,7 @@ def main() -> int:
         "generated_at_unix": int(time.time()),
         "duration_seconds": round(time.time() - started, 3),
         "chain_id_expected": POLYGON_CHAIN_ID,
+        "base_token": USDC_E,
         "provenance": {
             "git_commit_sha": os.environ.get("GITHUB_SHA", "UNKNOWN"),
             "git_ref": os.environ.get("GITHUB_REF", "UNKNOWN"),
