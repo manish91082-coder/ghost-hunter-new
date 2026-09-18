@@ -49,7 +49,6 @@ def snapshot(block=100):
     return MarketBlockSnapshot(
         chain_id=137,
         block_number=block,
-        block_hash="0x" + "11" * 32,
         timestamp=1_700_000_000,
     )
 
