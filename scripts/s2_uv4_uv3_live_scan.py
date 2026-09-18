@@ -191,6 +191,7 @@ def main() -> int:
         "mission": "PHANTOMX S2 UNISWAP V4 <-> UNISWAP V3 READ-ONLY LIVE SCAN",
         "strategy": "S2-UV4-V3",
         "coverage": "partial-hookless-grid",
+        "scan_revision": 2,
         "read_only": True, "signing": False, "submission": False, "broadcast": False, "live_capital": False,
         "generated_at_unix": int(time.time()),
         "duration_seconds": round(time.time()-started, 3),
