@@ -166,5 +166,15 @@ DEFAULT_STRATEGIES = StrategyRegistry(
             "direct_two_leg_cross_venue",
             "Discovery-only route family; Ramses V3 pool selection is tickSpacing-based and execution is not yet certified.",
         ),
+        StrategySpec(
+            "S10-QSV3-RAMSES-V3",
+            "QuickSwap V3 ↔ Ramses V3",
+            StrategyStatus.DISCOVERY_ONLY,
+            137,
+            ("Aave V3",),
+            ("QuickSwap V3", "Ramses V3"),
+            "direct_two_leg_cross_venue",
+            "Discovery-only V3 cross-venue family; both venues require independent execution and economic certification.",
+        ),
     )
 )
