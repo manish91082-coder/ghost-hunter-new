@@ -73,7 +73,7 @@ def _address_word(address: str) -> bytes:
     if len(raw) != 40:
         raise CurveError("address must contain exactly 20 bytes")
     try:
-        return b"\\x00" * 12 + bytes.fromhex(raw)
+        return b"\x00" * 12 + bytes.fromhex(raw)
     except ValueError as exc:
         raise CurveError("address is not valid hexadecimal") from exc
 
