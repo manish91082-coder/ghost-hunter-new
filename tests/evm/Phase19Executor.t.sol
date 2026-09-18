@@ -50,7 +50,7 @@ contract Phase19ExecutorTest {
 
     function test_execute_reverse_route_real_callback_swap_repay_and_settlement() public {
         uni = new MockUniswapV3Router(110, 100, address(mid)); quick = new MockQuickSwapRouter(106, 110, address(asset)); mid.mint(address(uni), 1_000_000 ether); asset.mint(address(quick), 1_000_000 ether);
-        executor = new Phase19Executor(address(pool), address(quick), address(uni)); Phase19Executor.ExecutionParams memory p = _params(bytes32(uint256(8))); p.firstOnQuickSwap = false; p.amountOutMinFirst = 110 ether; p.amountOutMinSecond = 106 ether;
+        executor = new Phase19Executor(address(pool), address(quick), address(quickV3), address(uni)); Phase19Executor.ExecutionParams memory p = _params(bytes32(uint256(8))); p.firstOnQuickSwap = false; p.amountOutMinFirst = 110 ether; p.amountOutMinSecond = 106 ether;
         p.routeCommitment = executor.routeCommitment(p.routeHash, executor.routeTopologyHash(address(asset), address(mid), false, 1, 3000)); executor.execute(p, LOAN); require(asset.balanceOf(address(executor)) == 5 ether, "reverse surplus"); require(executor.consumedIntent(p.intentHash), "reverse intent not consumed");
     }
 
@@ -71,7 +71,7 @@ contract Phase19ExecutorTest {
     function test_replay_is_rejected() public { Phase19Executor.ExecutionParams memory p = _params(bytes32(uint256(5))); executor.execute(p, LOAN); vm.expectRevert(Phase19Executor.InvalidRoute.selector); executor.execute(p, LOAN); }
 
     function test_existing_balance_cannot_subsidize_minimum_surplus() public {
-        quick = new MockQuickSwapRouter(100, 100, address(mid)); uni = new MockUniswapV3Router(101, 100, address(asset)); executor = new Phase19Executor(address(pool), address(quick), address(uni));
+        quick = new MockQuickSwapRouter(100, 100, address(mid)); uni = new MockUniswapV3Router(101, 100, address(asset)); executor = new Phase19Executor(address(pool), address(quick), address(quickV3), address(uni));
         mid.mint(address(quick), 1_000_000 ether); asset.mint(address(uni), 1_000_000 ether); asset.mint(address(executor), 100 ether);
         Phase19Executor.ExecutionParams memory p = _params(bytes32(uint256(6))); p.minimumSurplus = 1 ether; p.amountOutMinFirst = 100 ether; p.amountOutMinSecond = 101 ether;
         p.routeCommitment = executor.routeCommitment(p.routeHash, executor.routeTopologyHash(address(asset), address(mid), true, 1, 3000)); vm.expectRevert(Phase19Executor.MinimumSurplusFailed.selector); executor.execute(p, LOAN);
