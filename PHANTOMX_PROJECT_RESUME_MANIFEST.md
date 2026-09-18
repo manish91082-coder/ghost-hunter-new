@@ -191,3 +191,9 @@ Missing lane = BLOCKED.
 - Latest applicable Phase-19 regression: run `#596`, GREEN on `b19c8c08...`.
 - Latest applicable First-Hunt market evidence: run `#18`, GREEN on `b19c8c08...`; operator-only commits after that do not change the scanner inputs.
 - Private key: not tracked in current branch. Production signer identity remains an external evidence gate.
+
+## DYN-3 LATEST SYNC
+- Current HEAD: `0ecc1a06b7101e6b19d0785a8c5d2d234e378328`.
+- Exact gas observation: `phantomx/gas_observation.py`.
+- RPC read surface expanded only for `eth_estimateGas`, `eth_gasPrice`, and `eth_maxPriorityFeePerGas`; send/broadcast methods remain blocked.
+- DYN-3 remains observation-only until live valuation and EconomicProof binding are complete.

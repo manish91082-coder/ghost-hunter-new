@@ -96,3 +96,5 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 
 - One-click operator interface is now present at `.github/workflows/phantomx-one-click.yml` with AUDIT, TEST, LIVE-HUNT, PREPARE-STAGING, STAGING, PRODUCTION-READY-CHECK and LIVE-EXECUTION modes. The LIVE-EXECUTION path is intentionally fail-closed until external evidence is accepted.
 - Current GitHub head includes only operator-workflow/control-plane changes after the latest verified scanner head; the latest applicable market evidence remains First-Hunt #18 on `b19c8c08...` unless a newer exact-head run is explicitly verified.
+
+- DYN-3 implementation is now present at `phantomx/gas_observation.py` with a read-only `eth_estimateGas` boundary at a specified block plus observed EIP-1559 fee inputs. `phantomx/polygon_rpc_http.py` allowlists only the required read methods and still blocks transaction-send methods.
