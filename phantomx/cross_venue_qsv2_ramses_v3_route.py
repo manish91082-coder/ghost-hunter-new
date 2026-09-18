@@ -34,7 +34,7 @@ def build_quickswap_v2_to_ramses_v3_route(
     block: MarketBlockSnapshot | None = None,
 ) -> RouteSimulation:
     context = _context(rpc, block)
-    first = quickswap_v2.quote_snapshot(amount_in, token_a, token_b, context)
+    first = quickswap_v2.quote_snapshot(amount_in, (token_a, token_b), context)
     second = ramses_v3.quote_snapshot(first.amount_out, token_b, token_a, ramses_tick_spacing, context)
     return simulate_two_leg(first, second)
 
@@ -52,7 +52,7 @@ def build_ramses_v3_to_quickswap_v2_route(
 ) -> RouteSimulation:
     context = _context(rpc, block)
     first = ramses_v3.quote_snapshot(amount_in, token_a, token_b, ramses_tick_spacing, context)
-    second = quickswap_v2.quote_snapshot(first.amount_out, token_b, token_a, context)
+    second = quickswap_v2.quote_snapshot(first.amount_out, (token_b, token_a), context)
     return simulate_two_leg(first, second)
 
 
