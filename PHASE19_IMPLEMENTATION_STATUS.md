@@ -80,6 +80,7 @@ Therefore S1 remains a **discovery frontier**, not an execution or realized-PnL 
 - [x] Contract-level V2/V3 separation tests
 - [x] Python V2/V3 topology/calldata binding and mutation tests
 - [ ] Polygon fork execution evidence for the QuickSwap V3 path
+- [x] Explicit V2/V3 router identity preserved through opportunity pipeline
 - [ ] Production signer integration
 - [ ] Private relay evidence
 - [ ] Shadow/staging identical-artifact evidence
@@ -105,6 +106,11 @@ Therefore S1 remains a **discovery frontier**, not an execution or realized-PnL 
 - Polygon fork execution probe now performs a real Aave V3 flash-loan path using the canonical executor, with QuickSwap V3 as the first leg and Uniswap V3 as the second leg.
 - The probe derives live fork quotes for the two DEX legs, uses explicit QuickSwap venue kind `2`, and forces an impossible settlement surplus so the transaction must fail atomically rather than create synthetic profit evidence.
 - The test verifies executor state is clean after rollback. This is an integration/control-path proof, not a profitability or repayment certification.
+
+## Latest P0 evidence update
+- Exact-current-HEAD Phase-19 CI run **#668** is green.
+- The opportunity-preparation pipeline now accepts explicit QuickSwap V2/V3 router identities while retaining the legacy single-router argument only as a compatibility fallback.
+- A dedicated unit test proves a `quickswap_v3->uniswap_v3` candidate reaches calldata assembly with venue kind `2` and the correct Uniswap fee.
 
 ## Go-live prohibition
 Nothing in this status authorizes mainnet execution. No live transaction is authorized by the S1 discovery surface or by this Phase-19 audit state.
