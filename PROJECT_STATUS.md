@@ -73,3 +73,7 @@ No private key, seed phrase, keystore password, relay credential, authentication
 **LIVE SIGNING = BLOCKED**
 **PUBLIC BROADCAST = BLOCKED**
 **LIVE CAPITAL = LOCKED**
+
+## DYNAMIC MARKET / AUTOMATION POLICY
+
+The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET_AND_AUTOMATION_POLICY.md`. Market-derived values must remain runtime-dynamic. Gas must be modeled as transaction-level gas usage and effective gas price, never as a percentage of loan principal. Loan sizing must be bounded by live Aave reserve liquidity plus live venue liquidity/price-impact and repayment constraints. The RPC layer must use a large replaceable registry with bounded active-provider selection, rate limiting, circuit breakers, caching and block-pinned reads; it must not bombard hundreds of providers per task. New strategy classes require controlled adapter, economic and adversarial verification before production activation.
