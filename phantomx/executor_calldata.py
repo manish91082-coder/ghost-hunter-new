@@ -74,7 +74,9 @@ def executor_selector() -> bytes:
 
 def executor_topology_hash(*, asset: str, token_mid: str, first_on_quickswap: bool, quickswap_venue_kind: int, uniswap_fee: int, aave_pool: str, quickswap_v2_router: str, quickswap_v3_router: str, uniswap_v3_router: str, executor: str, chain_id: int = 137) -> str:
     """Hash every immutable executable-topology identity, including destination executor and chain."""
-    if quickswap_venue_kind not in (1, 2):\n        raise ExecutorCalldataError("quickswap_venue_kind must be 1 (V2) or 2 (V3)")\n    if not isinstance(uniswap_fee, int) or isinstance(uniswap_fee, bool) or not 0 < uniswap_fee <= 0xFFFFFF:
+    if quickswap_venue_kind not in (1, 2):
+        raise ExecutorCalldataError("quickswap_venue_kind must be 1 (V2) or 2 (V3)")
+    if not isinstance(uniswap_fee, int) or isinstance(uniswap_fee, bool) or not 0 < uniswap_fee <= 0xFFFFFF:
         raise ExecutorCalldataError("uniswap_fee must fit uint24 and be non-zero")
     if not isinstance(chain_id, int) or isinstance(chain_id, bool) or chain_id <= 0:
         raise ExecutorCalldataError("chain_id must be a positive integer")
@@ -98,7 +100,9 @@ def executor_route_commitment(*, route_hash: str, topology_hash: str) -> str:
 
 
 def _encode_execute(*, asset: str, token_mid: str, first_on_quickswap: bool, quickswap_venue_kind: int, uniswap_fee: int, amount_out_min_first: int, amount_out_min_second: int, minimum_surplus: int, deadline: int, route_hash: str, route_commitment: str, intent_commitment_hash: str, amount: int) -> bytes:
-    if quickswap_venue_kind not in (1, 2):\n        raise ExecutorCalldataError("quickswap_venue_kind must be 1 (V2) or 2 (V3)")\n    if amount == 0:
+    if quickswap_venue_kind not in (1, 2):
+        raise ExecutorCalldataError("quickswap_venue_kind must be 1 (V2) or 2 (V3)")
+    if amount == 0:
         raise ExecutorCalldataError("amount must be positive")
     if amount_out_min_first == 0 or amount_out_min_second == 0:
         raise ExecutorCalldataError("per-leg minimum outputs must be positive")
@@ -175,7 +179,7 @@ class BoundExecutorCall:
     envelope: TransactionEnvelope
 
 
-def build_executor_transaction(intent: ExecutionIntent, *, token_mid: str, first_on_quickswap: bool, quickswap_venue_kind: int, uniswap_fee: int, amount_out_min_first: int, amount_out_min_second: int, minimum_surplus: int, aave_pool: str, quickswap_v2_router: str, uniswap_v3_router: str, gas_limit: int, max_fee_per_gas: int, max_priority_fee_per_gas: int) -> BoundExecutorCall:
+def build_executor_transaction(intent: ExecutionIntent, *, token_mid: str, first_on_quickswap: bool, quickswap_venue_kind: int, uniswap_fee: int, amount_out_min_first: int, amount_out_min_second: int, minimum_surplus: int, aave_pool: str, quickswap_v2_router: str, quickswap_v3_router: str, uniswap_v3_router: str, gas_limit: int, max_fee_per_gas: int, max_priority_fee_per_gas: int) -> BoundExecutorCall:
     if intent.chain_id != 137:
         raise ExecutorCalldataError("Phase-19 executor is Polygon-only")
     if intent.loan_amount <= 0:
@@ -193,7 +197,7 @@ def build_executor_transaction(intent: ExecutionIntent, *, token_mid: str, first
     topology_hash = executor_topology_hash(asset=execution_intent.loan_asset, token_mid=token_mid, first_on_quickswap=first_on_quickswap, quickswap_venue_kind=quickswap_venue_kind, uniswap_fee=uniswap_fee, aave_pool=aave_pool, quickswap_v2_router=quickswap_v2_router, quickswap_v3_router=quickswap_v3_router, uniswap_v3_router=uniswap_v3_router, executor=execution_intent.executor, chain_id=execution_intent.chain_id)
     route_commitment = executor_route_commitment(route_hash=execution_intent.route_hash, topology_hash=topology_hash)
     commitment_hash = execution_intent.execution_commitment_hash()
-    calldata = _encode_execute(asset=execution_intent.loan_asset, token_mid=token_mid, first_on_quickswap=first_on_quickswap, uniswap_fee=uniswap_fee, amount_out_min_first=amount_out_min_first, amount_out_min_second=amount_out_min_second, minimum_surplus=minimum_surplus, deadline=execution_intent.deadline, route_hash=execution_intent.route_hash, route_commitment=route_commitment, intent_commitment_hash=commitment_hash, amount=execution_intent.loan_amount)
+    calldata = _encode_execute(asset=execution_intent.loan_asset, token_mid=token_mid, first_on_quickswap=first_on_quickswap, quickswap_venue_kind=quickswap_venue_kind, uniswap_fee=uniswap_fee, amount_out_min_first=amount_out_min_first, amount_out_min_second=amount_out_min_second, minimum_surplus=minimum_surplus, deadline=execution_intent.deadline, route_hash=execution_intent.route_hash, route_commitment=route_commitment, intent_commitment_hash=commitment_hash, amount=execution_intent.loan_amount)
     calldata_hash = keccak256_hex(calldata)
     bound_intent = execution_intent.with_field(calldata_hash=calldata_hash)
     if bound_intent.execution_commitment_hash().lower() != commitment_hash.lower():
