@@ -58,7 +58,8 @@ class OpportunityExecutionTests(unittest.TestCase):
             "executor": "0x" + "01" * 20,
             "sender": "0x" + "02" * 20,
             "aave_pool": "0x" + "03" * 20,
-            "quickswap_router": "0x" + "04" * 20,
+            "quickswap_v2_router": "0x" + "04" * 20,
+            "quickswap_v3_router": "0x" + "06" * 20,
             "uniswap_v3_router": "0x" + "05" * 20,
         }
 
