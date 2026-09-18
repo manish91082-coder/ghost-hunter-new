@@ -9,6 +9,10 @@ from .cross_venue_discovery import (
     QUICKSWAP_TO_UNISWAP_PATH,
     UNISWAP_TO_QUICKSWAP_PATH,
 )
+from .cross_venue_qsv3_route import (
+    QUICKSWAP_V3_TO_UNISWAP_V3_PATH,
+    UNISWAP_V3_TO_QUICKSWAP_V3_PATH,
+)
 from .execution_assembly import ExecutionAssembly, ExecutionAssemblyError, assemble_execution
 from .opportunity_economics import OpportunityEconomicEvaluation
 
@@ -28,7 +32,8 @@ def assemble_proven_opportunity(
     amount_out_min_second: int,
     minimum_surplus: int,
     aave_pool: str,
-    quickswap_router: str,
+    quickswap_v2_router: str,
+    quickswap_v3_router: str,
     uniswap_v3_router: str,
     gas_limit: int,
     max_fee_per_gas: int,
@@ -49,8 +54,16 @@ def assemble_proven_opportunity(
     path = evaluation.candidate.venue_path
     if path == QUICKSWAP_TO_UNISWAP_PATH:
         first_on_quickswap = True
+        quickswap_venue_kind = 1
     elif path == UNISWAP_TO_QUICKSWAP_PATH:
         first_on_quickswap = False
+        quickswap_venue_kind = 1
+    elif path == QUICKSWAP_V3_TO_UNISWAP_V3_PATH:
+        first_on_quickswap = True
+        quickswap_venue_kind = 2
+    elif path == UNISWAP_V3_TO_QUICKSWAP_V3_PATH:
+        first_on_quickswap = False
+        quickswap_venue_kind = 2
     else:
         raise OpportunityExecutionError("unsupported discovered venue path")
 
@@ -67,11 +80,13 @@ def assemble_proven_opportunity(
             nonce=nonce,
             deadline=deadline,
             first_on_quickswap=first_on_quickswap,
+            quickswap_venue_kind=quickswap_venue_kind,
             amount_out_min_first=amount_out_min_first,
             amount_out_min_second=amount_out_min_second,
             minimum_surplus=minimum_surplus,
             aave_pool=aave_pool,
-            quickswap_router=quickswap_router,
+            quickswap_v2_router=quickswap_v2_router,
+            quickswap_v3_router=quickswap_v3_router,
             uniswap_v3_router=uniswap_v3_router,
             gas_limit=gas_limit,
             max_fee_per_gas=max_fee_per_gas,
