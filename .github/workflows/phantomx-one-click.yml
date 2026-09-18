@@ -19,12 +19,6 @@ on:
         description: "Required only for LIVE-EXECUTION: type LIVE-PROCEED"
         required: false
         type: string
-      max_hunt_minutes:
-        description: "Read-only hunt time budget"
-        required: false
-        default: "15"
-        type: string
-
 permissions:
   contents: read
 
@@ -74,7 +68,7 @@ jobs:
 
   tests:
     name: TEST / TRAINING
-    if: ${{ inputs.mode != 'AUDIT' && inputs.mode != 'LIVE-HUNT' || inputs.mode == 'TEST' || inputs.mode == 'PREPARE-STAGING' || inputs.mode == 'STAGING' || inputs.mode == 'PRODUCTION-READY-CHECK' || inputs.mode == 'LIVE-EXECUTION' }}
+    if: ${{ inputs.mode != 'AUDIT' }}
     needs: audit
     runs-on: ubuntu-latest
     timeout-minutes: 20
