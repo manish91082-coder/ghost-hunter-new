@@ -15,6 +15,19 @@ interface IQuickSwapV2RouterPhase19 {
     function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] calldata path, address to, uint256 deadline) external returns (uint256[] memory amounts);
 }
 
+interface IQuickSwapV3RouterPhase19 {
+    struct ExactInputSingleParams {
+        address tokenIn;
+        address tokenOut;
+        address recipient;
+        uint256 deadline;
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+        uint160 limitSqrtPrice;
+    }
+    function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
+}
+
 interface IUniswapV3RouterPhase19 {
     struct ExactInputSingleParams {
         address tokenIn;
@@ -59,7 +72,8 @@ contract Phase19Executor {
 
     address public immutable owner;
     address public immutable aavePool;
-    address public immutable quickSwapRouter;
+    address public immutable quickSwapV2Router;
+    address public immutable quickSwapV3Router;
     address public immutable uniswapV3Router;
 
     uint256 private constant NOT_ENTERED = 1;
@@ -78,6 +92,7 @@ contract Phase19Executor {
         address asset;
         address tokenMid;
         bool firstOnQuickSwap;
+        uint8 quickSwapVenueKind;
         uint24 uniswapFee;
         uint256 amountOutMinFirst;
         uint256 amountOutMinSecond;
@@ -99,11 +114,12 @@ contract Phase19Executor {
         uint256 realizedTokenSurplus
     );
 
-    constructor(address aavePool_, address quickSwapRouter_, address uniswapV3Router_) {
-        if (aavePool_ == address(0) || quickSwapRouter_ == address(0) || uniswapV3Router_ == address(0)) revert InvalidAddress();
+    constructor(address aavePool_, address quickSwapV2Router_, address quickSwapV3Router_, address uniswapV3Router_) {
+        if (aavePool_ == address(0) || quickSwapV2Router_ == address(0) || quickSwapV3Router_ == address(0) || uniswapV3Router_ == address(0)) revert InvalidAddress();
         owner = msg.sender;
         aavePool = aavePool_;
-        quickSwapRouter = quickSwapRouter_;
+        quickSwapV2Router = quickSwapV2Router_;
+        quickSwapV3Router = quickSwapV3Router_;
         uniswapV3Router = uniswapV3Router_;
     }
 
@@ -119,10 +135,11 @@ contract Phase19Executor {
         _status = NOT_ENTERED;
     }
 
-    function routeTopologyHash(address asset, address tokenMid, bool firstOnQuickSwap, uint24 uniswapFee) public view returns (bytes32) {
+    function routeTopologyHash(address asset, address tokenMid, bool firstOnQuickSwap, uint8 quickSwapVenueKind, uint24 uniswapFee) public view returns (bytes32) {
         if (block.chainid != POLYGON_CHAIN_ID) revert InvalidChain();
         if (asset == address(0) || tokenMid == address(0) || uniswapFee == 0) revert InvalidRoute();
-        return keccak256(abi.encode(block.chainid, address(this), asset, tokenMid, firstOnQuickSwap, uniswapFee, aavePool, quickSwapRouter, uniswapV3Router));
+        if (quickSwapVenueKind != 1 && quickSwapVenueKind != 2) revert InvalidRoute();
+        return keccak256(abi.encode(block.chainid, address(this), asset, tokenMid, firstOnQuickSwap, quickSwapVenueKind, uniswapFee, aavePool, quickSwapV2Router, quickSwapV3Router, uniswapV3Router));
     }
 
     function routeCommitment(bytes32 routeHash, bytes32 topologyHash) public pure returns (bytes32) {
@@ -138,7 +155,7 @@ contract Phase19Executor {
         if (p.deadline < block.timestamp) revert InvalidDeadline();
         if (p.amountOutMinFirst == 0 || p.amountOutMinSecond == 0 || p.minimumSurplus == 0) revert InvalidAmount();
         if (p.routeHash == bytes32(0) || p.intentHash == bytes32(0)) revert InvalidRoute();
-        bytes32 topology = routeTopologyHash(p.asset, p.tokenMid, p.firstOnQuickSwap, p.uniswapFee);
+        bytes32 topology = routeTopologyHash(p.asset, p.tokenMid, p.firstOnQuickSwap, p.quickSwapVenueKind, p.uniswapFee);
         if (p.routeCommitment != routeCommitment(p.routeHash, topology)) revert InvalidRoute();
         if (consumedIntent[p.intentHash]) revert InvalidRoute();
 
@@ -173,11 +190,11 @@ contract Phase19Executor {
         if (IERC20Phase19(asset).balanceOf(address(this)) < amount) revert InvalidLoanAmount();
 
         if (p.firstOnQuickSwap) {
-            uint256 midAmount = _swapQuickSwap(asset, p.tokenMid, amount, p.amountOutMinFirst, p.deadline);
+            uint256 midAmount = _swapQuickSwap(asset, p.tokenMid, amount, p.amountOutMinFirst, p.deadline, p.quickSwapVenueKind);
             _swapUniswap(p.tokenMid, asset, midAmount, p.uniswapFee, p.amountOutMinSecond, p.deadline);
         } else {
             uint256 midAmount = _swapUniswap(asset, p.tokenMid, amount, p.uniswapFee, p.amountOutMinFirst, p.deadline);
-            _swapQuickSwap(p.tokenMid, asset, midAmount, p.amountOutMinSecond, p.deadline);
+            _swapQuickSwap(p.tokenMid, asset, midAmount, p.amountOutMinSecond, p.deadline, p.quickSwapVenueKind);
         }
 
         uint256 balanceAfter = IERC20Phase19(asset).balanceOf(address(this));
@@ -207,15 +224,33 @@ contract Phase19Executor {
         if (!IERC20Phase19(token).approve(spender, 0)) revert ApprovalFailed();
     }
 
-    function _swapQuickSwap(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOutMin, uint256 deadline) internal returns (uint256 amountOut) {
-        _approveExact(tokenIn, quickSwapRouter, amountIn);
-        address[] memory path = new address[](2);
-        path[0] = tokenIn;
-        path[1] = tokenOut;
-        uint256[] memory amounts = IQuickSwapV2RouterPhase19(quickSwapRouter).swapExactTokensForTokens(amountIn, amountOutMin, path, address(this), deadline);
-        _resetApproval(tokenIn, quickSwapRouter);
-        if (amounts.length < 2 || amounts[amounts.length - 1] < amountOutMin) revert MinimumOutputFailed();
-        return amounts[amounts.length - 1];
+    function _swapQuickSwap(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOutMin, uint256 deadline, uint8 quickSwapVenueKind) internal returns (uint256 amountOut) {
+        if (quickSwapVenueKind == 1) {
+            _approveExact(tokenIn, quickSwapV2Router, amountIn);
+            address[] memory path = new address[](2);
+            path[0] = tokenIn;
+            path[1] = tokenOut;
+            uint256[] memory amounts = IQuickSwapV2RouterPhase19(quickSwapV2Router).swapExactTokensForTokens(amountIn, amountOutMin, path, address(this), deadline);
+            _resetApproval(tokenIn, quickSwapV2Router);
+            if (amounts.length < 2 || amounts[amounts.length - 1] < amountOutMin) revert MinimumOutputFailed();
+            return amounts[amounts.length - 1];
+        }
+        if (quickSwapVenueKind == 2) {
+            _approveExact(tokenIn, quickSwapV3Router, amountIn);
+            amountOut = IQuickSwapV3RouterPhase19(quickSwapV3Router).exactInputSingle(IQuickSwapV3RouterPhase19.ExactInputSingleParams({
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                recipient: address(this),
+                deadline: deadline,
+                amountIn: amountIn,
+                amountOutMinimum: amountOutMin,
+                limitSqrtPrice: 0
+            }));
+            _resetApproval(tokenIn, quickSwapV3Router);
+            if (amountOut < amountOutMin) revert MinimumOutputFailed();
+            return amountOut;
+        }
+        revert InvalidRoute();
     }
 
     function _swapUniswap(address tokenIn, address tokenOut, uint256 amountIn, uint24 fee, uint256 amountOutMin, uint256 deadline) internal returns (uint256 amountOut) {
