@@ -93,5 +93,12 @@ Therefore S1 remains a **discovery frontier**, not an execution or realized-PnL 
 - Polygon fork execution probe is green, but the existing probe remains a QuickSwap V2 live-fork probe. It is not being counted as V3 execution proof.
 - Python Phase-19 unittest suite is green.
 
+## Latest P0 evidence
+- Exact-current-HEAD Phase-19 CI run **#663** is green.
+- Polygon fork execution probe now contains a real QuickSwap V3 router state-changing test using Polygon fork state.
+- The probe also verifies the QuickSwap V3 quoter and dynamic fee response before executing the router call.
+- The test uses the verified Polygon USDC `balanceAndBlacklistStates` mapping slot for fork-only balance setup; this is test infrastructure, not production logic.
+- This proves the deployed QuickSwap V3 router path can execute on a Polygon fork. It does **not** yet prove a profitable or successfully repaid two-DEX Aave flash-loan transaction.
+
 ## Go-live prohibition
 Nothing in this status authorizes mainnet execution. No live transaction is authorized by the S1 discovery surface or by this Phase-19 audit state.
