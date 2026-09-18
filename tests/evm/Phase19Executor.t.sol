@@ -23,7 +23,7 @@ contract Phase19ExecutorTest {
         asset = new MockERC20("Asset", "AST", 18); mid = new MockERC20("Middle", "MID", 18); pool = new MockAavePool(PREMIUM_BPS);
         quick = new MockQuickSwapRouter(110, 100, address(mid)); quickV3 = new MockQuickSwapV3Router(110, 100, address(mid)); uni = new MockUniswapV3Router(106, 110, address(asset));
         executor = new Phase19Executor(address(pool), address(quick), address(quickV3), address(uni));
-        asset.mint(address(pool), 1_000_000 ether); mid.mint(address(quick), 1_000_000 ether); asset.mint(address(uni), 1_000_000 ether); vm.warp(1_000_000);
+        asset.mint(address(pool), 1_000_000 ether); mid.mint(address(quick), 1_000_000 ether); mid.mint(address(quickV3), 1_000_000 ether); asset.mint(address(uni), 1_000_000 ether); vm.warp(1_000_000);
     }
 
     function _params(bytes32 intent) internal view returns (Phase19Executor.ExecutionParams memory p) {
