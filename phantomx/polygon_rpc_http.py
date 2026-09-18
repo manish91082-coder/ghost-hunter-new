@@ -24,6 +24,9 @@ READ_ONLY_METHODS = frozenset(
         "eth_getTransactionReceipt",
         "eth_getCode",
         "eth_call",
+        "eth_estimateGas",
+        "eth_gasPrice",
+        "eth_maxPriorityFeePerGas",
     }
 )
 _BLOCKED_METHODS = frozenset(
