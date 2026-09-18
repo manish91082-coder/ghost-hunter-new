@@ -186,8 +186,7 @@ Missing lane = BLOCKED.
 
 
 ## Latest control-plane sync
-- Current branch HEAD at sync: `a3fe1c044367332411646b7088b15c903680d44c`.
-- One-click operator workflow: `.github/workflows/phantomx-one-click.yml`.
+- Current branch HEAD at sync: `fc9d181e37302d81cb7bb363d93f8580e203ad6a`.ne-click operator workflow: `.github/workflows/phantomx-one-click.yml`.
 - Latest applicable Phase-19 regression: run `#596`, GREEN on `b19c8c08...`.
 - Latest applicable First-Hunt market evidence: run `#18`, GREEN on `b19c8c08...`; operator-only commits after that do not change the scanner inputs.
 - Private key: not tracked in current branch. Production signer identity remains an external evidence gate.
@@ -197,3 +196,8 @@ Missing lane = BLOCKED.
 - Exact gas observation: `phantomx/gas_observation.py`.
 - RPC read surface expanded only for `eth_estimateGas`, `eth_gasPrice`, and `eth_maxPriorityFeePerGas`; send/broadcast methods remain blocked.
 - DYN-3 remains observation-only until live valuation and EconomicProof binding are complete.
+
+## DYN-3 VERIFIED
+- Phase-19 run #606 / ID `35347563215` is GREEN on current engineering head `fc9d181e...`.
+- Gas observation is read-only and block-pinned; gas USD conversion requires explicit valuation evidence.
+- Current First-Hunt #21 is on older head `0aef20...` and is not current-head evidence.
