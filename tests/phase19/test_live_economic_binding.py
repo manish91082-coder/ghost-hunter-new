@@ -19,7 +19,7 @@ class LiveEconomicBindingTests(unittest.TestCase):
             return QuoteSnapshot(**f)
         a="0x"+"aa"*20; b="0x"+"bb"*20
         l1=q(a,b,100_000_000,101_000_000,"quickswap_v2",0)
-        l2=q(b,a,101_000_000,100_500_000,"uniswap_v3:pool",500)
+        l2=q(b,a,101_000_000,100_200_000,"uniswap_v3:pool",500)
         sim=simulate_two_leg(l1,l2)
         return OpportunityCandidate(simulation=sim,loan_amount=100_000_000,venue_path="quickswap_v2->uniswap_v3",token_a=a,token_b=b)
 
