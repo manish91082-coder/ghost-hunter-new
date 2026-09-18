@@ -56,7 +56,7 @@ class ExecutorCalldataBindingTests(unittest.TestCase):
 
     def test_conflicting_intent_surplus_floor_is_rejected(self):
         with self.assertRaisesRegex(ExecutorCalldataError, "requested minimum surplus"):
-            build_executor_transaction(self.intent.with_field(minimum_surplus_token_amount=6), token_mid=self.mid, first_on_quickswap=True, uniswap_fee=3000, amount_out_min_first=90_000_000, amount_out_min_second=95_000_000, minimum_surplus=5, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni, gas_limit=800_000, max_fee_per_gas=1_000_000_000, max_priority_fee_per_gas=100_000_000)
+            build_executor_transaction(self.intent.with_field(minimum_surplus_token_amount=6), token_mid=self.mid, first_on_quickswap=True, quickswap_venue_kind=1, uniswap_fee=3000, amount_out_min_first=90_000_000, amount_out_min_second=95_000_000, minimum_surplus=5, aave_pool=self.aave, quickswap_v2_router=self.quick, quickswap_v3_router=self.quick_v3, uniswap_v3_router=self.uni, gas_limit=800_000, max_fee_per_gas=1_000_000_000, max_priority_fee_per_gas=100_000_000)
 
     def test_static_abi_layout_is_exactly_twelve_words_after_selector(self):
         bound = self._build()
@@ -85,7 +85,7 @@ class ExecutorCalldataBindingTests(unittest.TestCase):
         self.assertNotEqual(first, topology_mutated)
 
     def test_topology_hash_changes_when_executable_route_changes(self):
-        first = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, uniswap_fee=3000, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni, executor=self.executor)
+        first = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, quickswap_venue_kind=1, uniswap_fee=3000, aave_pool=self.aave, quickswap_v2_router=self.quick, quickswap_v3_router=self.quick_v3, uniswap_v3_router=self.uni, executor=self.executor)
         second = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=False, quickswap_venue_kind=1, uniswap_fee=3000, aave_pool=self.aave, quickswap_v2_router=self.quick, quickswap_v3_router=self.quick_v3, uniswap_v3_router=self.uni, executor=self.executor)
         third = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, quickswap_venue_kind=1, uniswap_fee=500, aave_pool=self.aave, quickswap_v2_router=self.quick, quickswap_v3_router=self.quick_v3, uniswap_v3_router=self.uni, executor=self.executor)
         executor_mutated = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, quickswap_venue_kind=1, uniswap_fee=3000, aave_pool=self.aave, quickswap_v2_router=self.quick, quickswap_v3_router=self.quick_v3, uniswap_v3_router=self.uni, executor=self.executor_alt)
@@ -97,7 +97,7 @@ class ExecutorCalldataBindingTests(unittest.TestCase):
         self.assertNotEqual(first, chain_mutated)
 
     def test_python_topology_and_commitment_reference_vectors(self):
-        topology = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, uniswap_fee=3000, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni, executor=self.executor)
+        topology = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, quickswap_venue_kind=1, uniswap_fee=3000, aave_pool=self.aave, quickswap_v2_router=self.quick, quickswap_v3_router=self.quick_v3, uniswap_v3_router=self.uni, executor=self.executor)
         commitment = executor_route_commitment(route_hash=self.route_hash, topology_hash=topology)
         self.assertEqual(len(topology), 66)
         self.assertEqual(len(commitment), 66)
@@ -107,15 +107,15 @@ class ExecutorCalldataBindingTests(unittest.TestCase):
 
     def test_zero_executor_address_fails_closed(self):
         with self.assertRaises(ExecutorCalldataError):
-            build_executor_transaction(self.intent.with_field(executor="0x" + "00" * 20), token_mid=self.mid, first_on_quickswap=True, uniswap_fee=3000, amount_out_min_first=1, amount_out_min_second=1, minimum_surplus=1, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni, gas_limit=1, max_fee_per_gas=2, max_priority_fee_per_gas=1)
+            build_executor_transaction(self.intent.with_field(executor="0x" + "00" * 20), token_mid=self.mid, first_on_quickswap=True, quickswap_venue_kind=1, uniswap_fee=3000, amount_out_min_first=1, amount_out_min_second=1, minimum_surplus=1, aave_pool=self.aave, quickswap_v2_router=self.quick, quickswap_v3_router=self.quick_v3, uniswap_v3_router=self.uni, gas_limit=1, max_fee_per_gas=2, max_priority_fee_per_gas=1)
 
     def test_zero_hash_and_invalid_fee_fail_closed(self):
         with self.assertRaises(ExecutorCalldataError):
-            build_executor_transaction(self.intent.with_field(route_hash="0x" + "00" * 32), token_mid=self.mid, first_on_quickswap=True, uniswap_fee=3000, amount_out_min_first=1, amount_out_min_second=1, minimum_surplus=1, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni, gas_limit=1, max_fee_per_gas=2, max_priority_fee_per_gas=1)
+            build_executor_transaction(self.intent.with_field(route_hash="0x" + "00" * 32), token_mid=self.mid, first_on_quickswap=True, quickswap_venue_kind=1, uniswap_fee=3000, amount_out_min_first=1, amount_out_min_second=1, minimum_surplus=1, aave_pool=self.aave, quickswap_v2_router=self.quick, quickswap_v3_router=self.quick_v3, uniswap_v3_router=self.uni, gas_limit=1, max_fee_per_gas=2, max_priority_fee_per_gas=1)
         with self.assertRaises(ExecutorCalldataError):
-            executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, uniswap_fee=0x1000000, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni, executor=self.executor)
+            executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, quickswap_venue_kind=1, uniswap_fee=0x1000000, aave_pool=self.aave, quickswap_v2_router=self.quick, quickswap_v3_router=self.quick_v3, uniswap_v3_router=self.uni, executor=self.executor)
         with self.assertRaises(ExecutorCalldataError):
-            executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, uniswap_fee=3000, aave_pool=self.aave, quickswap_router=self.quick, uniswap_v3_router=self.uni, executor=self.executor, chain_id=0)
+            executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, quickswap_venue_kind=1, uniswap_fee=3000, aave_pool=self.aave, quickswap_v2_router=self.quick, quickswap_v3_router=self.quick_v3, uniswap_v3_router=self.uni, executor=self.executor, chain_id=0)
 
 
 if __name__ == "__main__":
