@@ -84,7 +84,7 @@ DEFAULT_STRATEGIES = StrategyRegistry(
             ("Aave V3",),
             ("QuickSwap V3", "Uniswap V3"),
             "direct_two_leg_cross_venue",
-            "Requires exact QuickSwap V3 adapter and pool discovery.",
+            "Uses Algebra poolByPair discovery and quote-returned dynamic fee; no fixed fee-tier grid is assumed.",
         ),
         StrategySpec(
             "S2-UV4-V3",
