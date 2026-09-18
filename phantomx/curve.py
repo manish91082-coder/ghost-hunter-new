@@ -35,6 +35,8 @@ POOL_COUNT_SELECTOR = "0x956aae3a"
 POOL_LIST_SELECTOR = "0x3a1d5d8e"
 GET_COIN_INDICES_SELECTOR = "0xeb85226d"
 GET_FEES_SELECTOR = "0x7cdb72b0"
+FIND_POOL_FOR_COINS_SELECTOR = "0xa87df06c"
+FIND_POOL_FOR_COINS_INDEXED_SELECTOR = "0x6982eb0b"
 GET_DY_SELECTOR = "0x5e0d443f"
 GET_DY_UNDERLYING_SELECTOR = "0x07211ef7"
 
@@ -187,6 +189,42 @@ class CurveRegistryExactQuoter:
             raise CurveError("pool_count: malformed result")
         return int.from_bytes(raw, "big")
 
+    def _find_pool(self, registry: str, token_in: str, token_out: str, index: int | None, snapshot: BlockSnapshot) -> str | None:
+        if index is None:
+            data = FIND_POOL_FOR_COINS_SELECTOR + (_address_word(token_in) + _address_word(token_out)).hex()
+        else:
+            data = FIND_POOL_FOR_COINS_INDEXED_SELECTOR + (_address_word(token_in) + _address_word(token_out) + _uint_word(index)).hex()
+        try:
+            raw = self._call(registry, data, snapshot)
+        except CurveError:
+            return None
+        if len(raw) != 32:
+            return None
+        address = raw[12:]
+        if address == bytes(20):
+            return None
+        return "0x" + address.hex()
+
+    def find_pools_for_pair(self, token_in: str, token_out: str, snapshot: BlockSnapshot, *, max_pools_per_registry: int = 8) -> list[CurvePoolRef]:
+        found: list[CurvePoolRef] = []
+        for registry_name, registry in self.registries:
+            seen: set[str] = set()
+            for index in range(max_pools_per_registry):
+                pool = self._find_pool(registry, token_in, token_out, None if index == 0 else index, snapshot)
+                if pool is None or pool.lower() in seen:
+                    break
+                seen.add(pool.lower())
+                try:
+                    i, j, underlying = _decode_indices("0x" + self._call(registry, _encode_get_coin_indices(pool, token_in, token_out), snapshot).hex())
+                    fee_raw = 0
+                    try:
+                        fee_raw = _decode_fees("0x" + self._call(registry, _encode_get_fees(pool), snapshot).hex())
+                    except CurveError:
+                        pass
+                    found.append(CurvePoolRef(registry_name, registry, pool, token_in, token_out, i, j, underlying, fee_raw))
+                except CurveError:
+                    continue
+        return found
     def pools_for_pair(
         self,
         token_in: str,
@@ -291,6 +329,8 @@ __all__ = [
     "CurveError",
     "CurvePoolRef",
     "CurveRegistryExactQuoter",
+    "FIND_POOL_FOR_COINS_INDEXED_SELECTOR",
+    "FIND_POOL_FOR_COINS_SELECTOR",
     "GET_COIN_INDICES_SELECTOR",
     "GET_DY_SELECTOR",
     "GET_DY_UNDERLYING_SELECTOR",
