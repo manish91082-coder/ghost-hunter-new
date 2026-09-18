@@ -9,7 +9,6 @@ on:
       - "phantomx/cross_venue_qsv3_route.py"
       - "phantomx/dynamic_*.py"
       - "scripts/s1_qsv3_live_scan.py"
-      - "phantomx/strategy_registry.py"
   workflow_dispatch:
 
 permissions:
