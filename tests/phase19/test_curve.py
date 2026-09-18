@@ -57,6 +57,16 @@ class CurveAdapterTests(unittest.TestCase):
         self.assertEqual(GET_FEES_SELECTOR, "0x7cdb72b0")
         self.assertEqual(GET_DY_SELECTOR, "0x5e0d443f")
 
+    def test_rpc_transport_failure_is_wrapped_as_curve_error(self):
+        class BrokenRpc(FakeRpc):
+            def call(self, method, params):
+                raise RuntimeError("429")
+
+        q = CurveRegistryExactQuoter(BrokenRpc(), (("factory", CURVE_FACTORY_REGISTRY),))
+        with self.assertRaises(Exception) as ctx:
+            q.pool_count(CURVE_FACTORY_REGISTRY, SNAP)
+        self.assertIn("transport failure", str(ctx.exception))
+
     def test_find_pools_uses_pair_lookup_and_binds_block(self):
         rpc = FakeRpc()
         q = CurveRegistryExactQuoter(rpc, (( "factory", CURVE_FACTORY_REGISTRY),))
