@@ -13,7 +13,7 @@ from .uniswap_v3 import UniswapV3ExactQuoter
 
 POLYGON_CHAIN_ID = 137
 RAMSES_V3_TO_UNISWAP_V3_PATH = "ramses_v3->uniswap_v3"
-UNISWAP_V3_TO_Ramses_V3_PATH = "uniswap_v3->ramses_v3"
+UNISWAP_V3_TO_RAMSES_V3_PATH = "uniswap_v3->ramses_v3"
 
 
 def _context(rpc, block: MarketBlockSnapshot | None) -> MarketBlockSnapshot:
