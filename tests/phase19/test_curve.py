@@ -74,6 +74,7 @@ class CurveAdapterTests(unittest.TestCase):
         class UnderlyingRpc(FakeRpc):
             def call(self, method, params):
                 if method == "eth_call" and params[0]["data"].startswith("0x07211ef7"):
+                    self.calls.append((method, params))
                     return "0x" + (100_100).to_bytes(32, "big").hex()
                 return super().call(method, params)
 
