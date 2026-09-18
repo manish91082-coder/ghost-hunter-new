@@ -35,7 +35,7 @@ class LiveEconomicBindingTests(unittest.TestCase):
         self.assertEqual(binding.proof.gross_surplus_usd,Decimal("0.20"))
         self.assertEqual(binding.proof.costs.dex_fees,Decimal("0"))
         self.assertEqual(binding.proof.costs.price_impact,Decimal("0"))
-        self.assertEqual(binding.proof.worst_case_net_profit_usd,Decimal("0.4998488"))
+        self.assertEqual(binding.proof.worst_case_net_profit_usd,Decimal("0.1998488"))
         self.assertFalse(binding.economically_valid)
 
 if __name__=="__main__":
