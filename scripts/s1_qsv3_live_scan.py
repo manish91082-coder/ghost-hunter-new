@@ -8,6 +8,7 @@ No signing, submission, broadcast, or live-capital operation occurs.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -210,6 +211,12 @@ def main() -> int:
         "live_capital": False,
         "generated_at_unix": int(time.time()),
         "duration_seconds": round(time.time() - started, 3),
+        "provenance": {
+            "git_commit_sha": os.environ.get("GITHUB_SHA", "UNKNOWN"),
+            "git_ref": os.environ.get("GITHUB_REF", "UNKNOWN"),
+            "workflow_run_id": os.environ.get("GITHUB_RUN_ID", "UNKNOWN"),
+            "workflow_run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT", "UNKNOWN"),
+        },
         "chain_id_expected": 137,
         "quickSwap_v3_factory": QUICKSWAP_V3_FACTORY,
         "quickSwap_v3_quoter": QUICKSWAP_V3_QUOTER,
