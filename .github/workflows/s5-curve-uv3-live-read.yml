@@ -1,0 +1,45 @@
+name: PHANTOMX S5 Curve Uniswap V3 Live Hunt
+
+on:
+  push:
+    branches:
+      - phase-19-e2e-harness
+    paths:
+      - "phantomx/curve.py"
+      - "phantomx/cross_venue_curve_uv3_route.py"
+      - "scripts/s5_curve_uv3_live_scan.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phantomx-s5-curve-live-hunt
+  cancel-in-progress: true
+
+jobs:
+  s5-live-read:
+    name: S5 Curve <-> Uniswap V3
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install Phase-19 dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
+      - name: Run S5 read-only live hunt
+        run: python scripts/s5_curve_uv3_live_scan.py
+        env:
+          PYTHONUNBUFFERED: "1"
+      - name: Publish S5 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: phantomx-s5-curve-uv3-live-scan
+          path: artifacts/s5_curve_uv3_live_scan.json
+          if-no-files-found: error
