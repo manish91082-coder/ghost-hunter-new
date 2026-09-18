@@ -1,20 +1,32 @@
 import json
 import unittest
 
-from scripts.first_hunt_live_scan import LOAN_USDC, PAIRS, POLYGON_CHAIN_ID, UNISWAP_V3_FEE_TIERS
+from scripts.first_hunt_live_scan import PAIRS, POLYGON_CHAIN_ID, SEED_LOAN_USDC, UNISWAP_V3_FEE_TIERS, dynamic_loan_frontier_usdc
 
 
 class FirstHuntLiveScanContractTests(unittest.TestCase):
     def test_scan_contract_is_explicitly_read_only(self):
         self.assertEqual(POLYGON_CHAIN_ID, 137)
-        self.assertTrue(LOAN_USDC)
+        self.assertTrue(SEED_LOAN_USDC)
         self.assertEqual(len(PAIRS), 7)
 
     def test_loan_frontier_is_strictly_increasing(self):
-        self.assertEqual(tuple(sorted(LOAN_USDC)), LOAN_USDC)
-        self.assertEqual(len(set(LOAN_USDC)), len(LOAN_USDC))
-        self.assertGreaterEqual(LOAN_USDC[0], 100)
-        self.assertGreaterEqual(LOAN_USDC[-1], 25000)
+        self.assertEqual(tuple(sorted(SEED_LOAN_USDC)), SEED_LOAN_USDC)
+        self.assertEqual(len(set(SEED_LOAN_USDC)), len(SEED_LOAN_USDC))
+        self.assertGreaterEqual(SEED_LOAN_USDC[0], 100)
+        self.assertGreaterEqual(SEED_LOAN_USDC[-1], 25000)
+
+    def test_dynamic_frontier_never_exceeds_live_ceiling(self):
+        frontier = dynamic_loan_frontier_usdc(10050)
+        self.assertTrue(frontier)
+        self.assertLessEqual(frontier[-1], 10050)
+        self.assertIn(10000, frontier)
+        self.assertEqual(tuple(sorted(set(frontier))), frontier)
+
+    def test_dynamic_frontier_includes_live_ceiling_above_seed_domain(self):
+        frontier = dynamic_loan_frontier_usdc(400000)
+        self.assertEqual(frontier[-1], 400000)
+        self.assertGreater(len(frontier), len(SEED_LOAN_USDC))
 
     def test_uniswap_fee_tier_frontier_is_complete_and_unique(self):
         self.assertEqual(UNISWAP_V3_FEE_TIERS, (100, 500, 3000, 10000))

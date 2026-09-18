@@ -23,7 +23,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from phantomx.aave_v3_dynamic import AaveV3PolygonDynamicReader
 from phantomx.cross_venue_discovery import discover_cross_venue_opportunities
+from phantomx.dynamic_market_policy import compute_dynamic_loan_ceiling
 from phantomx.market_block import acquire_market_block
 from phantomx.polygon_rpc_http import PolygonRPCHTTPConfig, PolygonRPCHTTPTransport
 from phantomx.quickswap_v2 import QuickSwapV2ExactQuoter
@@ -51,7 +53,22 @@ DEFAULT_ENDPOINTS = (
 )
 
 # Explicit frontier. Exact over this domain, not a continuous optimum claim.
-LOAN_USDC = (100, 250, 500, 750, 1000, 1500, 2500, 5000, 7500, 10000, 15000, 25000, 50000, 75000, 100000, 150000, 250000)
+SEED_LOAN_USDC = (100, 250, 500, 750, 1000, 1500, 2500, 5000, 7500, 10000, 15000, 25000, 50000, 75000, 100000, 150000, 250000)
+
+def dynamic_loan_frontier_usdc(dynamic_ceiling_usdc: int) -> tuple[int, ...]:
+    """Build an explicit, live-bounded loan domain; never exceeds the live cap."""
+    if not isinstance(dynamic_ceiling_usdc, int) or isinstance(dynamic_ceiling_usdc, bool):
+        raise ValueError("dynamic_ceiling_usdc must be an integer")
+    accepted = [amount for amount in SEED_LOAN_USDC if amount <= dynamic_ceiling_usdc]
+    if dynamic_ceiling_usdc >= SEED_LOAN_USDC[-1]:
+        current = SEED_LOAN_USDC[-1]
+        while current < dynamic_ceiling_usdc:
+            current = min(dynamic_ceiling_usdc, max(current + 1, (current * 3) // 2))
+            if current not in accepted:
+                accepted.append(current)
+    if not accepted:
+        raise ValueError("live Aave liquidity is below minimum discovery size")
+    return tuple(sorted(set(accepted)))
 
 
 class ResultOnlyTransport:
@@ -96,7 +113,7 @@ def _endpoints() -> tuple[str, ...]:
     return values or DEFAULT_ENDPOINTS
 
 
-def _quote_record(candidate: Any) -> dict[str, Any]:
+def _quote_record(candidate: Any, flash_premium_bps: int) -> dict[str, Any]:
     sim = candidate.simulation
     return {
         "token_a": candidate.token_a,
@@ -108,6 +125,10 @@ def _quote_record(candidate: Any) -> dict[str, Any]:
         "final_amount_usdc": str(Decimal(sim.final_amount) / Decimal(10**6)),
         "gross_delta_raw": candidate.gross_delta,
         "gross_delta_usdc": str(Decimal(candidate.gross_delta) / Decimal(10**6)),
+        "flash_loan_premium_bps": flash_premium_bps,
+        "flash_loan_premium_raw": (candidate.loan_amount * flash_premium_bps + 5000) // 10000,
+        "post_flash_premium_delta_raw": candidate.gross_delta - ((candidate.loan_amount * flash_premium_bps + 5000) // 10000),
+        "post_flash_premium_delta_usdc": str(Decimal(candidate.gross_delta - ((candidate.loan_amount * flash_premium_bps + 5000) // 10000)) / Decimal(10**6)),
         "chain_id": sim.chain_id,
         "block_number": sim.block_number,
         "route_hash": sim.route_hash,
@@ -141,6 +162,19 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
     uniswap = UniswapV3ExactQuoter(rpc, UNISWAP_V3_FACTORY, UNISWAP_V3_QUOTER)
 
     context = acquire_market_block(rpc)
+    aave = AaveV3PolygonDynamicReader(rpc).snapshot(USDC, context)
+    dynamic_ceiling_raw = compute_dynamic_loan_ceiling(
+        __import__("phantomx.dynamic_market_policy", fromlist=["DynamicLoanInputs"]).DynamicLoanInputs(
+            aave_available_raw=aave.available_liquidity_raw,
+            route_input_ceiling_raw=aave.available_liquidity_raw,
+            price_impact_ceiling_raw=aave.available_liquidity_raw,
+            system_hard_cap_raw=None,
+            safety_headroom_bps=500,
+        )
+    )
+    dynamic_ceiling_usdc = dynamic_ceiling_raw // 10**6
+    loan_frontier_usdc = dynamic_loan_frontier_usdc(dynamic_ceiling_usdc)
+    loan_amounts_raw = tuple(amount * 10**6 for amount in loan_frontier_usdc)
 
     observations: list[dict[str, Any]] = []
     tile_results: list[dict[str, Any]] = []
@@ -152,11 +186,11 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
                     quickswap,
                     uniswap,
                     token_pairs=((USDC, pair.token_b),),
-                    loan_amounts=tuple(amount * 10**6 for amount in LOAN_USDC),
+                    loan_amounts=loan_amounts_raw,
                     uniswap_fee=fee_tier,
                     block=context,
                 )
-                tile_observations = [_quote_record(item) for item in candidates.evaluated]
+                tile_observations = [_quote_record(item, aave.flash_loan_premium_bps) for item in candidates.evaluated]
                 observations.extend(tile_observations)
                 tile_results.append({
                     "pair": pair.name,
@@ -204,6 +238,17 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
         "gross_positive_observations": gross_positive,
         "observations": observations,
         "fee_tier_tile_results": tile_results,
+        "aave_dynamic": {
+            "pool": aave.pool,
+            "a_token": aave.a_token,
+            "available_liquidity_raw": aave.available_liquidity_raw,
+            "available_liquidity_usdc": str(Decimal(aave.available_liquidity_raw) / Decimal(10**6)),
+            "flash_loan_premium_bps": aave.flash_loan_premium_bps,
+            "dynamic_ceiling_raw": dynamic_ceiling_raw,
+            "dynamic_ceiling_usdc": str(Decimal(dynamic_ceiling_raw) / Decimal(10**6)),
+            "loan_frontier_usdc": list(loan_frontier_usdc),
+            "safety_headroom_bps": 500,
+        },
         "status": "SUCCESS",
     }
 
@@ -228,7 +273,9 @@ def main() -> int:
                 print(
                     f"SUCCESS {endpoint}: observations={result['observation_count']} "
                     f"gross_positive={result['gross_positive_count']} "
-                    f"gross_max_usdc={result['gross_max_usdc']} blocks={result['blocks']}",
+                    f"gross_max_usdc={result['gross_max_usdc']} "
+                    f"dynamic_ceiling_usdc={result['aave_dynamic']['dynamic_ceiling_usdc']} "
+                    f"blocks={result['blocks']}",
                     flush=True,
                 )
             except Exception as exc:
@@ -247,7 +294,7 @@ def main() -> int:
         "duration_seconds": round(time.time() - started, 3),
         "chain_id_expected": POLYGON_CHAIN_ID,
         "pairs": [asdict(pair) for pair in PAIRS],
-        "loan_frontier_usdc": list(LOAN_USDC),
+        "seed_loan_frontier_usdc": list(SEED_LOAN_USDC),
         "uniswap_v3_fee_tiers": list(UNISWAP_V3_FEE_TIERS),
         "successful_endpoints": results,
         "failed_endpoints": failures,
