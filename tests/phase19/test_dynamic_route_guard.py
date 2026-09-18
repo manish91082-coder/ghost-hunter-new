@@ -4,6 +4,7 @@ from phantomx.dynamic_route_guard import (
     DynamicRouteGuardError,
     compute_rate_degradation_bps,
     evaluate_dynamic_route_domain,
+    evaluate_simulation_domain,
 )
 from phantomx.route_simulator import RouteSimulation
 from phantomx.quote_snapshot import QuoteSnapshot
@@ -56,6 +57,14 @@ class DynamicRouteGuardTests(unittest.TestCase):
         )
         self.assertEqual(result.reference_amount,100)
         self.assertEqual(result.max_safe_amount,400)
+
+
+    def test_simulation_domain_reuses_observations_without_new_evaluation(self):
+        forward = tuple(sim(a, a if a <= 400 else 780) for a in (100, 200, 400, 800))
+        reverse = tuple(sim(a, a if a <= 400 else 780) for a in (100, 200, 400, 800))
+        result = evaluate_simulation_domain(forward=forward, reverse=reverse, max_degradation_bps=100)
+        self.assertEqual(result.max_safe_amount, 400)
+        self.assertEqual(result.reference_amount, 100)
 
     def test_route_must_exist_in_both_directions(self):
         with self.assertRaises(DynamicRouteGuardError):

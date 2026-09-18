@@ -159,3 +159,65 @@ def evaluate_dynamic_route_domain(
         max_degradation_bps=max_degradation_bps,
         evaluated=tuple(evaluated),
     )
+
+
+def evaluate_simulation_domain(
+    *,
+    forward: tuple[RouteSimulation, ...],
+    reverse: tuple[RouteSimulation, ...],
+    max_degradation_bps: int = 100,
+) -> DynamicRouteCeiling:
+    """Derive a dynamic route ceiling from already-observed exact simulations.
+
+    This is deliberately a post-processing step. It performs no RPC calls and
+    therefore must be used after one complete cross-venue discovery pass.
+    """
+    if not forward or not reverse:
+        raise DynamicRouteGuardError("both route directions require exact observations")
+    forward_by_amount = {item.initial_amount: item for item in forward}
+    reverse_by_amount = {item.initial_amount: item for item in reverse}
+    amounts = tuple(sorted(set(forward_by_amount) | set(reverse_by_amount)))
+    _validate_amounts(amounts)
+    if not isinstance(max_degradation_bps, int) or isinstance(max_degradation_bps, bool):
+        raise DynamicRouteGuardError("max_degradation_bps must be an integer")
+    if not 0 <= max_degradation_bps <= 10_000:
+        raise DynamicRouteGuardError("max_degradation_bps must be between 0 and 10000")
+
+    common = sorted(set(forward_by_amount) & set(reverse_by_amount))
+    if not common:
+        raise DynamicRouteGuardError("no common executable route size")
+    reference_amount = common[0]
+    ref_forward = forward_by_amount[reference_amount]
+    ref_reverse = reverse_by_amount[reference_amount]
+
+    evaluated: list[RouteSizeEvidence] = []
+    safe_amounts: list[int] = []
+    for amount in amounts:
+        fwd = forward_by_amount.get(amount)
+        rev = reverse_by_amount.get(amount)
+        if fwd is None or rev is None:
+            evaluated.append(RouteSizeEvidence(
+                amount=amount, forward=fwd, reverse=rev,
+                forward_degradation_bps=None, reverse_degradation_bps=None,
+                safe=False, failure="route direction unavailable",
+            ))
+            continue
+        fd = compute_rate_degradation_bps(ref_forward, fwd)
+        rd = compute_rate_degradation_bps(ref_reverse, rev)
+        safe = fd <= max_degradation_bps and rd <= max_degradation_bps
+        if safe:
+            safe_amounts.append(amount)
+        evaluated.append(RouteSizeEvidence(
+            amount=amount, forward=fwd, reverse=rev,
+            forward_degradation_bps=fd, reverse_degradation_bps=rd,
+            safe=safe,
+        ))
+
+    if not safe_amounts:
+        raise DynamicRouteGuardError("no route size remains inside the fixed impact policy")
+    return DynamicRouteCeiling(
+        max_safe_amount=max(safe_amounts),
+        reference_amount=reference_amount,
+        max_degradation_bps=max_degradation_bps,
+        evaluated=tuple(evaluated),
+    )

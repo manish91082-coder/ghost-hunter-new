@@ -24,8 +24,8 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from phantomx.aave_v3_dynamic import AaveV3PolygonDynamicReader
-from phantomx.cross_venue_route import build_quickswap_to_uniswap_route, build_uniswap_to_quickswap_route
-from phantomx.dynamic_route_guard import DynamicRouteGuardError, evaluate_dynamic_route_domain
+from phantomx.cross_venue_discovery import discover_cross_venue_opportunities
+from phantomx.dynamic_route_guard import DynamicRouteGuardError, evaluate_simulation_domain
 from phantomx.dynamic_market_policy import compute_dynamic_loan_ceiling
 from phantomx.market_block import acquire_market_block
 from phantomx.polygon_rpc_http import PolygonRPCHTTPConfig, PolygonRPCHTTPTransport
@@ -191,24 +191,26 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
     for fee_tier in UNISWAP_V3_FEE_TIERS:
         for pair in PAIRS:
             try:
-                def eval_forward(amount: int):
-                    return build_quickswap_to_uniswap_route(
-                        rpc, quickswap, uniswap,
-                        amount_in=amount, token_a=USDC, token_b=pair.token_b,
-                        uniswap_fee=fee_tier, block=context,
-                    )
-
-                def eval_reverse(amount: int):
-                    return build_uniswap_to_quickswap_route(
-                        rpc, quickswap, uniswap,
-                        amount_in=amount, token_a=USDC, token_b=pair.token_b,
-                        uniswap_fee=fee_tier, block=context,
-                    )
-
-                ceiling = evaluate_dynamic_route_domain(
-                    tuple(loan_amounts_raw),
-                    evaluate_forward=eval_forward,
-                    evaluate_reverse=eval_reverse,
+                discovered = discover_cross_venue_opportunities(
+                    rpc,
+                    quickswap,
+                    uniswap,
+                    token_pairs=((USDC, pair.token_b),),
+                    loan_amounts=loan_amounts_raw,
+                    uniswap_fee=fee_tier,
+                    block=context,
+                )
+                forward_observations = tuple(
+                    item.simulation for item in discovered.evaluated
+                    if item.venue_path == "quickswap_v2->uniswap_v3"
+                )
+                reverse_observations = tuple(
+                    item.simulation for item in discovered.evaluated
+                    if item.venue_path == "uniswap_v3->quickswap_v2"
+                )
+                ceiling = evaluate_simulation_domain(
+                    forward=forward_observations,
+                    reverse=reverse_observations,
                     max_degradation_bps=100,
                 )
                 eligible = {item.amount: item for item in ceiling.evaluated if item.safe}
