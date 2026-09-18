@@ -94,7 +94,7 @@ DEFAULT_STRATEGIES = StrategyRegistry(
             ("Aave V3",),
             ("Uniswap V4", "Uniswap V3"),
             "direct_two_leg_cross_venue",
-            "Polygon V4 deployment is present; adapter/proof is not yet certified.",
+            "Bounded hookless V4 PoolKey discovery is implemented; hooked pools remain excluded until hook behavior is separately certified.",
         ),
         StrategySpec(
             "S3-RAMSES-UV3",
