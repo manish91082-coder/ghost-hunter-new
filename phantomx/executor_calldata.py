@@ -86,9 +86,11 @@ def executor_topology_hash(*, asset: str, token_mid: str, first_on_quickswap: bo
         _word_address(asset, "asset"),
         _word_address(token_mid, "token_mid"),
         _word_bool(first_on_quickswap, "first_on_quickswap"),
+        _word_uint(quickswap_venue_kind, "quickswap_venue_kind", max_value=0xFF),
         _word_uint(uniswap_fee, "uniswap_fee", max_value=0xFFFFFF),
         _word_address(aave_pool, "aave_pool"),
         _word_address(quickswap_v2_router, "quickswap_v2_router"),
+        _word_address(quickswap_v3_router, "quickswap_v3_router"),
         _word_address(uniswap_v3_router, "uniswap_v3_router"),
     ))
     return keccak256_hex(payload)
