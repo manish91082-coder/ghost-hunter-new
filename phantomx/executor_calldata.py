@@ -72,8 +72,14 @@ def executor_selector() -> bytes:
     return bytes.fromhex(keccak256_hex(EXECUTE_SIGNATURE.encode("ascii"))[2:10])
 
 
-def executor_topology_hash(*, asset: str, token_mid: str, first_on_quickswap: bool, quickswap_venue_kind: int, uniswap_fee: int, aave_pool: str, quickswap_v2_router: str, quickswap_v3_router: str, uniswap_v3_router: str, executor: str, chain_id: int = 137) -> str:
+def executor_topology_hash(*, asset: str, token_mid: str, first_on_quickswap: bool, uniswap_fee: int, aave_pool: str, uniswap_v3_router: str, executor: str, chain_id: int = 137, quickswap_venue_kind: int = 1, quickswap_v2_router: str | None = None, quickswap_v3_router: str | None = None, quickswap_router: str | None = None) -> str:
     """Hash every immutable executable-topology identity, including destination executor and chain."""
+    if quickswap_v2_router is None:
+        quickswap_v2_router = quickswap_router
+    if quickswap_v3_router is None:
+        quickswap_v3_router = quickswap_router if quickswap_router is not None else quickswap_v2_router
+    if quickswap_v2_router is None or quickswap_v3_router is None:
+        raise ExecutorCalldataError("QuickSwap V2/V3 router addresses are required")
     if quickswap_venue_kind not in (1, 2):
         raise ExecutorCalldataError("quickswap_venue_kind must be 1 (V2) or 2 (V3)")
     if not isinstance(uniswap_fee, int) or isinstance(uniswap_fee, bool) or not 0 < uniswap_fee <= 0xFFFFFF:
@@ -181,7 +187,13 @@ class BoundExecutorCall:
     envelope: TransactionEnvelope
 
 
-def build_executor_transaction(intent: ExecutionIntent, *, token_mid: str, first_on_quickswap: bool, quickswap_venue_kind: int, uniswap_fee: int, amount_out_min_first: int, amount_out_min_second: int, minimum_surplus: int, aave_pool: str, quickswap_v2_router: str, quickswap_v3_router: str, uniswap_v3_router: str, gas_limit: int, max_fee_per_gas: int, max_priority_fee_per_gas: int) -> BoundExecutorCall:
+def build_executor_transaction(intent: ExecutionIntent, *, token_mid: str, first_on_quickswap: bool, uniswap_fee: int, amount_out_min_first: int, amount_out_min_second: int, minimum_surplus: int, aave_pool: str, uniswap_v3_router: str, gas_limit: int, max_fee_per_gas: int, max_priority_fee_per_gas: int, quickswap_venue_kind: int = 1, quickswap_v2_router: str | None = None, quickswap_v3_router: str | None = None, quickswap_router: str | None = None) -> BoundExecutorCall:
+    if quickswap_v2_router is None:
+        quickswap_v2_router = quickswap_router
+    if quickswap_v3_router is None:
+        quickswap_v3_router = quickswap_router if quickswap_router is not None else quickswap_v2_router
+    if quickswap_v2_router is None or quickswap_v3_router is None:
+        raise ExecutorCalldataError("QuickSwap V2/V3 router addresses are required")
     if intent.chain_id != 137:
         raise ExecutorCalldataError("Phase-19 executor is Polygon-only")
     if intent.loan_amount <= 0:
