@@ -10,7 +10,6 @@ on:
       - "phantomx/cross_venue_qsv3_ramses_v3_route.py"
       - "scripts/s10_qsv3_ramses_v3_live_scan.py"
       - "phantomx/dynamic_*.py"
-      - "phantomx/strategy_registry.py"
   workflow_dispatch:
 
 permissions:
