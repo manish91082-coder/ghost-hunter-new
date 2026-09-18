@@ -35,8 +35,10 @@ def prepare_best_opportunity_execution(
     amount_out_min_second: int,
     minimum_surplus: int,
     aave_pool: str,
-    quickswap_router: str,
     uniswap_v3_router: str,
+    quickswap_v2_router: str | None = None,
+    quickswap_v3_router: str | None = None,
+    quickswap_router: str | None = None,
     gas_limit: int,
     max_fee_per_gas: int,
     max_priority_fee_per_gas: int,
@@ -45,7 +47,9 @@ def prepare_best_opportunity_execution(
 
     The economic evaluator remains the sole selection authority. Execution is
     attempted only for the returned strictly profitable winner, preserving the
-    separation between evidence evaluation and deterministic assembly.
+    separation between evidence evaluation and deterministic assembly. QuickSwap
+    V2 and V3 router identities are passed explicitly when available; the legacy
+    single-router argument remains only as a compatibility fallback.
     """
     try:
         economic_result = evaluate_discovered_opportunities(candidates, build_proof_for)
@@ -60,6 +64,8 @@ def prepare_best_opportunity_execution(
             amount_out_min_second=amount_out_min_second,
             minimum_surplus=minimum_surplus,
             aave_pool=aave_pool,
+            quickswap_v2_router=quickswap_v2_router,
+            quickswap_v3_router=quickswap_v3_router,
             quickswap_router=quickswap_router,
             uniswap_v3_router=uniswap_v3_router,
             gas_limit=gas_limit,
