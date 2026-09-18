@@ -68,3 +68,35 @@ contract MockUniswapV3Router {
         require(IERC20MockRouter(tokenOut).transfer(p.recipient, amountOut), "out");
     }
 }
+
+
+contract MockQuickSwapV3Router {
+    uint256 public rateNumerator;
+    uint256 public rateDenominator;
+    address public tokenOut;
+
+    constructor(uint256 numerator, uint256 denominator, address tokenOut_) {
+        rateNumerator = numerator;
+        rateDenominator = denominator;
+        tokenOut = tokenOut_;
+    }
+
+    struct ExactInputSingleParams {
+        address tokenIn;
+        address tokenOut;
+        address recipient;
+        uint256 deadline;
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+        uint160 limitSqrtPrice;
+    }
+
+    function exactInputSingle(ExactInputSingleParams calldata p) external returns (uint256 amountOut) {
+        require(p.tokenOut == tokenOut, "token");
+        require(block.timestamp <= p.deadline, "deadline");
+        amountOut = (p.amountIn * rateNumerator) / rateDenominator;
+        require(amountOut >= p.amountOutMinimum, "slippage");
+        require(IERC20MockRouter(p.tokenIn).transferFrom(msg.sender, address(this), p.amountIn), "in");
+        require(IERC20MockRouter(tokenOut).transfer(p.recipient, amountOut), "out");
+    }
+}
