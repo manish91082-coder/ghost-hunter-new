@@ -1,0 +1,52 @@
+name: PHANTOMX S1 QuickSwap V3 Live Hunt
+
+on:
+  push:
+    branches:
+      - phase-19-e2e-harness
+    paths:
+      - "phantomx/quickswap_v3.py"
+      - "phantomx/cross_venue_qsv3_route.py"
+      - "phantomx/dynamic_*.py"
+      - "scripts/s1_qsv3_live_scan.py"
+      - "phantomx/strategy_registry.py"
+      - ".github/workflows/s1-qsv3-live-read.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phantomx-s1-qsv3-live
+  cancel-in-progress: true
+
+jobs:
+  s1-live-read:
+    name: S1 QuickSwap V3 <-> Uniswap V3
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install Phase-19 dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
+
+      - name: Run S1 read-only live hunt
+        run: python scripts/s1_qsv3_live_scan.py
+        env:
+          PYTHONUNBUFFERED: "1"
+
+      - name: Publish S1 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: phantomx-s1-qsv3-live-scan
+          path: artifacts/s1_qsv3_live_scan.json
+          if-no-files-found: error

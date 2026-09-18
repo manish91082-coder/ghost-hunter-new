@@ -213,3 +213,9 @@ Missing lane = BLOCKED.
 - Phase-19 #617 / ID `35356389228` GREEN.
 - Final state lock requires exact current-block alignment and fresh route/quote/economic evidence; stale or below-floor final proofs cannot be locked.
 - First-Hunt #24 / ID `35356389245` is currently the active current-head read-only market scan; do not treat it as complete until its final conclusion/evidence is captured.
+
+## S1 AUTOMATION SYNC
+- Current branch head before this automation commit: `478b2de5d076605c3d102d4b75fe9017d6599caf`.
+- Dedicated S1 live-read workflow added: `.github/workflows/s1-qsv3-live-read.yml`.
+- The workflow is read-only, cancels stale S1 hunts, and archives `artifacts/s1_qsv3_live_scan.json`.
+- S1 remains discovery-only and cannot authorize production execution.
