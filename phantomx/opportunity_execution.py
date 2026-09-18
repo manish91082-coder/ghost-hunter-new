@@ -32,12 +32,13 @@ def assemble_proven_opportunity(
     amount_out_min_second: int,
     minimum_surplus: int,
     aave_pool: str,
-    quickswap_v2_router: str,
-    quickswap_v3_router: str,
     uniswap_v3_router: str,
     gas_limit: int,
     max_fee_per_gas: int,
     max_priority_fee_per_gas: int,
+    quickswap_v2_router: str | None = None,
+    quickswap_v3_router: str | None = None,
+    quickswap_router: str | None = None,
 ) -> ExecutionAssembly:
     """Assemble execution only from a strictly profitable discovered evaluation.
 
@@ -46,7 +47,7 @@ def assemble_proven_opportunity(
     remain explicit caller inputs, so this bridge never invents execution safety
     margins from discovery data.
     """
-    if not isinstance(evaluation, OpportunityEconomicEvaluation):
+    if quickswap_v2_router is None:\n        quickswap_v2_router = quickswap_router\n    if quickswap_v3_router is None:\n        quickswap_v3_router = quickswap_router if quickswap_router is not None else quickswap_v2_router\n    if quickswap_v2_router is None or quickswap_v3_router is None:\n        raise OpportunityExecutionError("QuickSwap V2/V3 router addresses are required")\n    if not isinstance(evaluation, OpportunityEconomicEvaluation):
         raise OpportunityExecutionError("evaluation must be an OpportunityEconomicEvaluation")
     if not evaluation.economically_valid:
         raise OpportunityExecutionError("opportunity is not above the strict economic floor")
