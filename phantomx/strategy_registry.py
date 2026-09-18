@@ -124,7 +124,7 @@ DEFAULT_STRATEGIES = StrategyRegistry(
             ("Aave V3",),
             ("Curve", "Uniswap V3"),
             "direct_two_leg_cross_venue",
-            "Requires Curve pool discovery/exact quote adapter.",
+            "Registry-driven direct and underlying Curve quote discovery is implemented; execution remains uncertified.",
         ),
         StrategySpec(
             "S6-TRIANGULAR",
