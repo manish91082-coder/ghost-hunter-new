@@ -79,7 +79,14 @@ class RPCProviderScheduler:
                 raise RPCSchedulerError("provider max_concurrency must be 1..8")
 
     @classmethod
-    def from_records(cls, records: Iterable[dict], *, max_active: int = 4) -> "RPCProviderScheduler":
+    def from_records(
+        cls,
+        records: Iterable[dict],
+        *,
+        max_active: int = 4,
+        failure_threshold: int = 3,
+        circuit_cooldown_seconds: float = 30.0,
+    ) -> "RPCProviderScheduler":
         states: dict[str, RPCProviderState] = {}
         for record in records:
             if not isinstance(record, dict):
@@ -98,7 +105,12 @@ class RPCProviderScheduler:
                 health_score=float(record.get("health_score", 1.0)),
                 max_concurrency=int(record.get("max_concurrency", 2)),
             )
-        return cls(states, max_active=max_active)
+        return cls(
+            states,
+            max_active=max_active,
+            failure_threshold=failure_threshold,
+            circuit_cooldown_seconds=circuit_cooldown_seconds,
+        )
 
     def select(self, *, task_ids: Iterable[str], now: float | None = None) -> tuple[ProviderAssignment, ...]:
         """Assign tasks to a bounded active provider set without duplicate fan-out."""
