@@ -10,14 +10,13 @@ on:
       - "phantomx/dynamic_*.py"
       - "scripts/s1_qsv3_live_scan.py"
       - "phantomx/strategy_registry.py"
-      - ".github/workflows/s1-qsv3-live-read.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: phantomx-s1-qsv3-live
+  group: phantomx-market-read-hunts
   cancel-in-progress: true
 
 jobs:

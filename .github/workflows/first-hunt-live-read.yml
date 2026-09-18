@@ -5,9 +5,15 @@ on:
     branches:
       - phase-19-e2e-harness
     paths:
-      - "phantomx/**"
+      - "phantomx/aave_v3_dynamic.py"
+      - "phantomx/cross_venue_discovery.py"
+      - "phantomx/dynamic_market_policy.py"
+      - "phantomx/dynamic_route_guard.py"
+      - "phantomx/market_block.py"
+      - "phantomx/polygon_rpc_http.py"
+      - "phantomx/quickswap_v2.py"
+      - "phantomx/uniswap_v3.py"
       - "scripts/first_hunt_live_scan.py"
-      - ".github/workflows/first-hunt-live-read.yml"
   pull_request:
     branches:
       - master
