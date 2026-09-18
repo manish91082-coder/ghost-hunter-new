@@ -19,11 +19,16 @@ The project goal is not Phase-19. The goal is a working, evidence-backed Polygon
 10. Realized PnL proof `> $0.20`.
 11. Independent final audit and release freeze.
 
+## DYNAMIC MARKET AUTONOMY
+- Canonical policy: `PHANTOMX_DYNAMIC_MARKET_AUTONOMY_POLICY.md`.
+- Integration sequence: DYN-1 live Aave liquidity/premium -> DYN-2 liquidity-aware loan domain -> DYN-3 exact execution gas -> DYN-4 all-cost EconomicProof -> DYN-5 final requote/state lock -> DYN-6 strategy registry -> DYN-7 adaptive RPC fleet -> DYN-8 scheduler -> DYN-9 external gates -> DYN-10 controlled execution/PnL.
+- Market-dependent values remain dynamic; only safety invariants and explicit policy bounds are frozen.
+
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Current HEAD at this sync: `f05c5ea02d99937aca367371057c9a760381f4ef` (`perf(P0): parallelize independent First-Hunt RPC scans`).
-- Latest verified engineering commit at this sync: `f05c5ea02d99937aca367371057c9a760381f4ef` (`perf(P0): parallelize independent First-Hunt RPC scans`).
-- Latest verified Phase-19 CI certification: workflow run `586` / run ID `35286597864` **GREEN** on `f05c5ea02d99937aca367371057c9a760381f4ef`; Solidity compilation, EVM integration (**14 tests**), Polygon fork protocol smoke (**3 tests**), Polygon fork execution probe (**1 test**), and the full Phase-19 unittest suite (**717 tests, 0 failures, 0 errors**) all completed successfully. The workflow checked out the exact branch HEAD with `fetch-depth: 0`.
+- Current HEAD at this sync: `eb275ea23deb935990fd501b67088fbde3b135aa` (`feat(P0): record nearest-to-profit First-Hunt evidence`).
+- Latest verified engineering commit at this sync: `eb275ea23deb935990fd501b67088fbde3b135aa` (`feat(P0): record nearest-to-profit First-Hunt evidence`).
+- Latest verified Phase-19 CI certification: workflow run `587` / run ID `35319516515` **GREEN** on `eb275ea23deb935990fd501b67088fbde3b135aa`; Solidity compilation, EVM integration (**14 tests**), Polygon fork protocol smoke (**3 tests**), Polygon fork execution probe (**1 test**), and the full Phase-19 unittest suite (**717 tests, 0 failures, 0 errors**) all completed successfully. The workflow checked out the exact branch HEAD with `fetch-depth: 0`.
 - The latest live-discovery increment adds exact Uniswap V3 fee-tier enumeration across 100/500/3000/10000 and a read-only First-Hunt Actions scan. First-Hunt workflow run `7` / run ID `35284988643` is **GREEN**; it produced 340 exact observations on `polygon.drpc.org` and 374 on `polygon-bor-rpc.publicnode.com`, with zero gross-positive candidates. The scan is observation-only and performs no signing, submission, broadcast, or live-capital operation.
 - The verified cleanup removes the duplicate Governor test module `tests/phase19/test_execution_governor.py`; canonical Governor coverage remains in `tests/phase19/test_governor.py` and the existing canonical pipeline tests. The canonical Governor implementation remains `phantomx/governor.py`.
 - `phantomx/live_opportunity_pipeline.py` provides concrete cross-venue discovery → complete economic evaluation → deterministic execution assembly → EVM preflight. It performs no signing, submission, broadcast, or live-capital operation.
@@ -35,7 +40,7 @@ The project goal is not Phase-19. The goal is a working, evidence-backed Polygon
 - `phantomx/loan_optimizer.py` remains exact-domain and complete: all supplied integer amounts are evaluated, mixed block/chain candidates are rejected, and ties resolve to the smaller loan.
 - The economic invariant is unchanged: realized net profit must be **strictly greater than $0.20 after all applicable costs**.
 - Current First-Hunt loan frontier at this sync is expanded to 17 explicit USDC sizes from $100 through $250,000; the frontier is complete only over these supplied amounts.
-- First-Hunt run `10` / run ID `35286597740` is **GREEN** on `f05c5ea02d99937aca367371057c9a760381f4ef`. It produced 782 exact observations on `polygon.drpc.org` and 408 on `polygon-bor-rpc.publicnode.com`, with zero gross-positive candidates. The next diagnostic increment will record nearest-to-profit gross observations rather than infer profitability.
+- First-Hunt run `11` / run ID `35319516439` is **GREEN** on `eb275ea23deb935990fd501b67088fbde3b135aa`. It produced 782 exact observations on `polygon.drpc.org` and 510 on `polygon-bor-rpc.publicnode.com`, with zero gross-positive candidates and negative nearest gross deltas. The scanner remains read-only.
 - Frozen external evidence artifact remains `e117b6550686cf5e0ff787d9bd7d85e83996db07`; engineering commits after that artifact do not retroactively alter its identity. The latest verified engineering commit is **112 commits ahead** of the frozen artifact with no commits behind it, based on GitHub commit comparison. The current HEAD adds only status documentation on top of that verified engineering commit.
 - Consolidated external-evidence validation remains hard-bound to the frozen external artifact and requires independent lane evidence for signer, Polygon authority, private relay, shadow/staging, and realized PnL.
 - Operator preflight still requires current HEAD to descend from the frozen artifact and rejects missing or contradictory evidence.
