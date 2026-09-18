@@ -103,3 +103,5 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - First-Hunt run `#21` / run ID `35347557050` is on the earlier gas-cost module head `0aef564a...`; it is not treated as current-head market evidence. Current market evidence must be re-established after the control-plane sync when needed.
 
 - DYN-4 is GREEN at deterministic test level: `phantomx/native_valuation.py` derives conservative POL/USD evidence from exact WPOL→USDC quotes at one block; `phantomx/gas_cost.py` converts transaction-level gas bound to USD using that evidence; `phantomx/live_economic_binding.py` binds exact USDC settlement and external costs into `EconomicProof` without double-counting swap fee/price-impact already reflected in exact AMM outputs. Strict net remains `> $0.20`.
+
+- DYN-5 deterministic gate is GREEN: Phase-19 run #617 / ID `35356389228` passed on current DYN-5 head. `phantomx/final_state_lock.py` requires the final route, valuation evidence, gas evidence and EconomicProof to share the exact current block, and rejects stale, mismatched or below-floor final state.

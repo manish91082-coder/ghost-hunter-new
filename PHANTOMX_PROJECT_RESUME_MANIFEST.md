@@ -207,3 +207,9 @@ Missing lane = BLOCKED.
 - Phase-19 #615 / ID `35350779558` GREEN.
 - DYN-4 economic binding preserves exact quote settlement semantics and adds only external attributable costs: flash-loan premium, gas, relay and other explicit costs.
 - Next gate: DYN-5 final requote/state lock.
+
+## DYN-5 VERIFIED
+- Current engineering head: `97174b5e337dfb906b55984461396f3e9b34712c`.
+- Phase-19 #617 / ID `35356389228` GREEN.
+- Final state lock requires exact current-block alignment and fresh route/quote/economic evidence; stale or below-floor final proofs cannot be locked.
+- First-Hunt #24 / ID `35356389245` is currently the active current-head read-only market scan; do not treat it as complete until its final conclusion/evidence is captured.
