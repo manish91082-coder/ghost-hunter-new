@@ -219,3 +219,9 @@ Missing lane = BLOCKED.
 - Dedicated S1 live-read workflow added: `.github/workflows/s1-qsv3-live-read.yml`.
 - The workflow is read-only, cancels stale S1 hunts, and archives `artifacts/s1_qsv3_live_scan.json`.
 - S1 remains discovery-only and cannot authorize production execution.
+
+## LATEST AUTOMATION CONTROL SYNC
+- Current control HEAD: `617e203e0033e5a1589b6fa1c71bf29fecbf0053`.
+- Phase-19 #630 / ID `35364653977` GREEN.
+- S0 live-hunt #29 on `b6f291f6...` completed GREEN with zero gross-positive; use only as applicable scanner evidence until quote/economic head changes.
+- S1 dedicated automated hunt #3 on `b6f291f6...` remains in-flight; the latest trigger-cleanup change was not a scanner-code change.
