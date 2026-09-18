@@ -24,7 +24,8 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from phantomx.aave_v3_dynamic import AaveV3PolygonDynamicReader
-from phantomx.cross_venue_discovery import discover_cross_venue_opportunities
+from phantomx.cross_venue_route import build_quickswap_to_uniswap_route, build_uniswap_to_quickswap_route
+from phantomx.dynamic_route_guard import DynamicRouteGuardError, evaluate_dynamic_route_domain
 from phantomx.dynamic_market_policy import compute_dynamic_loan_ceiling
 from phantomx.market_block import acquire_market_block
 from phantomx.polygon_rpc_http import PolygonRPCHTTPConfig, PolygonRPCHTTPTransport
@@ -113,22 +114,31 @@ def _endpoints() -> tuple[str, ...]:
     return values or DEFAULT_ENDPOINTS
 
 
-def _quote_record(candidate: Any, flash_premium_bps: int) -> dict[str, Any]:
-    sim = candidate.simulation
+def _quote_record(
+    *,
+    token_a: str,
+    token_b: str,
+    venue_path: str,
+    loan_amount: int,
+    sim: Any,
+    flash_premium_bps: int,
+    route_degradation_bps: int | None,
+) -> dict[str, Any]:
     return {
-        "token_a": candidate.token_a,
-        "token_b": candidate.token_b,
-        "venue_path": candidate.venue_path,
-        "loan_amount_usdc": str(Decimal(candidate.loan_amount) / Decimal(10**6)),
-        "loan_amount_raw": candidate.loan_amount,
+        "token_a": token_a,
+        "token_b": token_b,
+        "venue_path": venue_path,
+        "loan_amount_usdc": str(Decimal(loan_amount) / Decimal(10**6)),
+        "loan_amount_raw": loan_amount,
         "final_amount_raw": sim.final_amount,
         "final_amount_usdc": str(Decimal(sim.final_amount) / Decimal(10**6)),
-        "gross_delta_raw": candidate.gross_delta,
-        "gross_delta_usdc": str(Decimal(candidate.gross_delta) / Decimal(10**6)),
+        "gross_delta_raw": sim.final_amount - sim.initial_amount,
+        "gross_delta_usdc": str(Decimal(sim.final_amount - sim.initial_amount) / Decimal(10**6)),
         "flash_loan_premium_bps": flash_premium_bps,
-        "flash_loan_premium_raw": (candidate.loan_amount * flash_premium_bps + 5000) // 10000,
-        "post_flash_premium_delta_raw": candidate.gross_delta - ((candidate.loan_amount * flash_premium_bps + 5000) // 10000),
-        "post_flash_premium_delta_usdc": str(Decimal(candidate.gross_delta - ((candidate.loan_amount * flash_premium_bps + 5000) // 10000)) / Decimal(10**6)),
+        "flash_loan_premium_raw": (loan_amount * flash_premium_bps + 5000) // 10000,
+        "post_flash_premium_delta_raw": (sim.final_amount - sim.initial_amount) - ((loan_amount * flash_premium_bps + 5000) // 10000),
+        "post_flash_premium_delta_usdc": str(Decimal((sim.final_amount - sim.initial_amount) - ((loan_amount * flash_premium_bps + 5000) // 10000)) / Decimal(10**6)),
+        "route_degradation_bps": route_degradation_bps,
         "chain_id": sim.chain_id,
         "block_number": sim.block_number,
         "route_hash": sim.route_hash,
@@ -181,24 +191,62 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
     for fee_tier in UNISWAP_V3_FEE_TIERS:
         for pair in PAIRS:
             try:
-                candidates = discover_cross_venue_opportunities(
-                    rpc,
-                    quickswap,
-                    uniswap,
-                    token_pairs=((USDC, pair.token_b),),
-                    loan_amounts=loan_amounts_raw,
-                    uniswap_fee=fee_tier,
-                    block=context,
+                def eval_forward(amount: int):
+                    return build_quickswap_to_uniswap_route(
+                        rpc, quickswap, uniswap,
+                        amount_in=amount, token_a=USDC, token_b=pair.token_b,
+                        uniswap_fee=fee_tier, block=context,
+                    )
+
+                def eval_reverse(amount: int):
+                    return build_uniswap_to_quickswap_route(
+                        rpc, quickswap, uniswap,
+                        amount_in=amount, token_a=USDC, token_b=pair.token_b,
+                        uniswap_fee=fee_tier, block=context,
+                    )
+
+                ceiling = evaluate_dynamic_route_domain(
+                    tuple(loan_amounts_raw),
+                    evaluate_forward=eval_forward,
+                    evaluate_reverse=eval_reverse,
+                    max_degradation_bps=100,
                 )
-                tile_observations = [_quote_record(item, aave.flash_loan_premium_bps) for item in candidates.evaluated]
-                observations.extend(tile_observations)
+                eligible = {item.amount: item for item in ceiling.evaluated if item.safe}
+                for item in ceiling.evaluated:
+                    if item.forward is None or item.reverse is None:
+                        continue
+                    forward = item.forward
+                    reverse = item.reverse
+                    fd = item.forward_degradation_bps
+                    rd = item.reverse_degradation_bps
+                    observations.append(_quote_record(
+                        token_a=USDC,
+                        token_b=pair.token_b,
+                        venue_path="quickswap_v2->uniswap_v3",
+                        loan_amount=item.amount,
+                        sim=forward,
+                        flash_premium_bps=aave.flash_loan_premium_bps,
+                        route_degradation_bps=fd,
+                    ))
+                    observations.append(_quote_record(
+                        token_a=USDC,
+                        token_b=pair.token_b,
+                        venue_path="uniswap_v3->quickswap_v2",
+                        loan_amount=item.amount,
+                        sim=reverse,
+                        flash_premium_bps=aave.flash_loan_premium_bps,
+                        route_degradation_bps=rd,
+                    ))
                 tile_results.append({
                     "pair": pair.name,
                     "uniswap_fee_tier": fee_tier,
                     "status": "SUCCESS",
-                    "observation_count": len(tile_observations),
+                    "observation_count": len(ceiling.evaluated) * 2,
+                    "dynamic_route_ceiling_usdc": str(Decimal(ceiling.max_safe_amount) / Decimal(10**6)),
+                    "reference_amount_usdc": str(Decimal(ceiling.reference_amount) / Decimal(10**6)),
+                    "max_route_degradation_bps": ceiling.max_degradation_bps,
                 })
-            except Exception as exc:
+            except (DynamicRouteGuardError, Exception) as exc:
                 tile_results.append({
                     "pair": pair.name,
                     "uniswap_fee_tier": fee_tier,
