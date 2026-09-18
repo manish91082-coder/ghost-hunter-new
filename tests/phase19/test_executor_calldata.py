@@ -22,6 +22,7 @@ class ExecutorCalldataBindingTests(unittest.TestCase):
         self.sender = "0x4444444444444444444444444444444444444444"
         self.aave = "0x5555555555555555555555555555555555555555"
         self.quick = "0x6666666666666666666666666666666666666666"
+        self.quick_v3 = "0x8888888888888888888888888888888888888888"
         self.uni = "0x7777777777777777777777777777777777777777"
         self.route_hash = "0x" + "aa" * 32
         self.economic_hash = "0x" + "bb" * 32
@@ -58,7 +59,7 @@ class ExecutorCalldataBindingTests(unittest.TestCase):
         with self.assertRaisesRegex(ExecutorCalldataError, "requested minimum surplus"):
             build_executor_transaction(self.intent.with_field(minimum_surplus_token_amount=6), token_mid=self.mid, first_on_quickswap=True, quickswap_venue_kind=1, uniswap_fee=3000, amount_out_min_first=90_000_000, amount_out_min_second=95_000_000, minimum_surplus=5, aave_pool=self.aave, quickswap_v2_router=self.quick, quickswap_v3_router=self.quick_v3, uniswap_v3_router=self.uni, gas_limit=800_000, max_fee_per_gas=1_000_000_000, max_priority_fee_per_gas=100_000_000)
 
-    def test_static_abi_layout_is_exactly_twelve_words_after_selector(self):
+    def test_static_abi_layout_is_exactly_thirteen_words_after_selector(self):
         bound = self._build()
         self.assertEqual(bound.calldata[:4], executor_selector())
         self.assertEqual(len(bound.calldata), 4 + 13 * 32)
