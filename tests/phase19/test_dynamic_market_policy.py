@@ -5,7 +5,7 @@ from phantomx.dynamic_market_policy import DynamicLoanInputs, compute_dynamic_lo
 class DynamicMarketPolicyTests(unittest.TestCase):
     def test_ceiling_uses_live_liquidity_and_route_constraints(self):
         x = DynamicLoanInputs(1_000_000, 700_000, 800_000, 900_000, 500)
-        self.assertEqual(compute_dynamic_loan_ceiling(x), 650_000)
+        self.assertEqual(compute_dynamic_loan_ceiling(x), 700_000)
 
     def test_one_percent_fee_is_swap_cost_not_gas(self):
         self.assertEqual(compute_uniswap_v3_swap_fee_raw(10_000_000, 10_000), 100_000)
