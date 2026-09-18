@@ -177,10 +177,13 @@ class CurveRegistryExactQuoter:
         self.registries = tuple(registries)
 
     def _call(self, to: str, data: str, snapshot: BlockSnapshot) -> bytes:
-        result = self._rpc.call(
-            "eth_call",
-            [{"to": to, "data": data}, hex(snapshot.block_number)],
-        )
+        try:
+            result = self._rpc.call(
+                "eth_call",
+                [{"to": to, "data": data}, hex(snapshot.block_number)],
+            )
+        except Exception as exc:
+            raise CurveError(f"eth_call transport failure: {type(exc).__name__}: {exc}") from exc
         return _result_bytes(result, "eth_call")
 
     def pool_count(self, registry: str, snapshot: BlockSnapshot) -> int:
