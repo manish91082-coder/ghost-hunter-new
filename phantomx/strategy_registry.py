@@ -156,5 +156,15 @@ DEFAULT_STRATEGIES = StrategyRegistry(
             "flash_source_variant",
             "Requires provider-specific callback/repayment proof before activation.",
         ),
+        StrategySpec(
+            "S9-QSV2-RAMSES-V3",
+            "QuickSwap V2 ↔ Ramses V3",
+            StrategyStatus.DISCOVERY_ONLY,
+            137,
+            ("Aave V3",),
+            ("QuickSwap V2", "Ramses V3"),
+            "direct_two_leg_cross_venue",
+            "Discovery-only route family; Ramses V3 pool selection is tickSpacing-based and execution is not yet certified.",
+        ),
     )
 )
