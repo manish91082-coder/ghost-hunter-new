@@ -1,6 +1,7 @@
 import unittest
 
 from phantomx.curve import (
+    _address_word,
     CURVE_FACTORY_REGISTRY,
     FIND_POOL_FOR_COINS_INDEXED_SELECTOR,
     FIND_POOL_FOR_COINS_SELECTOR,
@@ -41,6 +42,12 @@ class FakeRpc:
 
 
 class CurveAdapterTests(unittest.TestCase):
+    def test_address_word_is_exactly_32_bytes(self):
+        word = _address_word("0x" + "11" * 20)
+        self.assertEqual(len(word), 32)
+        self.assertEqual(word[:12], b"\x00" * 12)
+        self.assertEqual(word[12:], bytes.fromhex("11" * 20))
+
     def test_selector_constants(self):
         self.assertEqual(POOL_COUNT_SELECTOR, "0x956aae3a")
         self.assertEqual(POOL_LIST_SELECTOR, "0x3a1d5d8e")
