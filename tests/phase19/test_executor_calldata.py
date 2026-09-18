@@ -89,11 +89,13 @@ class ExecutorCalldataBindingTests(unittest.TestCase):
         second = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=False, quickswap_venue_kind=1, uniswap_fee=3000, aave_pool=self.aave, quickswap_v2_router=self.quick, quickswap_v3_router=self.quick_v3, uniswap_v3_router=self.uni, executor=self.executor)
         third = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, quickswap_venue_kind=1, uniswap_fee=500, aave_pool=self.aave, quickswap_v2_router=self.quick, quickswap_v3_router=self.quick_v3, uniswap_v3_router=self.uni, executor=self.executor)
         executor_mutated = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, quickswap_venue_kind=1, uniswap_fee=3000, aave_pool=self.aave, quickswap_v2_router=self.quick, quickswap_v3_router=self.quick_v3, uniswap_v3_router=self.uni, executor=self.executor_alt)
+        venue_mutated = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, quickswap_venue_kind=2, uniswap_fee=3000, aave_pool=self.aave, quickswap_v2_router=self.quick, quickswap_v3_router=self.quick_v3, uniswap_v3_router=self.uni, executor=self.executor)
         chain_mutated = executor_topology_hash(asset=self.asset, token_mid=self.mid, first_on_quickswap=True, quickswap_venue_kind=1, uniswap_fee=3000, aave_pool=self.aave, quickswap_v2_router=self.quick, quickswap_v3_router=self.quick_v3, uniswap_v3_router=self.uni, executor=self.executor, chain_id=1)
         self.assertEqual(len(first), 66)
         self.assertNotEqual(first, second)
         self.assertNotEqual(first, third)
         self.assertNotEqual(first, executor_mutated)
+        self.assertNotEqual(first, venue_mutated)
         self.assertNotEqual(first, chain_mutated)
 
     def test_python_topology_and_commitment_reference_vectors(self):
