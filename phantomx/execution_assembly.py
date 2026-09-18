@@ -78,7 +78,13 @@ def assemble_execution(
     intent hash is produced only after calldata_hash exists, while calldata
     carries the cycle-free execution commitment hash.
     """
-    if quickswap_v2_router is None:\n        quickswap_v2_router = quickswap_router\n    if quickswap_v3_router is None:\n        quickswap_v3_router = quickswap_router if quickswap_router is not None else quickswap_v2_router\n    if quickswap_v2_router is None or quickswap_v3_router is None:\n        raise ExecutionAssemblyError("QuickSwap V2/V3 router addresses are required")\n    if simulation.chain_id != 137:
+    if quickswap_v2_router is None:
+        quickswap_v2_router = quickswap_router
+    if quickswap_v3_router is None:
+        quickswap_v3_router = quickswap_router if quickswap_router is not None else quickswap_v2_router
+    if quickswap_v2_router is None or quickswap_v3_router is None:
+        raise ExecutionAssemblyError("QuickSwap V2/V3 router addresses are required")
+    if simulation.chain_id != 137:
         raise ExecutionAssemblyError("Phase-19 execution is Polygon-only")
     if not economic_proof.economically_valid:
         raise ExecutionAssemblyError("economic proof is not above the strict floor")
