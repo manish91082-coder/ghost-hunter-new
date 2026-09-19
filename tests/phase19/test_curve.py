@@ -3,7 +3,9 @@ import unittest
 from phantomx.curve import (
     _address_word,
     CURVE_FACTORY_REGISTRY,
+    COINS_SELECTOR,
     FIND_POOL_FOR_COINS_INDEXED_SELECTOR,
+    FEE_SELECTOR,
     FIND_POOL_FOR_COINS_SELECTOR,
     GET_COIN_INDICES_SELECTOR,
     GET_DY_SELECTOR,
@@ -77,6 +79,22 @@ class CurveAdapterTests(unittest.TestCase):
         self.assertEqual(pools[0].j, 1)
         self.assertEqual(pools[0].fee_raw, 4_000_000)
 
+    def test_direct_seed_pool_resolves_coin_indices_from_pool_state(self):
+        class SeedRpc(FakeRpc):
+            def call(self, method, params):
+                if method == "eth_call" and params[0]["data"].startswith(COINS_SELECTOR):
+                    index = int(params[0]["data"][-64:], 16)
+                    coin = A if index == 0 else B if index == 1 else "0x" + "00" * 20
+                    return "0x" + "00" * 12 + coin[2:]
+                if method == "eth_call" and params[0]["data"] == FEE_SELECTOR:
+                    return "0x" + (4_000_000).to_bytes(32, "big").hex()
+                return super().call(method, params)
+
+        rpc = SeedRpc()
+        q = CurveRegistryExactQuoter(rpc, (("factory", CURVE_FACTORY_REGISTRY),))
+        ref = q.direct_pool_ref(POOL, A, B, SNAP)
+        self.assertEqual((ref.i, ref.j), (0, 1))
+        self.assertEqual(ref.fee_raw, 4_000_000)
     def test_quote_snapshot_is_block_pinned(self):
         rpc = FakeRpc()
         q = CurveRegistryExactQuoter(rpc, (( "factory", CURVE_FACTORY_REGISTRY),))
