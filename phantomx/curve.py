@@ -213,7 +213,10 @@ class CurveRegistryExactQuoter:
         for registry_name, registry in self.registries:
             seen: set[str] = set()
             for index in range(max_pools_per_registry):
-                pool = self._find_pool(registry, token_in, token_out, None if index == 0 else index, snapshot)
+                # Curve's registry uses i=0 for the first matching market.
+                # There is no special non-indexed path that should shift the
+                # enumeration to i=1.
+                pool = self._find_pool(registry, token_in, token_out, index, snapshot)
                 if pool is None or pool.lower() in seen:
                     break
                 seen.add(pool.lower())
