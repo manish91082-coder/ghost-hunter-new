@@ -157,10 +157,52 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
 
         for venues in itertools.permutations(VENUES, 3):
             route_tokens = (USDC_E, first_addr, second_addr, USDC_E)
+
+            # Preflight the non-Ramses pools before attempting exact quotes.
+            quickswap_index = venues.index("quickswap_v3")
+            quickswap_token_in = route_tokens[quickswap_index]
+            quickswap_token_out = route_tokens[quickswap_index + 1]
+            try:
+                adapters["quickswap"].resolve_pool(
+                    quickswap_token_in, quickswap_token_out, context
+                )
+            except Exception as exc:
+                failures.append({
+                    "tokens": ["USDC.e", first_name, second_name],
+                    "venues": venues,
+                    "error_type": type(exc).__name__,
+                    "error": "QuickSwap pool preflight failed: " + str(exc),
+                })
+                continue
+
             # Exactly one leg is Uniswap V3 in every venue permutation.
-            # Evaluate every canonical fee tier before marking the route
-            # unquotable.
-            for uniswap_fee in UNISWAP_V3_FEE_TIERS:
+            # Only scan fee tiers whose pool exists at the pinned block.
+            uniswap_index = venues.index("uniswap_v3")
+            uniswap_token_in = route_tokens[uniswap_index]
+            uniswap_token_out = route_tokens[uniswap_index + 1]
+            available_uniswap_fees: list[int] = []
+            for candidate_fee in UNISWAP_V3_FEE_TIERS:
+                try:
+                    adapters["uniswap"].resolve_pool(
+                        uniswap_token_in, uniswap_token_out, candidate_fee, context
+                    )
+                    available_uniswap_fees.append(candidate_fee)
+                except Exception:
+                    continue
+
+            if not available_uniswap_fees:
+                failures.append({
+                    "tokens": ["USDC.e", first_name, second_name],
+                    "venues": venues,
+                    "error_type": "NO_UNISWAP_POOL",
+                    "error": (
+                        f"no Uniswap V3 pool for {uniswap_token_in}->{uniswap_token_out} "
+                        f"across canonical fee tiers"
+                    ),
+                })
+                continue
+
+            for uniswap_fee in available_uniswap_fees:
                 ramses_index = venues.index("ramses_v3")
                 ramses_token_in = route_tokens[ramses_index]
                 ramses_token_out = route_tokens[ramses_index + 1]
