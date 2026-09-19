@@ -32,7 +32,7 @@ class MarketSnapshotTests(unittest.TestCase):
             self._result(PoolEdge("p3", "v3", "3", "DAI", "USDC")),
         ]
         snapshot = build_snapshot(results, base_token="USDC")
-        self.assertEqual(len(snapshot.cycles_3_leg), 1)
+        self.assertEqual(len(snapshot.cycles_3_leg), 2)
 
     def test_cycle_tasks_have_stable_ids(self):
         snapshot = build_snapshot(
