@@ -186,7 +186,7 @@ class PolygonRPCFailoverPool:
             "rate limit", "too many requests", "timeout",
             "temporarily unavailable", "service unavailable", "gateway",
             "overloaded", "header not found", "historical state",
-            "missing trie", "pruned", "connection reset", "connection refused",
+            "missing trie", "pruned", "connection reset", "connection refused", "unexpected provider chain id",
         )
         return any(marker in message for marker in markers)
 

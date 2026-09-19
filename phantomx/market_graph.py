@@ -45,8 +45,10 @@ class PoolEdge:
         return (
             self.edge_id,
             self.venue,
+            self.pool_id,
             self.token_in.lower(),
             self.token_out.lower(),
+            *self.parameters,
         )
 
 

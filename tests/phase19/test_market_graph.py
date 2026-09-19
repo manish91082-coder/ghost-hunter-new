@@ -51,13 +51,23 @@ class MarketGraphTests(unittest.TestCase):
             edge("c", "v3", "3", "B", "A"),
             edge("d", "v4", "4", "A", "USDC"),
         ])
-        self.assertEqual(g.cycles_from("USDC", max_legs=4), ())
+        cycles = g.cycles_from("USDC", max_legs=4)
+        self.assertEqual(len(cycles), 1)
+        self.assertEqual(cycles[0].token_path, ("usdc", "a", "usdc"))
 
     def test_edge_id_must_be_unique(self):
         g = PolygonMarketGraph()
         g.add_edge(edge("a", "v1", "1", "USDC", "A"))
         with self.assertRaises(MarketGraphError):
             g.add_edge(edge("A", "v2", "2", "A", "USDC"))
+
+    def test_parameterized_edges_remain_distinct(self):
+        g = PolygonMarketGraph()
+        g.add_edges([
+            PoolEdge("a", "v3", "pool", "USDC", "A", (("fee", "500"),)),
+            PoolEdge("b", "v3", "pool", "USDC", "A", (("fee", "3000"),)),
+        ])
+        self.assertEqual(len(g.outgoing("USDC")), 2)
 
     def test_route_ids_are_deterministic(self):
         g1 = PolygonMarketGraph()

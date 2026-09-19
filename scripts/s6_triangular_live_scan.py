@@ -360,7 +360,11 @@ def _scan_rpc(rpc: Any, provider_label: str, ordered_bridge_pairs: tuple[tuple[t
             "dynamic_ceiling_usdc": str(Decimal(ceiling) / Decimal(10**6)),
             "loan_frontier_usdc": list(x / 1 for x in dynamic_loan_frontier_usdc(ceiling // 10**6)),
         },
-      def main() -> int:
+        "status": "SUCCESS",
+    }
+
+
+def main() -> int:
     Path("artifacts").mkdir(exist_ok=True)
     started = time.time()
     results, failures = [], []
