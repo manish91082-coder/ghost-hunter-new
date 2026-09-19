@@ -358,13 +358,9 @@ def _scan_rpc(rpc: Any, provider_label: str, ordered_bridge_pairs: tuple[tuple[t
             "available_liquidity_usdc": str(Decimal(aave.available_liquidity_raw) / Decimal(10**6)),
             "flash_loan_premium_bps": aave.flash_loan_premium_bps,
             "dynamic_ceiling_usdc": str(Decimal(ceiling) / Decimal(10**6)),
-            "loan_frontier_usdc": list(dynamic_loan_frontier_usdc(ceiling // 10**6)),
+            "loan_frontier_usdc": list(x / 1 for x in dynamic_loan_frontier_usdc(ceiling // 10**6)),
         },
-        "status": "SUCCESS",
-    }
-
-
-def main() -> int:
+      def main() -> int:
     Path("artifacts").mkdir(exist_ok=True)
     started = time.time()
     results, failures = [], []
