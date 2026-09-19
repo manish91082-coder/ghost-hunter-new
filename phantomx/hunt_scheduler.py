@@ -61,7 +61,7 @@ def classify(task: HuntTask) -> HuntBand:
         return HuntBand.COLD
     if task.recently_positive or task.newly_discovered or task.state_changed or task.recently_rejected_positive:
         return HuntBand.HOT
-    if task.liquidity_score_bps >= 2500 or task.age_blocks <= WARM_INTERVAL:
+    if task.liquidity_score_bps >= 2500:
         return HuntBand.WARM
     return HuntBand.COLD
 
