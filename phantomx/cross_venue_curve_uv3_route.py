@@ -50,7 +50,7 @@ def build_uniswap_v3_to_curve_route(
 ) -> RouteSimulation:
     context = _context(rpc, block)
     first = uniswap_v3.quote_snapshot(amount_in, token_a, token_b, uniswap_fee, context)
-    second = curve.quote_snapshot(first.amount_out, curve_pool, context)
+    second = curve.quote_snapshot(first.amount_out, curve_pool.reversed(), context)
     return simulate_two_leg(first, second)
 
 
