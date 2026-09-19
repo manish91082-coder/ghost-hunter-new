@@ -6,6 +6,7 @@ import json
 import os
 import sys
 import time
+from dataclasses import asdict
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
