@@ -38,6 +38,17 @@ class MarketGraphTests(unittest.TestCase):
         self.assertEqual(len(cycles), 1)
         self.assertEqual(cycles[0].token_path, ("usdc", "weth", "dai", "usdc"))
 
+    def test_min_legs_excludes_shorter_cycles(self):
+        g = PolygonMarketGraph()
+        g.add_edges([
+            PoolEdge("a", "v1", "1", "USDC", "A"),
+            PoolEdge("b", "v2", "2", "A", "USDC"),
+            PoolEdge("c", "v3", "3", "USDC", "B"),
+            PoolEdge("d", "v4", "4", "B", "C"),
+            PoolEdge("e", "v5", "5", "C", "USDC"),
+        ])
+        cycles = g.cycles_from("USDC", min_legs=3, max_legs=4)
+        self.assertTrue(all(len(c.edges) >= 3 for c in cycles))
     def test_four_leg_bound_excludes_longer_cycle(self):
         g = PolygonMarketGraph()
         g.add_edges([

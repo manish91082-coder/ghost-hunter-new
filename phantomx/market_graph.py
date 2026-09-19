@@ -125,9 +125,11 @@ class PolygonMarketGraph:
     def edge_count(self) -> int:
         return len(self._edge_ids)
 
-    def cycles_from(self, base_token: str, *, max_legs: int = 4) -> tuple[MarketCycle, ...]:
+    def cycles_from(self, base_token: str, *, max_legs: int = 4, min_legs: int = 2) -> tuple[MarketCycle, ...]:
         if not isinstance(max_legs, int) or isinstance(max_legs, bool) or max_legs < 2:
             raise MarketGraphError("max_legs must be an integer >= 2")
+        if not isinstance(min_legs, int) or isinstance(min_legs, bool) or min_legs < 2 or min_legs > max_legs:
+            raise MarketGraphError("min_legs must be an integer >= 2 and <= max_legs")
         base = base_token.lower()
         if not base:
             raise MarketGraphError("base_token is required")
@@ -146,7 +148,7 @@ class PolygonMarketGraph:
                 nxt = edge.token_out.lower()
                 next_legs = path_edges + (edge,)
                 if nxt == base:
-                    if len(next_legs) >= 2:
+                    if len(next_legs) >= min_legs:
                         token_path = (base, *[e.token_out.lower() for e in next_legs])
                         route_id = self._route_id(base, next_legs)
                         cycles.append(

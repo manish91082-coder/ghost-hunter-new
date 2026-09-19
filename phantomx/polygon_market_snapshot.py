@@ -60,9 +60,9 @@ def build_snapshot(results: Iterable[InventoryTaskResult], *, base_token: str) -
     return MarketSnapshot(
         edges=tuple(sorted(all_edges.values(), key=lambda edge: edge.identity)),
         tokens=graph.token_universe(),
-        cycles_2_leg=graph.cycles_from(base_token, max_legs=2),
-        cycles_3_leg=graph.cycles_from(base_token, max_legs=3),
-        cycles_4_leg=graph.cycles_from(base_token, max_legs=4),
+        cycles_2_leg=graph.cycles_from(base_token, min_legs=2, max_legs=2),
+        cycles_3_leg=graph.cycles_from(base_token, min_legs=3, max_legs=3),
+        cycles_4_leg=graph.cycles_from(base_token, min_legs=4, max_legs=4),
     )
 
 
