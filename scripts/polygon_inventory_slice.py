@@ -27,12 +27,12 @@ DEFAULT_SLICE_BLOCKS = 25_000
 MIN_START_BLOCK = 0
 
 
-def _int_env(name: str, default: int) -> int:
+def _int_env(name: str, default: int, *, allow_negative_sentinel: bool = False) -> int:
     raw = os.getenv(name)
     if raw is None or not raw.strip():
         return default
     value = int(raw)
-    if value < 0:
+    if value < 0 and not (allow_negative_sentinel and value == -1):
         raise ValueError(f"{name} must be >= 0")
     return value
 
@@ -59,7 +59,7 @@ def main() -> int:
     slice_blocks = _int_env("PHANTOMX_INVENTORY_SLICE_BLOCKS", DEFAULT_SLICE_BLOCKS)
     if slice_blocks < 1:
         raise ValueError("PHANTOMX_INVENTORY_SLICE_BLOCKS must be >= 1")
-    to_block = _int_env("PHANTOMX_INVENTORY_TO_BLOCK", -1)
+    to_block = _int_env("PHANTOMX_INVENTORY_TO_BLOCK", -1, allow_negative_sentinel=True)
     pool = build_free_polygon_rpc_pool()
 
     if to_block < 0:
