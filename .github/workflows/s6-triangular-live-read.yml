@@ -7,6 +7,8 @@ on:
     paths:
       - "phantomx/triangular_route.py"
       - "scripts/s6_triangular_live_scan.py"
+      # S6 reuses the canonical live Aave loan frontier and RPC transport.
+      - "scripts/first_hunt_live_scan.py"
   workflow_dispatch:
 
 permissions:
