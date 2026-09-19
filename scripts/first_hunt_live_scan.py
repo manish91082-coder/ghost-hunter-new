@@ -275,7 +275,7 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
             by_tile[tile] = item
 
     return {
-        "endpoint": provider_label,
+        "endpoint": endpoint,
         "chain_ids": chains,
         "blocks": blocks,
         "observation_count": len(observations),
