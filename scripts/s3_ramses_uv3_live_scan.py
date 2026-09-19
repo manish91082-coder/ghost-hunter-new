@@ -6,7 +6,6 @@ import json
 import os
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
 from dataclasses import asdict
 from pathlib import Path
@@ -24,16 +23,14 @@ from phantomx.cross_venue_ramses_v3_route import (
 from phantomx.dynamic_market_policy import DynamicLoanInputs, compute_dynamic_loan_ceiling
 from phantomx.dynamic_route_guard import DynamicRouteGuardError, evaluate_simulation_domain
 from phantomx.market_block import acquire_market_block
-from phantomx.polygon_rpc_http import PolygonRPCHTTPConfig, PolygonRPCHTTPTransport
 from phantomx.ramses_v3 import DEFAULT_TICK_SPACINGS, RamsesV3ExactQuoter
 from phantomx.uniswap_v3 import UniswapV3ExactQuoter
+from phantomx.rpc_failover import build_free_polygon_rpc_pool
 
 from first_hunt_live_scan import (
-    ResultOnlyTransport,
     UNISWAP_V3_FACTORY,
     UNISWAP_V3_FEE_TIERS,
     UNISWAP_V3_QUOTER,
-    _endpoints,
     dynamic_loan_frontier_usdc,
 )
 
@@ -98,15 +95,7 @@ def _record(token_b: str, venue_path: str, amount: int, tick_spacing: int, sim: 
     }
 
 
-def _scan_endpoint(endpoint: str) -> dict[str, Any]:
-    http = PolygonRPCHTTPTransport(
-        PolygonRPCHTTPConfig(
-            provider_name=f"s3-ramses-uv3:{endpoint}",
-            endpoint_url=endpoint,
-            timeout_seconds=8.0,
-        )
-    )
-    rpc = ResultOnlyTransport(http)
+def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
     ramses = RamsesV3ExactQuoter(rpc, RAMSES_V3_FACTORY, RAMSES_V3_QUOTER_V2)
     uniswap = UniswapV3ExactQuoter(rpc, UNISWAP_V3_FACTORY, UNISWAP_V3_QUOTER)
     context = acquire_market_block(rpc)
@@ -204,7 +193,7 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
 
     ranked = sorted(observations, key=lambda x: x["gross_delta_raw"], reverse=True)
     return {
-        "endpoint": endpoint,
+        "endpoint": provider_label,
         "chain_id": POLYGON_CHAIN_ID,
         "blocks": sorted({x["block_number"] for x in observations}),
         "observation_count": len(observations),
@@ -228,23 +217,19 @@ def main() -> int:
     started = time.time()
     results: list[dict[str, Any]] = []
     failures: list[dict[str, str]] = []
-    endpoints = _endpoints()
-
-    with ThreadPoolExecutor(max_workers=min(2, len(endpoints))) as pool:
-        futures = {endpoint: pool.submit(_scan_endpoint, endpoint) for endpoint in endpoints}
-        for endpoint in endpoints:
-            try:
-                result = futures[endpoint].result()
-                results.append(result)
-                print(
-                    f"SUCCESS {endpoint}: observations={result['observation_count']} "
-                    f"gross_positive={result['gross_positive_count']} "
-                    f"gross_max_usdc={result['gross_max_usdc']}",
-                    flush=True,
-                )
-            except Exception as exc:
-                failures.append({"endpoint": endpoint, "error": type(exc).__name__ + ": " + str(exc)})
-                print(f"FAILED {endpoint}: {type(exc).__name__}: {exc}", flush=True)
+    rpc_pool = build_free_polygon_rpc_pool()
+    print(f"Starting task-preserving Polygon RPC pool: providers={len(rpc_pool.records)}", flush=True)
+    try:
+        result = _scan_rpc(rpc_pool, "failover-pool")
+        results.append(result)
+        print(
+            f"SUCCESS failover-pool: observations={result['observation_count']} "
+            f"gross_positive={result['gross_positive_count']} gross_max_usdc={result['gross_max_usdc']}",
+            flush=True,
+        )
+    except Exception as exc:
+        failures.append({"endpoint": "failover-pool", "error": type(exc).__name__ + ": " + str(exc)})
+        print(f"FAILED failover-pool: {type(exc).__name__}: {exc}", flush=True)
 
     artifact = {
         "schema_version": 1,
@@ -272,6 +257,12 @@ def main() -> int:
         "uniswap_v3_fee_tiers": list(UNISWAP_V3_FEE_TIERS),
         "pairs": [name for name, _token in PAIRS],
         "successful_endpoints": results,
+        "rpc_pool": {
+            "mode": "task_preserving_failover",
+            "provider_count": len(rpc_pool.records),
+            "failover_events": [asdict(x) for x in rpc_pool.failure_history()],
+            "provider_stats": list(rpc_pool.provider_stats()),
+        },
         "failed_endpoints": failures,
         "economic_certification": "NOT_PERFORMED",
         "profit_claim": "NONE",
