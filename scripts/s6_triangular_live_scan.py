@@ -58,6 +58,7 @@ BRIDGES = (
     ("LINK", LINK),
 )
 VENUES = ("quickswap_v3", "ramses_v3", "uniswap_v3")
+BRIDGE_BY_NAME = dict(BRIDGES)
 
 
 def _quote(
@@ -130,7 +131,36 @@ def _record(
     }
 
 
-def _scan_endpoint(endpoint: str) -> dict[str, Any]:
+def _selected_bridge_ordered_pairs() -> tuple[tuple[tuple[str, str], tuple[str, str]], ...]:
+    raw = os.getenv("PHANTOMX_S6_BRIDGE_NAMES", "").strip()
+    if not raw:
+        return tuple(
+            ((first_name, first_addr), (second_name, second_addr))
+            for (first_name, first_addr), (second_name, second_addr)
+            in itertools.permutations(BRIDGES, 2)
+        )
+
+    names = tuple(item.strip() for item in raw.split(",") if item.strip())
+    if len(names) != 2 or names[0] == names[1]:
+        raise ValueError(
+            "PHANTOMX_S6_BRIDGE_NAMES must contain exactly two distinct bridge names"
+        )
+    unknown = [name for name in names if name not in BRIDGE_BY_NAME]
+    if unknown:
+        raise ValueError(f"unknown S6 bridge asset(s): {unknown}")
+
+    first = BRIDGE_BY_NAME[names[0]]
+    second = BRIDGE_BY_NAME[names[1]]
+    return (
+        (first, second),
+        (second, first),
+    )
+
+
+def _scan_endpoint(
+    endpoint: str,
+    ordered_bridge_pairs: tuple[tuple[tuple[str, str], tuple[str, str]], ...],
+) -> dict[str, Any]:
     rpc = ResultOnlyTransport(
         PolygonRPCHTTPTransport(
             PolygonRPCHTTPConfig(
@@ -158,7 +188,7 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
 
     observations: list[dict[str, Any]] = []
     failures: list[dict[str, Any]] = []
-    for bridge_names in itertools.permutations(BRIDGES, 2):
+    for bridge_names in ordered_bridge_pairs:
         first_name, first_addr = bridge_names[0]
         second_name, second_addr = bridge_names[1]
         tokens = (first_addr, second_addr)
@@ -353,8 +383,18 @@ def main() -> int:
     started = time.time()
     results, failures = [], []
     endpoints = _endpoints()
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        futures = {e: pool.submit(_scan_endpoint, e) for e in endpoints}
+    ordered_bridge_pairs = _selected_bridge_ordered_pairs()
+    selected_names = sorted({name for pair in ordered_bridge_pairs for name, _ in pair})
+    scope = "full-42-directed-pairs" if not os.getenv("PHANTOMX_S6_BRIDGE_NAMES", "").strip() else "selected-pair-bidirectional"
+    print(
+        f"S6 scope={scope} bridges={','.join(selected_names)} directed_pairs={len(ordered_bridge_pairs)}",
+        flush=True,
+    )
+    with ThreadPoolExecutor(max_workers=min(2, len(endpoints))) as pool:
+        futures = {
+            e: pool.submit(_scan_endpoint, e, ordered_bridge_pairs)
+            for e in endpoints
+        }
         for e, future in futures.items():
             try:
                 r = future.result()
@@ -368,6 +408,9 @@ def main() -> int:
         "mission": "PHANTOMX S6 TRIANGULAR READ-ONLY LIVE SCAN",
         "strategy": "S6-TRIANGULAR",
         "coverage": "bounded-3-venue-v3-grid",
+        "coverage_scope": scope,
+        "selected_bridge_assets": selected_names,
+        "selected_directed_pair_count": len(ordered_bridge_pairs),
         "read_only": True,
         "signing": False,
         "submission": False,
