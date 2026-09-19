@@ -12,6 +12,7 @@ on:
       # must trigger a fresh S1 evidence run.
       - "scripts/first_hunt_live_scan.py"
       - "scripts/s1_qsv3_live_scan.py"
+      - ".github/workflows/s1-qsv3-live-read.yml"
   workflow_dispatch:
 
 permissions:
