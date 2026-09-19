@@ -7,18 +7,16 @@ import json
 import os
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
+from dataclasses import asdict
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.first_hunt_live_scan import (
-    ResultOnlyTransport,
-    _endpoints,
     dynamic_loan_frontier_usdc,
     UNISWAP_V3_FACTORY,
     UNISWAP_V3_QUOTER,
@@ -27,11 +25,11 @@ from scripts.first_hunt_live_scan import (
 from phantomx.aave_v3_dynamic import AaveV3PolygonDynamicReader
 from phantomx.dynamic_market_policy import DynamicLoanInputs, compute_dynamic_loan_ceiling
 from phantomx.market_block import acquire_market_block
-from phantomx.polygon_rpc_http import PolygonRPCHTTPConfig, PolygonRPCHTTPTransport
 from phantomx.quickswap_v3 import QuickSwapV3ExactQuoter
 from phantomx.ramses_v3 import DEFAULT_TICK_SPACINGS, RamsesV3Error, RamsesV3ExactQuoter
 from phantomx.triangular_route import simulate_multi_leg
 from phantomx.uniswap_v3 import UniswapV3ExactQuoter
+from phantomx.rpc_failover import build_free_polygon_rpc_pool
 
 POLYGON_CHAIN_ID = 137
 USDC_E = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
@@ -157,19 +155,7 @@ def _selected_bridge_ordered_pairs() -> tuple[tuple[tuple[str, str], tuple[str, 
     )
 
 
-def _scan_endpoint(
-    endpoint: str,
-    ordered_bridge_pairs: tuple[tuple[tuple[str, str], tuple[str, str]], ...],
-) -> dict[str, Any]:
-    rpc = ResultOnlyTransport(
-        PolygonRPCHTTPTransport(
-            PolygonRPCHTTPConfig(
-                provider_name=f"s6-triangular:{endpoint}",
-                endpoint_url=endpoint,
-                timeout_seconds=8.0,
-            )
-        )
-    )
+def _scan_rpc(rpc: Any, provider_label: str, ordered_bridge_pairs: tuple[tuple[tuple[str, str], tuple[str, str]], ...]) -> dict[str, Any]:
     adapters = {
         "quickswap": QuickSwapV3ExactQuoter(rpc, QUICKSWAP_V3_FACTORY, QUICKSWAP_V3_QUOTER),
         "ramses": RamsesV3ExactQuoter(rpc, RAMSES_V3_FACTORY, RAMSES_V3_QUOTER_V2),
@@ -355,7 +341,7 @@ def _scan_endpoint(
 
     ranked = sorted(observations, key=lambda x: x["gross_delta_raw"], reverse=True)
     return {
-        "endpoint": endpoint,
+        "endpoint": provider_label,
         "chain_id": POLYGON_CHAIN_ID,
         "block_number": context.block_number,
         "observation_count": len(observations),
@@ -374,35 +360,23 @@ def _scan_endpoint(
             "dynamic_ceiling_usdc": str(Decimal(ceiling) / Decimal(10**6)),
             "loan_frontier_usdc": list(x / 1 for x in dynamic_loan_frontier_usdc(ceiling // 10**6)),
         },
-        "status": "SUCCESS",
-    }
-
-
-def main() -> int:
+      def main() -> int:
     Path("artifacts").mkdir(exist_ok=True)
     started = time.time()
     results, failures = [], []
-    endpoints = _endpoints()
     ordered_bridge_pairs = _selected_bridge_ordered_pairs()
     selected_names = sorted({name for pair in ordered_bridge_pairs for name, _ in pair})
     scope = "full-42-directed-pairs" if not os.getenv("PHANTOMX_S6_BRIDGE_NAMES", "").strip() else "selected-pair-bidirectional"
-    print(
-        f"S6 scope={scope} bridges={','.join(selected_names)} directed_pairs={len(ordered_bridge_pairs)}",
-        flush=True,
-    )
-    with ThreadPoolExecutor(max_workers=min(2, len(endpoints))) as pool:
-        futures = {
-            e: pool.submit(_scan_endpoint, e, ordered_bridge_pairs)
-            for e in endpoints
-        }
-        for e, future in futures.items():
-            try:
-                r = future.result()
-                results.append(r)
-                print(f"SUCCESS {e}: observations={r['observation_count']} positive={r['gross_positive_count']} max={r['gross_max_usdc']}", flush=True)
-            except Exception as exc:
-                failures.append({"endpoint": e, "error": type(exc).__name__ + ": " + str(exc)})
-                print(f"FAILED {e}: {type(exc).__name__}: {exc}", flush=True)
+    print(f"S6 scope={scope} bridges={','.join(selected_names)} directed_pairs={len(ordered_bridge_pairs)}", flush=True)
+    rpc_pool = build_free_polygon_rpc_pool()
+    print(f"Starting task-preserving Polygon RPC pool: providers={len(rpc_pool.records)}", flush=True)
+    try:
+        r = _scan_rpc(rpc_pool, "failover-pool", ordered_bridge_pairs)
+        results.append(r)
+        print(f"SUCCESS failover-pool: observations={r['observation_count']} positive={r['gross_positive_count']} max={r['gross_max_usdc']}", flush=True)
+    except Exception as exc:
+        failures.append({"endpoint": "failover-pool", "error": type(exc).__name__ + ": " + str(exc)})
+        print(f"FAILED failover-pool: {type(exc).__name__}: {exc}", flush=True)
     artifact = {
         "schema_version": 1,
         "mission": "PHANTOMX S6 TRIANGULAR READ-ONLY LIVE SCAN",
@@ -431,6 +405,12 @@ def main() -> int:
             "workflow_run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT", "UNKNOWN"),
         },
         "successful_endpoints": results,
+        "rpc_pool": {
+            "mode": "task_preserving_failover",
+            "provider_count": len(rpc_pool.records),
+            "failover_events": [asdict(x) for x in rpc_pool.failure_history()],
+            "provider_stats": list(rpc_pool.provider_stats()),
+        },
         "failed_endpoints": failures,
         "economic_certification": "NOT_PERFORMED",
         "profit_claim": "NONE",

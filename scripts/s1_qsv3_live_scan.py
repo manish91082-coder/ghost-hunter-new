@@ -13,6 +13,7 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
