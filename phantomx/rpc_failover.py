@@ -182,7 +182,7 @@ class PolygonRPCFailoverPool:
         if isinstance(exc, (TimeoutError, URLError, PolygonRPCHTTPError)):
             return True
         markers = (
-            "429", "408", "500", "502", "503", "504",
+            "401", "402", "403", "408", "410", "429", "500", "502", "503", "504",
             "rate limit", "too many requests", "timeout",
             "temporarily unavailable", "service unavailable", "gateway",
             "overloaded", "header not found", "historical state",
@@ -221,6 +221,8 @@ class PolygonRPCFailoverPool:
             try:
                 response = state.transport.call(method, params)
                 value = self._extract_result(response, method)
+                if method == "eth_chainId" and value != "0x89":
+                    raise RPCPoolError(f"eth_chainId: unexpected provider chain id {value}")
                 latency_ms = (perf_counter() - started) * 1000
                 self._record_success(state, latency_ms)
                 self._preferred_provider_id = state.record.provider_id

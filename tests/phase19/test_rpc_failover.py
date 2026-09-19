@@ -30,6 +30,28 @@ class RPCFailoverTests(unittest.TestCase):
             pool.call("eth_chainId", [])
         self.assertEqual(len(pool.history), 1)
 
+    def test_provider_access_error_403_switches_to_next_provider(self):
+        records = (
+            PublicRPCRecord("p1", "https://p1.example", "f1"),
+            PublicRPCRecord("p2", "https://p2.example", "f2"),
+        )
+        pool = PolygonRPCFailoverPool(records=records)
+        pool._states["p1"].transport.call = Mock(side_effect=Exception("HTTP transport failure status=403"))
+        pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
+        self.assertEqual(pool.call("eth_chainId", []), "0x89")
+        self.assertEqual([item.provider_id for item in pool.history], ["p1", "p2"])
+
+    def test_wrong_chain_provider_is_rejected_then_next_provider_used(self):
+        records = (
+            PublicRPCRecord("p1", "https://p1.example", "f1"),
+            PublicRPCRecord("p2", "https://p2.example", "f2"),
+        )
+        pool = PolygonRPCFailoverPool(records=records)
+        pool._states["p1"].transport.call = Mock(return_value={"result": "0x1"})
+        pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
+        self.assertEqual(pool.call("eth_chainId", []), "0x89")
+        self.assertEqual([item.provider_id for item in pool.history], ["p1", "p2"])
+
     def test_all_transport_failures_are_reported_after_exhaustion(self):
         records = (
             PublicRPCRecord("p1", "https://p1.example", "f1"),
