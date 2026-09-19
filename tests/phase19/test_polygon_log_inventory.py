@@ -12,7 +12,7 @@ class LogInventoryTests(unittest.TestCase):
 
     def test_scan_reads_and_dedupes(self):
         rpc=Mock()
-        rpc.call.side_effect=[[self.log("0x1")],[dict(self.log("0x1"),blockNumber="0x2")]]
+        rpc.call.side_effect=[[self.log("0x1")],[dict(self.log("0x2"),transactionHash="0x"+"22"*32)]]
         out=PolygonLogInventory(rpc,initial_chunk_size=1).scan(from_block=1,to_block=2)
         self.assertEqual([x.block_number for x in out],[1,2])
 

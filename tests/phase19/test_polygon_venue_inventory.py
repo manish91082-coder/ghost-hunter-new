@@ -4,6 +4,7 @@ from phantomx.polygon_venue_inventory import (
     VenueInventoryError,
     VenueInventorySpec,
     V3_POOL_CREATED_TOPIC,
+    V4_INITIALIZE_TOPIC,
     QUICKSWAP_V3_FACTORY,
     UNISWAP_V4_POOL_MANAGER,
     VENUE_SPECS,
@@ -42,7 +43,7 @@ class VenueInventoryTests(unittest.TestCase):
     def test_v4_initialize_uses_pool_id_not_pool_contract(self):
         spec = next(x for x in VENUE_SPECS if x.venue_id == "uniswap_v4")
         topics = [
-            "0x" + "aa" * 32,
+            V4_INITIALIZE_TOPIC,
             "0x" + "00" * 12 + "11" * 20,
             "0x" + "00" * 12 + "22" * 20,
         ]
