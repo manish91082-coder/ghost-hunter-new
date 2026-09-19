@@ -82,8 +82,13 @@ class ResultOnlyTransport:
 
     def call(self, method: str, params: Sequence[Any]) -> Any:
         response = self._transport.call(method, params)
-        if response.get("error") is not None:
-            raise RuntimeError(f"{method}: RPC error")
+        error = response.get("error")
+        if error is not None:
+            if isinstance(error, Mapping):
+                code = error.get("code", "UNKNOWN")
+                message = error.get("message", "RPC error")
+                raise RuntimeError(f"{method}: RPC error code={code} message={message}")
+            raise RuntimeError(f"{method}: RPC error {error}")
         if "result" not in response:
             raise RuntimeError(f"{method}: missing result")
         return response["result"]
