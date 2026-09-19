@@ -31,7 +31,7 @@ class HuntControlPlaneTests(unittest.TestCase):
             family=StrategyFamily.DIRECT_CROSS_VENUE,
             coverage=CoverageLedger(),
         )
-        self.assertEqual(len(plan.candidates), 1)
+        self.assertEqual(len(plan.candidates), 2)
         self.assertEqual(plan.scheduled[0].task.task_id.startswith("hunt:"), True)
 
     def test_terminal_coverage_is_not_rescheduled(self):
@@ -40,9 +40,10 @@ class HuntControlPlaneTests(unittest.TestCase):
             self._result("uv3", "b", "2", "WETH", "USDC"),
         ], base_token="USDC")
         temp = build_plan(snapshot, base_token="USDC", current_block=101, family=StrategyFamily.DIRECT_CROSS_VENUE, coverage=CoverageLedger())
-        task = temp.scheduled[0].task
         ledger = CoverageLedger()
-        ledger.upsert(CoverageRecord(CoverageTask(task.task_id, "DIRECT_CROSS_VENUE", task.route_id, 101), CoverageStatus.ECONOMIC_REJECTED, "x"))
+        for scheduled in temp.scheduled:
+            task = scheduled.task
+            ledger.upsert(CoverageRecord(CoverageTask(task.task_id, "DIRECT_CROSS_VENUE", task.route_id, 101), CoverageStatus.ECONOMIC_REJECTED, "x"))
         plan = build_plan(snapshot, base_token="USDC", current_block=200, family=StrategyFamily.DIRECT_CROSS_VENUE, coverage=ledger)
         self.assertEqual(plan.scheduled, ())
 
