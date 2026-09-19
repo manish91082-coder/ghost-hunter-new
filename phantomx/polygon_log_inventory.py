@@ -56,7 +56,7 @@ class InventoryLog:
 def _range_error(exc: BaseException) -> bool:
     msg = str(exc).lower()
     return any(x in msg for x in (
-        "too many logs","too many results","query returned","block range","range limit",
+        "too many logs","too many results","query returned","block range","blocks range","range limit","limited to",
         "result set","limit exceeded","-32005","timeout","timed out","gateway timeout",
     ))
 
