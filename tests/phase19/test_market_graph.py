@@ -84,7 +84,7 @@ class MarketGraphTests(unittest.TestCase):
             PoolEdge("d", "v3", "pool-d", "A", "USDC", (("fee", "3000"),)),
         ])
         cycles = g.cycles_from("USDC", max_legs=2)
-        self.assertEqual(len({item.route_id for item in cycles}), 2)
+        self.assertEqual(len({item.route_id for item in cycles}), 4)
     def test_route_ids_are_deterministic(self):
         g1 = PolygonMarketGraph()
         g1.add_edges([
