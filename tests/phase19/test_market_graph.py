@@ -69,6 +69,16 @@ class MarketGraphTests(unittest.TestCase):
         ])
         self.assertEqual(len(g.outgoing("USDC")), 2)
 
+    def test_parameterized_route_ids_remain_distinct(self):
+        g = PolygonMarketGraph()
+        g.add_edges([
+            PoolEdge("a", "v3", "pool-a", "USDC", "A", (("fee", "500"),)),
+            PoolEdge("b", "v3", "pool-b", "A", "USDC", (("fee", "500"),)),
+            PoolEdge("c", "v3", "pool-c", "USDC", "A", (("fee", "3000"),)),
+            PoolEdge("d", "v3", "pool-d", "A", "USDC", (("fee", "3000"),)),
+        ])
+        cycles = g.cycles_from("USDC", max_legs=2)
+        self.assertEqual(len({item.route_id for item in cycles}), 2)
     def test_route_ids_are_deterministic(self):
         g1 = PolygonMarketGraph()
         g1.add_edges([

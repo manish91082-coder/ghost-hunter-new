@@ -41,7 +41,7 @@ class PoolEdge:
             raise MarketGraphError("self-loop edges are not allowed")
 
     @property
-    def identity(self) -> tuple[str, str, str, str]:
+    def identity(self) -> tuple[str, ...]:
         return (
             self.edge_id,
             self.venue,
@@ -151,7 +151,7 @@ class PolygonMarketGraph:
         payload = "|".join(
             (
                 base.lower(),
-                *(f"{edge.edge_id.lower()}:{edge.venue}:{edge.pool_id}:{edge.token_in.lower()}>{edge.token_out.lower()}" for edge in edges),
+                *(f"{edge.edge_id.lower()}:{edge.venue}:{edge.pool_id}:{edge.token_in.lower()}>{edge.token_out.lower()}:{edge.parameters}" for edge in edges),
             )
         ).encode("utf-8")
         return "route:" + sha256(payload).hexdigest()
