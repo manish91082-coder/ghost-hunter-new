@@ -7,10 +7,11 @@ Establish the first executable, dependency-free adversarial policy harness for t
 ## Current verified baseline
 
 - Working branch: `phase-19-e2e-harness`
-- Current HEAD: `d04cc0cfaf1dbf2769e52451139eb1ec318e3b6d`
-- Latest exact-current-HEAD Phase-19 Deterministic Tests run: **#736**, green.
-- Latest exact-current-HEAD S5 Curve UV3 live scan run: **#8**, green.
-- Latest exact-current-HEAD S5A Curve MAI/USDC.e forensic probe run: **#3**, green.
+- Latest verified engineering commit: `06bd715e10973c72c16fe6bf76cf2c65a79ced88`.
+- Latest exact-engineering-commit Phase-19 Deterministic Tests run: **#739**, green.
+- Latest completed exact-HEAD S5 Curve UV3 live scan run: **#8**, green on commit `d04cc0cfaf1dbf2769e52451139eb1ec318e3b6d`.
+- Latest completed exact-HEAD S5A Curve MAI/USDC.e forensic probe run: **#3**, green on commit `d04cc0cfaf1dbf2769e52451139eb1ec318e3b6d`.
+- First-Hunt read-only live scan **#30** is currently evaluating the expanded 9-pair S0 coverage on commit `25ea9ef032e21ba5294cf7d0d7319d8ea4907024`.
 - All three surfaces remain read-only and have **no signing, submission, broadcast, or live-capital authority**.
 
 ## Implemented control and execution spine
@@ -59,7 +60,7 @@ This remains an integration/control-path proof. It is **not** profitability cert
 - [x] Envelope binding
 - [x] One-shot authorization consumption
 - [x] Adversarial mutation tests
-- [x] Phase-19 CI evidence on current HEAD
+- [x] Phase-19 CI evidence on latest verified engineering commit
 - [x] Explicit QuickSwap V2/V3 venue-kind/version in executable topology
 - [x] QuickSwap V3 Algebra execution ABI integrated
 - [x] Contract-level V2/V3 separation tests
