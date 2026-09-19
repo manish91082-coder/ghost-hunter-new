@@ -187,6 +187,7 @@ class PolygonRPCFailoverPool:
             "temporarily unavailable", "service unavailable", "gateway",
             "overloaded", "header not found", "historical state",
             "missing trie", "pruned", "connection reset", "connection refused", "unexpected provider chain id",
+            "rpc error code=", "execution reverted",
         )
         return any(marker in message for marker in markers)
 

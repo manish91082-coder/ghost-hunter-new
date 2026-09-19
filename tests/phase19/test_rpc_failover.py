@@ -16,7 +16,7 @@ class RPCFailoverTests(unittest.TestCase):
         self.assertEqual(pool.call("eth_chainId", []), "0x89")
         self.assertEqual([item.provider_id for item in pool.history], ["p1", "p2"])
 
-    def test_semantic_execution_revert_is_not_masked_by_failover(self):
+    def test_rpc_execution_revert_is_retried_on_next_provider(self):
         records = (
             PublicRPCRecord("p1", "https://p1.example", "f1"),
             PublicRPCRecord("p2", "https://p2.example", "f2"),
@@ -26,9 +26,8 @@ class RPCFailoverTests(unittest.TestCase):
             return_value={"error": {"code": -32000, "message": "execution reverted"}}
         )
         pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
-        with self.assertRaises(RPCPoolError):
-            pool.call("eth_chainId", [])
-        self.assertEqual(len(pool.history), 1)
+        self.assertEqual(pool.call("eth_chainId", []), "0x89")
+        self.assertEqual([item.provider_id for item in pool.history], ["p1", "p2"])
 
     def test_provider_access_error_403_switches_to_next_provider(self):
         records = (
@@ -52,6 +51,21 @@ class RPCFailoverTests(unittest.TestCase):
         self.assertEqual(pool.call("eth_chainId", []), "0x89")
         self.assertEqual([item.provider_id for item in pool.history], ["p1", "p2"])
 
+    def test_all_rpc_reverts_are_reported_after_provider_exhaustion(self):
+        records = (
+            PublicRPCRecord("p1", "https://p1.example", "f1"),
+            PublicRPCRecord("p2", "https://p2.example", "f2"),
+        )
+        pool = PolygonRPCFailoverPool(records=records)
+        pool._states["p1"].transport.call = Mock(
+            return_value={"error": {"code": 3, "message": "execution reverted"}}
+        )
+        pool._states["p2"].transport.call = Mock(
+            return_value={"error": {"code": 3, "message": "execution reverted"}}
+        )
+        with self.assertRaises(RPCPoolError):
+            pool.call("eth_call", [{"to": "0x" + "11" * 20, "data": "0x"}, "latest"])
+        self.assertEqual(len(pool.history), 2)
     def test_all_transport_failures_are_reported_after_exhaustion(self):
         records = (
             PublicRPCRecord("p1", "https://p1.example", "f1"),
