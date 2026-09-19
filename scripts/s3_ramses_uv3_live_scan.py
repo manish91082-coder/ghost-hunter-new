@@ -223,6 +223,7 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
             "loan_frontier_usdc": list(frontier),
         },
         "status": "SUCCESS",
+        "pair_universe": {"status": pair_surface_status, "active_count": len(active_pairs)},
     }
 
 
@@ -271,7 +272,11 @@ def main() -> int:
         "uniswap_v3_fee_tiers": list(UNISWAP_V3_FEE_TIERS),
         "pairs": [name for name, _token in PAIRS],
         "successful_endpoints": results,
-        "pair_universe": {"status": pair_surface_status, "seed_count": len(PAIRS), "active_count": len(active_pairs)},
+        "pair_universe": {
+            "status": results[0].get("pair_universe", {}).get("status", "PAIR_UNIVERSE_INCOMPLETE") if results else "PAIR_UNIVERSE_INCOMPLETE",
+            "seed_count": len(PAIRS),
+            "active_count": results[0].get("pair_universe", {}).get("active_count", 0) if results else 0,
+        },
         "rpc_pool": {
             "mode": "task_preserving_failover",
             "provider_count": len(rpc_pool.records),
