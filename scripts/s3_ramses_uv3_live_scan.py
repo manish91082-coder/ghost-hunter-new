@@ -26,6 +26,7 @@ from phantomx.market_block import acquire_market_block
 from phantomx.ramses_v3 import DEFAULT_TICK_SPACINGS, RamsesV3ExactQuoter
 from phantomx.uniswap_v3 import UniswapV3ExactQuoter
 from phantomx.rpc_failover import build_free_polygon_rpc_pool
+from phantomx.dynamic_pair_surface import discover_live_base_pairs
 
 from first_hunt_live_scan import (
     UNISWAP_V3_FACTORY,
@@ -114,10 +115,23 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
 
     observations: list[dict[str, Any]] = []
     tiles: list[dict[str, Any]] = []
+    pair_surface_status = "SEED_ONLY"
+    try:
+        seed_pairs = tuple(PAIRS)
+        pair_surface = discover_live_base_pairs(
+            rpc, base_token=USDC_E, seed_pairs=seed_pairs,
+            required_venues=(("ramses_v3","uniswap_v3")), lookback_blocks=25_000, chunk_size=2_000,
+        )
+        active_pairs = tuple((p.name, p.token_b) for p in pair_surface.pairs)
+        pair_surface_status = pair_surface.status
+    except Exception as exc:
+        active_pairs = tuple(PAIRS)
+        pair_surface_status = "PAIR_UNIVERSE_INCOMPLETE"
+        print(f"PAIR_DISCOVERY_FALLBACK: {type(exc).__name__}: {exc}", flush=True)
 
     for tick_spacing in DEFAULT_TICK_SPACINGS:
         for fee in UNISWAP_V3_FEE_TIERS:
-            for pair in PAIRS:
+            for pair in active_pairs:
                 try:
                     # Fast tile gate: prove both pools exist at the pinned block
                     # before spending the full loan frontier on quote calls.
@@ -257,6 +271,7 @@ def main() -> int:
         "uniswap_v3_fee_tiers": list(UNISWAP_V3_FEE_TIERS),
         "pairs": [name for name, _token in PAIRS],
         "successful_endpoints": results,
+        "pair_universe": {"status": pair_surface_status, "seed_count": len(PAIRS), "active_count": len(active_pairs)},
         "rpc_pool": {
             "mode": "task_preserving_failover",
             "provider_count": len(rpc_pool.records),

@@ -27,6 +27,7 @@ from phantomx.quickswap_v3 import QuickSwapV3ExactQuoter
 from phantomx.ramses_v3 import DEFAULT_TICK_SPACINGS, RamsesV3ExactQuoter
 from first_hunt_live_scan import dynamic_loan_frontier_usdc
 from phantomx.rpc_failover import build_free_polygon_rpc_pool
+from phantomx.dynamic_pair_surface import discover_live_base_pairs
 
 POLYGON_CHAIN_ID = 137
 SCAN_REVISION = 1
@@ -110,9 +111,22 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
 
     observations: list[dict[str, Any]] = []
     tiles: list[dict[str, Any]] = []
+    pair_surface_status = "SEED_ONLY"
+    try:
+        seed_pairs = tuple(PAIRS)
+        pair_surface = discover_live_base_pairs(
+            rpc, base_token=USDC_E, seed_pairs=seed_pairs,
+            required_venues=(("quickswap_v3","ramses_v3")), lookback_blocks=25_000, chunk_size=2_000,
+        )
+        active_pairs = tuple((p.name, p.token_b) for p in pair_surface.pairs)
+        pair_surface_status = pair_surface.status
+    except Exception as exc:
+        active_pairs = tuple(PAIRS)
+        pair_surface_status = "PAIR_UNIVERSE_INCOMPLETE"
+        print(f"PAIR_DISCOVERY_FALLBACK: {type(exc).__name__}: {exc}", flush=True)
 
     for tick_spacing in DEFAULT_TICK_SPACINGS:
-        for pair_name, token_b in PAIRS:
+        for pair_name, token_b in active_pairs:
             try:
                 ramses_pool = ramses.resolve_pool(USDC_E, token_b, tick_spacing, context)
                 ramses_fee = ramses.pool_fee(ramses_pool, context)
@@ -235,6 +249,7 @@ def main() -> int:
         "ramses_tick_spacings": list(DEFAULT_TICK_SPACINGS),
         "pairs": [name for name, _ in PAIRS],
         "successful_endpoints": results,
+        "pair_universe": {"status": pair_surface_status, "seed_count": len(PAIRS), "active_count": len(active_pairs)},
         "rpc_pool": {
             "mode": "task_preserving_failover",
             "provider_count": len(rpc_pool.records),

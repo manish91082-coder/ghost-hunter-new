@@ -30,6 +30,7 @@ from phantomx.dynamic_route_guard import DynamicRouteGuardError, evaluate_simula
 from phantomx.market_block import acquire_market_block
 from phantomx.quickswap_v3 import QuickSwapV3ExactQuoter
 from phantomx.rpc_failover import build_free_polygon_rpc_pool
+from phantomx.dynamic_pair_surface import discover_live_base_pairs
 from phantomx.uniswap_v3 import UniswapV3ExactQuoter
 
 from first_hunt_live_scan import (
@@ -94,9 +95,21 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
     amounts = tuple(x * 10**6 for x in frontier)
     observations: list[dict[str, Any]] = []
     tiles: list[dict[str, Any]] = []
+    pair_surface_status = "SEED_ONLY"
+    try:
+        pair_surface = discover_live_base_pairs(
+            rpc, base_token=USDC, seed_pairs=tuple((p.name, p.token_b) for p in PAIRS),
+            required_venues=("quickswap_v3", "uniswap_v3"), lookback_blocks=25_000, chunk_size=2_000,
+        )
+        active_pairs = tuple(PairSpec(p.name, p.token_b) for p in pair_surface.pairs)
+        pair_surface_status = pair_surface.status
+    except Exception as exc:
+        active_pairs = PAIRS
+        pair_surface_status = "PAIR_UNIVERSE_INCOMPLETE"
+        print(f"PAIR_DISCOVERY_FALLBACK: {type(exc).__name__}: {exc}", flush=True)
 
     for fee in UNISWAP_V3_FEE_TIERS:
-        for pair in PAIRS:
+        for pair in active_pairs:
             try:
                 forward = tuple(
                     build_quickswap_v3_to_uniswap_v3_route(
@@ -211,6 +224,7 @@ def main() -> int:
         "pairs": [p.name for p in PAIRS],
         "seed_loan_frontier_usdc": list(SEED_LOAN_USDC),
         "successful_endpoints": results,
+        "pair_universe": {"status": pair_surface_status, "seed_count": len(PAIRS), "active_count": len(active_pairs)},
         "rpc_pool": {
             "mode": "task_preserving_failover",
             "provider_count": len(rpc_pool.records),
