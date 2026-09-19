@@ -35,12 +35,14 @@ WPOL = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"
 WBTC = "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6"
 DAI = "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063"
 USDT_E = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"
+MIMATIC = "0xa3Fa99A148fA48D14Ed51d610c367C61876997F1"
 PAIRS = (
     ("USDC.e/WETH", WETH),
     ("USDC.e/WPOL", WPOL),
     ("USDC.e/WBTC", WBTC),
     ("USDC.e/DAI", DAI),
     ("USDC.e/USDT.e", USDT_E),
+    ("USDC.e/MIMATIC", MIMATIC),
 )
 
 
@@ -200,6 +202,7 @@ def main() -> int:
         "duration_seconds": round(time.time()-started, 3),
         "chain_id_expected": POLYGON_CHAIN_ID,
         "base_token": USDC_E,
+        "notable_static_pool_reference": "0x53C38755748745e2dd7D0a136FBCC9fB1A5B83b2",
         "provenance": {
             "git_commit_sha": os.environ.get("GITHUB_SHA", "UNKNOWN"),
             "git_ref": os.environ.get("GITHUB_REF", "UNKNOWN"),
