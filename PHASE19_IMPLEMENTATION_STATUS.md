@@ -1,16 +1,20 @@
 # Phase 19 Implementation Status
 
 ## Mission
+
 Establish the first executable, dependency-free adversarial policy harness for the canonical PhantomX execution spine. This phase does **not** authorize live execution.
 
 ## Current verified baseline
-- Working branch: `phase-19-e2e-harness`
-- Current HEAD: `8a30e46e509ef955eb4e1bcdc15faf869e7d61c8`
-- Latest exact-current-HEAD Phase-19 CI run: **#659**, green.
-- S1-QS-V3 live discovery remains read-only. It has **no signing, submission, broadcast, or live-capital authority**.
-- S1 live discovery evidence is not economic certification and makes no profit claim.
 
-## Implemented in this phase slice
+- Working branch: `phase-19-e2e-harness`
+- Current HEAD: `d04cc0cfaf1dbf2769e52451139eb1ec318e3b6d`
+- Latest exact-current-HEAD Phase-19 Deterministic Tests run: **#736**, green.
+- Latest exact-current-HEAD S5 Curve UV3 live scan run: **#8**, green.
+- Latest exact-current-HEAD S5A Curve MAI/USDC.e forensic probe run: **#3**, green.
+- All three surfaces remain read-only and have **no signing, submission, broadcast, or live-capital authority**.
+
+## Implemented control and execution spine
+
 - Canonical Ethereum Keccak-256 hashing boundary.
 - Immutable execution intent and transaction-envelope binding.
 - One-shot authorization consumption and replay protection.
@@ -20,104 +24,123 @@ Establish the first executable, dependency-free adversarial policy harness for t
 - Aave V3 dynamic liquidity and premium evidence.
 - Read-only QuickSwap V3 Algebra quote adapter.
 - Read-only QuickSwap V3 <-> Uniswap V3 route composition.
-- S1-QS-V3 live read-only hunt surface and artifact generation.
+- Explicit QuickSwap V2/V3 venue-kind identity preserved through calldata and topology binding.
+- QuickSwap V3 fork execution path and Aave flash-loan control-path probe.
+- Read-only Curve registry-driven quote adapter and Curve <-> Uniswap V3 route composition.
+- S5 Curve UV3 live read-only hunt surface.
+- S5A Curve MAI/USDC.e forensic probe surface.
+- Strategy registry with only S0-DIRECT-QS-V3 marked CANONICAL; all other strategy families remain DISCOVERY_ONLY.
 
-## P0 execution-topology audit result
+## P0 QuickSwap execution-topology audit
 
-### Finding: QuickSwap V3 is **NOT execution-certified** in the canonical Phase-19 executor.
+### Finding
 
-The canonical `contracts/Phase19Executor.sol` currently exposes:
-- `quickSwapRouter` as one immutable router address.
-- `firstOnQuickSwap` as a direction flag only.
-- `_swapQuickSwap()` implemented specifically through the V2 interface:
-  `swapExactTokensForTokens(amountIn, amountOutMin, path, recipient, deadline)`.
+QuickSwap V3 is now represented explicitly as a separate execution venue kind and router identity in the canonical Phase-19 path. V2 and V3 execution interfaces are not interchangeable.
 
-The canonical executor therefore has **no explicit QuickSwap venue-kind/version field and no QuickSwap V3/Algebra execution interface**.
+The current topology binding commits the relevant V2/V3 router identities and venue kind. Contract and Python tests cover cross-version confusion/mutation cases.
 
-This is a hard safety boundary. S1-QS-V3 discovery candidates must **not** be routed into the current execution assembly merely because they have an economically valid-looking route object.
+### Evidence boundary
 
-### Additional binding gap
-The current Python `executor_topology_hash()` commits:
-- chain id
-- executor
-- asset
-- token mid
-- direction
-- Uniswap V3 fee
-- Aave pool
-- QuickSwap router
-- Uniswap V3 router
+The latest exact-current-HEAD Phase-19 run **#736** is green and includes:
+- Solidity compilation.
+- Phase-19 EVM integration harness.
+- Polygon fork protocol smoke harness.
+- Polygon fork execution probe.
+- Python Phase-19 unittest suite.
 
-but it does **not** commit a QuickSwap venue kind/version. Consequently, the same topology schema cannot distinguish QuickSwap V2 execution from QuickSwap V3 execution.
+The fork execution probe demonstrates the QuickSwap V3 state-changing path and the canonical executor's Aave flash-loan control path on Polygon fork state.
 
-### Required P0 sequence
-1. Introduce an explicit venue-kind/version identity into the executable route schema.
-2. Bind that venue identity into both off-chain topology commitment and on-chain validation.
-3. Add an explicit QuickSwap V3/Algebra execution adapter and prove its exact calldata/ABI against the Polygon deployment.
-4. Add contract-level tests proving V2 and V3 route kinds cannot be confused.
-5. Add Python calldata/topology reference vectors for both venue kinds.
-6. Add fork/simulation evidence for the exact V3 execution path.
-7. Only after those gates pass, allow S1-QS-V3 candidates to reach EconomicProof-to-execution assembly.
-8. Keep signing, private submission, broadcast, and live capital disabled until the independent production gates are satisfied.
-
-## External S1 evidence boundary
-The verified S1-QS-V3 live hunt produced read-only route observations on Polygon mainnet, but its artifact explicitly records:
-- `economic_certification = NOT_PERFORMED`
-- `profit_claim = NONE`
-
-Therefore S1 remains a **discovery frontier**, not an execution or realized-PnL result.
+This remains an integration/control-path proof. It is **not** profitability certification, production authorization, or realized-PnL evidence.
 
 ## Current gates
+
 - [x] Canonical Ethereum Keccak hashing
 - [x] Intent binding
 - [x] Envelope binding
 - [x] One-shot authorization consumption
 - [x] Adversarial mutation tests
 - [x] Phase-19 CI evidence on current HEAD
-- [x] S1-QS-V3 read-only discovery surface
-- [x] Explicit venue-kind/version in executable topology
-- [x] QuickSwap V3 Algebra execution ABI integrated and Polygon router address independently documented
+- [x] Explicit QuickSwap V2/V3 venue-kind/version in executable topology
+- [x] QuickSwap V3 Algebra execution ABI integrated
 - [x] Contract-level V2/V3 separation tests
 - [x] Python V2/V3 topology/calldata binding and mutation tests
-- [ ] Polygon fork execution evidence for the QuickSwap V3 path
+- [x] Polygon fork execution evidence for the QuickSwap V3 router path
+- [x] Polygon fork Aave flash-loan control-path evidence with QuickSwap V3 + Uniswap V3
 - [x] Explicit V2/V3 router identity preserved through opportunity pipeline
+- [x] Curve registry selectors and block-pinned quote adapter
+- [x] Curve direct/underlying pool discovery and reverse-route orientation handling
+- [x] S5 Curve UV3 read-only live hunt surface
+- [x] S5A Curve MAI/USDC.e forensic probe
+- [ ] First genuinely gross-positive live route
+- [ ] Full EconomicProof for a genuinely profitable candidate
+- [ ] Exact two-DEX execution success with economically valid repayment/settlement
+- [ ] Identical-artifact shadow/staging evidence
 - [ ] Production signer integration
 - [ ] Private relay evidence
-- [ ] Shadow/staging identical-artifact evidence
-- [ ] Realized PnL provenance
+- [ ] Controlled mainnet broadcast authorization
+- [ ] On-chain receipt + realized PnL provenance
 
-## Latest execution-harness evidence
-- Phase-19 CI run **#659** on exact HEAD is green.
-- Solidity compilation is green.
-- Phase-19 EVM integration harness is green, including the dedicated QuickSwap V3 callback/swap/repay/settlement test.
-- Polygon fork protocol smoke harness is green.
-- Polygon fork execution probe is green, but the existing probe remains a QuickSwap V2 live-fork probe. It is not being counted as V3 execution proof.
-- Python Phase-19 unittest suite is green.
+## Latest exact-current-HEAD live discovery evidence
 
-## Latest P0 evidence
-- Exact-current-HEAD Phase-19 CI run **#663** is green.
-- Polygon fork execution probe now contains a real QuickSwap V3 router state-changing test using Polygon fork state.
-- The probe also verifies the QuickSwap V3 quoter and dynamic fee response before executing the router call.
-- The test uses the verified Polygon USDC `balanceAndBlacklistStates` mapping slot for fork-only balance setup; this is test infrastructure, not production logic.
-- This proves the deployed QuickSwap V3 router path can execute on a Polygon fork. It does **not** yet prove a profitable or successfully repaid two-DEX Aave flash-loan transaction.
+### S5-CURVE-UV3, run #8
 
-## Latest P0 evidence
-- Exact-current-HEAD Phase-19 CI run **#665** is green.
-- Polygon fork execution probe now performs a real Aave V3 flash-loan path using the canonical executor, with QuickSwap V3 as the first leg and Uniswap V3 as the second leg.
-- The probe derives live fork quotes for the two DEX legs, uses explicit QuickSwap venue kind `2`, and forces an impossible settlement surplus so the transaction must fail atomically rather than create synthetic profit evidence.
-- The test verifies executor state is clean after rollback. This is an integration/control-path proof, not a profitability or repayment certification.
+Artifact: `s5_curve_uv3_live_scan.json`
 
-## Latest P0 evidence update
-- Exact-current-HEAD Phase-19 CI run **#668** is green.
-- The opportunity-preparation pipeline now accepts explicit QuickSwap V2/V3 router identities while retaining the legacy single-router argument only as a compatibility fallback.
-- A dedicated unit test proves a `quickswap_v3->uniswap_v3` candidate reaches calldata assembly with venue kind `2` and the correct Uniswap fee.
+- Strategy: `S5-CURVE-UV3`
+- Chain: Polygon 137
+- `read_only=true`
+- `economic_certification=NOT_PERFORMED`
+- `profit_claim=NONE`
+- Total observations: **1,040**
+- Gross-positive observations: **0**
+- DRPC: 640 observations, best gross approximately **-$4.159468**
+- PublicNode: 400 observations, best gross approximately **-$99.982444**
+- Dynamic Aave evidence observed: approximately **610,572.260598 USDC** available liquidity, approximately **580,043.647568 USDC** dynamic ceiling, and **5 bps** flash premium.
 
-## Latest discovery evidence
-- S2-UV4-V3 live hunt **Run #1** is green on current checkpoint HEAD.
-- S2 scanned a bounded hookless V4 grid. DRPC returned 200 observations and PublicNode returned 120 observations; both returned **0 gross-positive observations**.
-- Best observed gross delta was approximately `-$0.021222 USDC` on DRPC and `-$0.021234 USDC` on PublicNode.
-- S2 remains discovery-only; hooked V4 pools are intentionally outside the current evidence scope.
-- S3/S9/S10 Ramses cross-venue families are also discovery-only and have not produced a certified profitable candidate.
+These observations are discovery evidence only. They do not establish a production opportunity.
+
+### S5A, Curve MAI/USDC.e forensic probe, run #3
+
+Artifact: `s5a_curve_mai_probe.json`
+
+- Direct seeded Curve pool:
+  `0x53C38755748745e2dd7D0a136FBCC9fB1A5B83b2`
+- Pool verification: `i=1`, `j=0`, `fee_raw=30,000,000`
+- Direct reverse-route semantics and Uniswap V3 quote leg were verified.
+- Representative DRPC quote at 100 USDC ended around **95.840532 USDC**, approximately **-$4.159468 gross**, before the additional flash premium.
+- No profit claim was made.
+
+## Strategy status
+
+| Strategy | Status | Current boundary |
+|---|---|---|
+| S0-DIRECT-QS-V3 | CANONICAL | Current certified execution scope |
+| S1-QS-V3 | DISCOVERY_ONLY | Live discovery; no execution certification |
+| S2-UV4-V3 | DISCOVERY_ONLY | Hookless bounded discovery only |
+| S3-RAMSES-UV3 | DISCOVERY_ONLY | Discovery only |
+| S4-BALANCER-UV3 | DISCOVERY_ONLY | Exact Vault queryBatchSwap adapter/proof still required |
+| S5-CURVE-UV3 | DISCOVERY_ONLY | Read-only discovery implemented; execution uncertified |
+| S6-TRIANGULAR | DISCOVERY_ONLY | 3+ leg execution path uncertified |
+| S7-STABLE-STABLE | DISCOVERY_ONLY | Canonical token mapping + depeg/fee/liquidity controls required |
+| S8-ALTERNATIVE-FLASH-LIQUIDITY | DISCOVERY_ONLY | Provider callback/repayment proof required |
+| S9-QSV2-RAMSES-V3 | DISCOVERY_ONLY | Execution uncertified |
+| S10-QSV3-RAMSES-V3 | DISCOVERY_ONLY | Execution and economic certification required |
+
+## No-success-yet boundary
+
+The project has **not** yet achieved its first successful profitable hunt.
+
+The first hunt success gate is:
+
+1. A live, reproducible route is found.
+2. The route is profitable after flash premium, DEX fees, gas, relay/other modeled costs.
+3. The resulting `EconomicProof` is valid and strictly above the configured minimum net-profit floor.
+4. Exact execution calldata is assembled from the same evidence-bound route.
+5. Polygon fork execution succeeds with real protocol semantics and atomic repayment/settlement.
+6. Only then can the candidate proceed toward the independent production controls.
 
 ## Go-live prohibition
-Nothing in this status authorizes mainnet execution. No live transaction is authorized by the S1 discovery surface or by this Phase-19 audit state.
+
+Nothing in this status authorizes mainnet execution.
+
+Signing, private submission, broadcast, and live-capital execution remain disabled until the independent production gates are satisfied.
