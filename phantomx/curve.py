@@ -39,6 +39,8 @@ FIND_POOL_FOR_COINS_SELECTOR = "0xa87df06c"
 FIND_POOL_FOR_COINS_INDEXED_SELECTOR = "0x6982eb0b"
 GET_DY_SELECTOR = "0x5e0d443f"
 GET_DY_UNDERLYING_SELECTOR = "0x07211ef7"
+COINS_SELECTOR = "0xc6610657"
+FEE_SELECTOR = "0xddca3f43"
 
 
 class RpcTransport(Protocol):
@@ -282,6 +284,34 @@ class CurveRegistryExactQuoter:
                     continue
         return found
 
+    def direct_pool_ref(self, pool: str, token_in: str, token_out: str, snapshot: BlockSnapshot, *, max_coins: int = 8) -> CurvePoolRef:
+        if snapshot.chain_id != self.chain_id:
+            raise CurveError("snapshot chain identity mismatch")
+        _address_word(pool)
+        if token_in.lower() == token_out.lower():
+            raise CurveError("token_in and token_out must differ")
+        indices: dict[str, int] = {}
+        for i in range(max_coins):
+            try:
+                raw = self._call(pool, COINS_SELECTOR + _uint_word(i).hex(), snapshot)
+                if len(raw) != 32:
+                    continue
+                coin = raw[12:]
+                if coin == bytes(20):
+                    break
+                indices["0x" + coin.hex()] = i
+            except CurveError:
+                break
+        i = indices.get(token_in.lower())
+        j = indices.get(token_out.lower())
+        if i is None or j is None:
+            raise CurveError("seeded Curve pool does not contain requested token pair")
+        fee_raw = 0
+        try:
+            fee_raw = _decode_uint("0x" + self._call(pool, FEE_SELECTOR, snapshot).hex(), "fee")
+        except CurveError:
+            pass
+        return CurvePoolRef("direct-seed", pool, pool, token_in, token_out, i, j, False, fee_raw)
     def quote_snapshot(
         self,
         amount_in: int,
@@ -339,6 +369,8 @@ __all__ = [
     "FIND_POOL_FOR_COINS_SELECTOR",
     "GET_COIN_INDICES_SELECTOR",
     "GET_DY_SELECTOR",
+    "COINS_SELECTOR",
+    "FEE_SELECTOR",
     "GET_DY_UNDERLYING_SELECTOR",
     "GET_FEES_SELECTOR",
     "POOL_COUNT_SELECTOR",
