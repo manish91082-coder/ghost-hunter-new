@@ -134,9 +134,12 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
             available_spacings: list[int] = []
             for spacing in DEFAULT_TICK_SPACINGS:
                 try:
-                    adapters["ramses"].resolve_pool(
+                    ramses_pool = adapters["ramses"].resolve_pool(
                         ramses_token_in, ramses_token_out, spacing, context
                     )
+                    pool_state = adapters["ramses"].pool_state(ramses_pool, context)
+                    if not pool_state.initialized_and_swappable:
+                        continue
                     available_spacings.append(spacing)
                 except RamsesV3Error:
                     continue
@@ -145,10 +148,10 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
                 failures.append({
                     "tokens": ["USDC.e", first_name, second_name],
                     "venues": venues,
-                    "error_type": "NO_Ramses_POOL",
+                    "error_type": "NO_ACTIVE_Ramses_POOL",
                     "error": (
-                        f"no Ramses V3 pool for {ramses_token_in}->{ramses_token_out} "
-                        f"across supported tick spacings"
+                        f"no initialized + active-liquidity Ramses V3 pool for "
+                        f"{ramses_token_in}->{ramses_token_out} across supported tick spacings"
                     ),
                 })
                 continue
