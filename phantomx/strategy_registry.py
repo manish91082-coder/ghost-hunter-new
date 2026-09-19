@@ -1,180 +1,77 @@
-"""Controlled strategy registry for PhantomX.
+"""Canonical Polygon strategy registry and readiness controls.
 
-A strategy record describes a search/execution family. Registration does not
-authorize production execution. Every non-canonical strategy starts in
-DISCOVERY_ONLY and must satisfy its adapter, quote, economics, adversarial,
-fork, and authority gates before promotion.
+The registry is descriptive control-plane metadata. It does not authorize live
+execution. A strategy can be discovery-enabled while execution remains locked.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Iterable
 
 
-class StrategyStatus(str, Enum):
-    CANONICAL = "CANONICAL"
-    DISCOVERY_ONLY = "DISCOVERY_ONLY"
-    DISABLED = "DISABLED"
+class StrategyStage(str, Enum):
+    DISCOVERY = "DISCOVERY"
+    ECONOMIC_CERTIFICATION = "ECONOMIC_CERTIFICATION"
+    EXECUTION_CERTIFICATION = "EXECUTION_CERTIFICATION"
 
 
 @dataclass(frozen=True)
 class StrategySpec:
     strategy_id: str
-    name: str
-    status: StrategyStatus
-    chain_id: int
-    flash_liquidity: tuple[str, ...]
-    venues: tuple[str, ...]
-    route_family: str
-    notes: str = ""
+    family: str
+    min_legs: int
+    max_legs: int
+    discovery_enabled: bool
+    execution_enabled: bool
+    notes: str
 
     def __post_init__(self) -> None:
-        if not self.strategy_id or not self.name:
-            raise ValueError("strategy identity is required")
-        if self.chain_id != 137:
-            raise ValueError("current strategy registry is Polygon-only")
-        if not self.flash_liquidity or not self.venues:
-            raise ValueError("strategy must declare liquidity and venues")
-        if not self.route_family:
-            raise ValueError("route family is required")
+        if not self.strategy_id.strip() or not self.family.strip():
+            raise ValueError("strategy_id and family are required")
+        if self.min_legs < 2 or self.max_legs < self.min_legs:
+            raise ValueError("invalid leg bounds")
+        if self.execution_enabled and not self.discovery_enabled:
+            raise ValueError("execution cannot be enabled when discovery is disabled")
 
 
-class StrategyRegistry:
-    def __init__(self, specs: Iterable[StrategySpec] = ()) -> None:
-        self._specs: dict[str, StrategySpec] = {}
-        for spec in specs:
-            self.add(spec)
-
-    def add(self, spec: StrategySpec) -> None:
-        if spec.strategy_id in self._specs:
-            raise ValueError("duplicate strategy_id")
-        self._specs[spec.strategy_id] = spec
-
-    def get(self, strategy_id: str) -> StrategySpec:
-        return self._specs[strategy_id]
-
-    def enabled(self) -> tuple[StrategySpec, ...]:
-        return tuple(s for s in self._specs.values() if s.status != StrategyStatus.DISABLED)
-
-    def production(self) -> tuple[StrategySpec, ...]:
-        return tuple(s for s in self._specs.values() if s.status == StrategyStatus.CANONICAL)
-
-    def discovery_only(self) -> tuple[StrategySpec, ...]:
-        return tuple(s for s in self._specs.values() if s.status == StrategyStatus.DISCOVERY_ONLY)
-
-
-DEFAULT_STRATEGIES = StrategyRegistry(
-    (
-        StrategySpec(
-            "S0-DIRECT-QS-V3",
-            "QuickSwap V2 ↔ Uniswap V3 direct A→B→A",
-            StrategyStatus.CANONICAL,
-            137,
-            ("Aave V3",),
-            ("QuickSwap V2", "Uniswap V3"),
-            "direct_two_leg_cross_venue",
-            "Current certified execution scope.",
-        ),
-        StrategySpec(
-            "S1-QS-V3",
-            "QuickSwap V3 ↔ Uniswap V3",
-            StrategyStatus.DISCOVERY_ONLY,
-            137,
-            ("Aave V3",),
-            ("QuickSwap V3", "Uniswap V3"),
-            "direct_two_leg_cross_venue",
-            "Uses Algebra poolByPair discovery and quote-returned dynamic fee; no fixed fee-tier grid is assumed.",
-        ),
-        StrategySpec(
-            "S2-UV4-V3",
-            "Uniswap V4 ↔ Uniswap V3",
-            StrategyStatus.DISCOVERY_ONLY,
-            137,
-            ("Aave V3",),
-            ("Uniswap V4", "Uniswap V3"),
-            "direct_two_leg_cross_venue",
-            "Bounded hookless V4 PoolKey discovery is implemented; hooked pools remain excluded until hook behavior is separately certified.",
-        ),
-        StrategySpec(
-            "S3-RAMSES-UV3",
-            "Ramses V3 ↔ Uniswap V3",
-            StrategyStatus.DISCOVERY_ONLY,
-            137,
-            ("Aave V3",),
-            ("Ramses V3", "Uniswap V3"),
-            "direct_two_leg_cross_venue",
-            "Requires Ramses exact-quote adapter and pool discovery.",
-        ),
-        StrategySpec(
-            "S4-BALANCER-UV3",
-            "Balancer V2 ↔ Uniswap V3",
-            StrategyStatus.DISCOVERY_ONLY,
-            137,
-            ("Aave V3",),
-            ("Balancer V2", "Uniswap V3"),
-            "direct_two_leg_cross_venue",
-            "Requires Balancer Vault queryBatchSwap exact adapter/proof.",
-        ),
-        StrategySpec(
-            "S5-CURVE-UV3",
-            "Curve ↔ Uniswap V3",
-            StrategyStatus.DISCOVERY_ONLY,
-            137,
-            ("Aave V3",),
-            ("Curve", "Uniswap V3"),
-            "direct_two_leg_cross_venue",
-            "Registry-driven direct and underlying Curve quote discovery is implemented; execution remains uncertified.",
-        ),
-        StrategySpec(
-            "S6-TRIANGULAR",
-            "Triangular multi-hop",
-            StrategyStatus.DISCOVERY_ONLY,
-            137,
-            ("Aave V3",),
-            ("QuickSwap V3", "Ramses V3", "Uniswap V3"),
-            "three_or_more_legs",
-            "Bounded 3-venue exact-quote discovery is implemented. A dedicated 3+ leg execution path remains uncertified.",
-        ),
-        StrategySpec(
-            "S7-STABLE-STABLE",
-            "Stablecoin cross-venue",
-            StrategyStatus.DISCOVERY_ONLY,
-            137,
-            ("Aave V3",),
-            ("Multiple Polygon venues",),
-            "stablecoin_cross_venue",
-            "Requires canonical token mapping and dynamic depeg/fee/liquidity controls.",
-        ),
-        StrategySpec(
-            "S8-ALTERNATIVE-FLASH-LIQUIDITY",
-            "Alternative flash-liquidity source",
-            StrategyStatus.DISCOVERY_ONLY,
-            137,
-            ("Multiple flash liquidity providers",),
-            ("Multiple Polygon venues",),
-            "flash_source_variant",
-            "Requires provider-specific callback/repayment proof before activation.",
-        ),
-        StrategySpec(
-            "S9-QSV2-RAMSES-V3",
-            "QuickSwap V2 ↔ Ramses V3",
-            StrategyStatus.DISCOVERY_ONLY,
-            137,
-            ("Aave V3",),
-            ("QuickSwap V2", "Ramses V3"),
-            "direct_two_leg_cross_venue",
-            "Discovery-only route family; Ramses V3 pool selection is tickSpacing-based and execution is not yet certified.",
-        ),
-        StrategySpec(
-            "S10-QSV3-RAMSES-V3",
-            "QuickSwap V3 ↔ Ramses V3",
-            StrategyStatus.DISCOVERY_ONLY,
-            137,
-            ("Aave V3",),
-            ("QuickSwap V3", "Ramses V3"),
-            "direct_two_leg_cross_venue",
-            "Discovery-only V3 cross-venue family; both venues require independent execution and economic certification.",
-        ),
-    )
+DEFAULT_STRATEGIES: tuple[StrategySpec, ...] = (
+    StrategySpec("S0", "DIRECT_CROSS_VENUE", 2, 2, True, True, "Canonical direct two-leg route."),
+    StrategySpec("S1", "CLMM_CROSS_VENUE", 2, 2, True, True, "QuickSwap V3 <-> Uniswap V3."),
+    StrategySpec("S2", "V4_CROSS_VENUE", 2, 2, True, False, "Uniswap V4 routes remain separately certified."),
+    StrategySpec("S3", "RAMSES_CROSS_VENUE", 2, 2, True, True, "Ramses V3 <-> Uniswap V3."),
+    StrategySpec("S4", "CURVE_AMM", 2, 4, True, False, "Curve/stable-swap graph family."),
+    StrategySpec("S5", "BALANCER_AMM", 2, 4, True, False, "Balancer weighted/stable family."),
+    StrategySpec("S6", "TRIANGULAR", 3, 3, True, False, "Three-leg bounded cycle discovery."),
+    StrategySpec("S7", "FOUR_LEG", 4, 4, True, False, "Four-leg bounded cycle discovery."),
+    StrategySpec("S8", "STABLECOIN_DEPEG", 2, 4, True, False, "Stable/bridged-stable graph."),
+    StrategySpec("S9", "SAME_VENUE_MULTI_POOL", 2, 2, True, False, "Same-protocol pool/fee dislocation."),
+    StrategySpec("S10", "SPLIT_ROUTE", 2, 4, True, False, "Multi-pool exact allocation search."),
+    StrategySpec("S11", "CROSS_CURVE", 2, 4, True, False, "V2/V3/V4/stableswap/weighted curve mix."),
+    StrategySpec("S12", "EVENT_DRIVEN", 2, 4, True, False, "State-change-triggered local rescans."),
+    StrategySpec("S13", "NEW_POOL_WINDOW", 2, 4, True, False, "Burst scans for newly initialized pools."),
+    StrategySpec("S14", "CORRELATED_ASSET", 2, 4, True, False, "Wrapped/LST/correlated asset cycles."),
+    StrategySpec("S15", "ALT_FLASH_LIQUIDITY", 2, 4, True, False, "Alternative atomic liquidity variants."),
+    StrategySpec("S16", "STATE_BACKRUN_DETECTOR", 2, 4, True, False, "Post-state-change discovery only."),
+    StrategySpec("S17", "V4_HOOK_AWARE", 2, 4, True, False, "Hook semantics require dedicated certification."),
+    StrategySpec("S18", "CROSS_PROTOCOL_ATOMIC", 2, 4, True, False, "Deterministic composability candidates."),
+    StrategySpec("S19", "ORACLE_DIVERGENCE_DETECTOR", 2, 4, True, False, "Detector/ranking signal only."),
 )
+
+
+def get_strategy(strategy_id: str) -> StrategySpec:
+    for spec in DEFAULT_STRATEGIES:
+        if spec.strategy_id == strategy_id:
+            return spec
+    raise KeyError(strategy_id)
+
+
+def execution_eligible(strategy_id: str) -> bool:
+    return get_strategy(strategy_id).execution_enabled
+
+
+def discovery_strategies() -> tuple[StrategySpec, ...]:
+    return tuple(spec for spec in DEFAULT_STRATEGIES if spec.discovery_enabled)
+
+
+def execution_strategies() -> tuple[StrategySpec, ...]:
+    return tuple(spec for spec in DEFAULT_STRATEGIES if spec.execution_enabled)

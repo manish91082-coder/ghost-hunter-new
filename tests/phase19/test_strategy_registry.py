@@ -1,27 +1,22 @@
 import unittest
 
-from phantomx.strategy_registry import DEFAULT_STRATEGIES, StrategyRegistry, StrategySpec, StrategyStatus
+from phantomx.strategy_registry import DEFAULT_STRATEGIES, discovery_strategies, execution_eligible, execution_strategies, get_strategy
 
 
 class StrategyRegistryTests(unittest.TestCase):
-    def test_current_canonical_strategy_is_unique(self):
-        production = DEFAULT_STRATEGIES.production()
-        self.assertEqual(len(production), 1)
-        self.assertEqual(production[0].strategy_id, "S0-DIRECT-QS-V3")
+    def test_registry_has_complete_declared_strategy_surface(self):
+        self.assertEqual(len(DEFAULT_STRATEGIES), 20)
+        self.assertEqual({x.strategy_id for x in DEFAULT_STRATEGIES}, {f"S{i}" for i in range(20)})
 
-    def test_discovery_surface_is_expanded_but_fail_closed(self):
-        discovery = DEFAULT_STRATEGIES.discovery_only()
-        self.assertGreaterEqual(len(discovery), 8)
-        self.assertTrue(all(s.chain_id == 137 for s in discovery))
-        self.assertFalse(any(s.status == StrategyStatus.CANONICAL for s in discovery))
+    def test_only_explicitly_certified_lanes_are_execution_eligible(self):
+        eligible = {x.strategy_id for x in execution_strategies()}
+        self.assertEqual(eligible, {"S0", "S1", "S3"})
+        self.assertTrue(execution_eligible("S0"))
+        self.assertFalse(execution_eligible("S6"))
 
-    def test_duplicate_registration_is_rejected(self):
-        registry=StrategyRegistry()
-        spec=StrategySpec("X","x",StrategyStatus.DISCOVERY_ONLY,137,("Aave V3",),("Venue",),"direct")
-        registry.add(spec)
-        with self.assertRaises(ValueError):
-            registry.add(spec)
+    def test_lookup_is_deterministic(self):
+        self.assertEqual(get_strategy("S10").max_legs, 4)
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     unittest.main(verbosity=2)
