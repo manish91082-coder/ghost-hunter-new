@@ -149,8 +149,8 @@ def _selected_bridge_ordered_pairs() -> tuple[tuple[tuple[str, str], tuple[str, 
     if unknown:
         raise ValueError(f"unknown S6 bridge asset(s): {unknown}")
 
-    first = BRIDGE_BY_NAME[names[0]]
-    second = BRIDGE_BY_NAME[names[1]]
+    first = (names[0], BRIDGE_BY_NAME[names[0]])
+    second = (names[1], BRIDGE_BY_NAME[names[1]])
     return (
         (first, second),
         (second, first),
