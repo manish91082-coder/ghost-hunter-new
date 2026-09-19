@@ -153,7 +153,44 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
                 })
                 continue
 
+            # Route-level eligibility gate: prove the complete 3-leg path can
+            # quote sequentially before spending the full loan frontier.
+            eligible_spacings: list[int] = []
             for ramses_tick_spacing in available_spacings:
+                try:
+                    probe_amount = min(amounts)
+                    probe_legs = []
+                    probe_current_amount = probe_amount
+                    probe_current_token = USDC_E
+                    for venue, nxt in zip(venues, (*tokens, USDC_E)):
+                        probe_leg = _quote(
+                            adapters,
+                            venue,
+                            probe_current_amount,
+                            probe_current_token,
+                            nxt,
+                            context,
+                            ramses_tick_spacing=ramses_tick_spacing,
+                        )
+                        probe_legs.append(probe_leg)
+                        probe_current_amount = probe_leg.amount_out
+                        probe_current_token = nxt
+                    simulate_multi_leg(probe_legs)
+                    eligible_spacings.append(ramses_tick_spacing)
+                except Exception as exc:
+                    failures.append({
+                        "tokens": ["USDC.e", first_name, second_name],
+                        "venues": venues,
+                        "ramses_tick_spacing": ramses_tick_spacing,
+                        "amount": min(amounts),
+                        "error_type": type(exc).__name__,
+                        "error": "route_probe_failed: " + str(exc),
+                    })
+
+            if not eligible_spacings:
+                continue
+
+            for ramses_tick_spacing in eligible_spacings:
                 for amount in amounts:
                     try:
                         legs = []
@@ -200,6 +237,9 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
         "block_number": context.block_number,
         "observation_count": len(observations),
         "gross_positive_count": sum(x["gross_delta_raw"] > 0 for x in observations),
+        "route_probe_failure_count": sum(
+            1 for x in failures if str(x.get("error", "")).startswith("route_probe_failed:")
+        ),
         "gross_max_usdc": str(Decimal(ranked[0]["gross_delta_raw"]) / Decimal(10**6)) if ranked else "0",
         "top_gross_observations": ranked[:30],
         "failed_route_count": len(failures),
