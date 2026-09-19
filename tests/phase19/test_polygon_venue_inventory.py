@@ -44,6 +44,7 @@ class VenueInventoryTests(unittest.TestCase):
         spec = next(x for x in VENUE_SPECS if x.venue_id == "uniswap_v4")
         topics = [
             V4_INITIALIZE_TOPIC,
+            "0x" + "aa" * 32,
             "0x" + "00" * 12 + "11" * 20,
             "0x" + "00" * 12 + "22" * 20,
         ]

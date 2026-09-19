@@ -18,7 +18,7 @@ class LogInventoryTests(unittest.TestCase):
 
     def test_range_failure_shrinks_chunk(self):
         rpc=Mock()
-        rpc.call.side_effect=[RuntimeError("query returned too many logs"),[self.log("0xa")],[dict(self.log("0xa"),transactionHash="0x"+"22"*32)]]
+        rpc.call.side_effect=[RuntimeError("query returned too many logs"),[self.log("0xa")],[dict(self.log("0xb"),transactionHash="0x"+"22"*32)]]
         out=PolygonLogInventory(rpc,initial_chunk_size=2).scan(from_block=10,to_block=11)
         self.assertEqual({x.block_number for x in out},{10,11})
 
