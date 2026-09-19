@@ -1,0 +1,73 @@
+import unittest
+from unittest.mock import Mock, patch
+
+from phantomx.rpc_failover import PolygonRPCFailoverPool, PublicRPCRecord, RPCPoolError
+
+
+class RPCFailoverTests(unittest.TestCase):
+    def test_first_provider_failure_switches_same_logical_request(self):
+        records = (
+            PublicRPCRecord("p1", "https://p1.example", "f1"),
+            PublicRPCRecord("p2", "https://p2.example", "f2"),
+        )
+        pool = PolygonRPCFailoverPool(records=records)
+        pool._states["p1"].transport.call = Mock(side_effect=TimeoutError("timeout"))
+        pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
+        self.assertEqual(pool.call("eth_chainId", []), "0x89")
+        self.assertEqual([item.provider_id for item in pool.history], ["p1", "p2"])
+
+    def test_semantic_execution_revert_is_not_masked_by_failover(self):
+        records = (
+            PublicRPCRecord("p1", "https://p1.example", "f1"),
+            PublicRPCRecord("p2", "https://p2.example", "f2"),
+        )
+        pool = PolygonRPCFailoverPool(records=records)
+        pool._states["p1"].transport.call = Mock(
+            return_value={"error": {"code": -32000, "message": "execution reverted"}}
+        )
+        pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
+        with self.assertRaises(RPCPoolError):
+            pool.call("eth_chainId", [])
+        self.assertEqual(len(pool.history), 1)
+
+    def test_all_transport_failures_are_reported_after_exhaustion(self):
+        records = (
+            PublicRPCRecord("p1", "https://p1.example", "f1"),
+            PublicRPCRecord("p2", "https://p2.example", "f2"),
+        )
+        pool = PolygonRPCFailoverPool(records=records)
+        pool._states["p1"].transport.call = Mock(side_effect=TimeoutError("timeout"))
+        pool._states["p2"].transport.call = Mock(side_effect=TimeoutError("timeout"))
+        with self.assertRaises(RPCPoolError) as ctx:
+            pool.call("eth_blockNumber", [])
+        self.assertIn("all eligible", str(ctx.exception))
+        self.assertEqual(len(pool.history), 2)
+
+    def test_disabled_provider_is_never_used(self):
+        records = (
+            PublicRPCRecord("p1", "https://p1.example", "f1", enabled=False),
+            PublicRPCRecord("p2", "https://p2.example", "f2"),
+        )
+        pool = PolygonRPCFailoverPool(records=records)
+        pool._states["p1"].transport.call = Mock(return_value={"result": "bad"})
+        pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
+        self.assertEqual(pool.call("eth_chainId", []), "0x89")
+        self.assertEqual(pool.history[0].provider_id, "p2")
+
+    def test_circuit_breaking_happens_after_repeated_transport_failures(self):
+        records = (
+            PublicRPCRecord("p1", "https://p1.example", "f1"),
+            PublicRPCRecord("p2", "https://p2.example", "f2"),
+        )
+        pool = PolygonRPCFailoverPool(
+            records=records, failure_threshold=1, circuit_cooldown_seconds=100
+        )
+        pool._states["p1"].transport.call = Mock(side_effect=TimeoutError("timeout"))
+        pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
+        with patch("phantomx.rpc_failover.monotonic", return_value=10.0):
+            self.assertEqual(pool.call("eth_chainId", []), "0x89")
+        self.assertGreater(pool._states["p1"].circuit_open_until, 10.0)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

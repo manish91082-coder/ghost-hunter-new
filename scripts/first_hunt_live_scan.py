@@ -29,6 +29,7 @@ from phantomx.dynamic_route_guard import DynamicRouteGuardError, evaluate_simula
 from phantomx.dynamic_market_policy import compute_dynamic_loan_ceiling
 from phantomx.market_block import acquire_market_block
 from phantomx.polygon_rpc_http import PolygonRPCHTTPConfig, PolygonRPCHTTPTransport
+from phantomx.rpc_failover import build_free_polygon_rpc_pool
 from phantomx.quickswap_v2 import QuickSwapV2ExactQuoter
 from phantomx.uniswap_v3 import UniswapV3ExactQuoter
 
@@ -168,15 +169,7 @@ def _quote_record(
     }
 
 
-def _scan_endpoint(endpoint: str) -> dict[str, Any]:
-    http = PolygonRPCHTTPTransport(
-        PolygonRPCHTTPConfig(
-            provider_name=f"first-hunt:{endpoint}",
-            endpoint_url=endpoint,
-            timeout_seconds=8.0,
-        )
-    )
-    rpc = ResultOnlyTransport(http)
+def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
     quickswap = QuickSwapV2ExactQuoter(rpc, QUICKSWAP_V2_ROUTER)
     uniswap = UniswapV3ExactQuoter(rpc, UNISWAP_V3_FACTORY, UNISWAP_V3_QUOTER)
 
@@ -318,28 +311,25 @@ def main() -> int:
     results: list[dict[str, Any]] = []
     failures: list[dict[str, str]] = []
 
-    endpoints = _endpoints()
-    # Run independent provider scans in bounded parallelism so a slow/blocked
-    # provider does not serialize the entire hunt. Each provider remains
-    # internally read-only and uses its own pinned block context.
-    with ThreadPoolExecutor(max_workers=min(2, len(endpoints))) as pool:
-        futures = {endpoint: pool.submit(_scan_endpoint, endpoint) for endpoint in endpoints}
-        for endpoint in endpoints:
-            try:
-                print(f"Scanning read-only Polygon endpoint: {endpoint}", flush=True)
-                result = futures[endpoint].result()
-                results.append(result)
-                print(
-                    f"SUCCESS {endpoint}: observations={result['observation_count']} "
-                    f"gross_positive={result['gross_positive_count']} "
-                    f"gross_max_usdc={result['gross_max_usdc']} "
-                    f"dynamic_ceiling_usdc={result['aave_dynamic']['dynamic_ceiling_usdc']} "
-                    f"blocks={result['blocks']}",
-                    flush=True,
-                )
-            except Exception as exc:
-                failures.append({"endpoint": endpoint, "error": type(exc).__name__ + ": " + str(exc)})
-                print(f"FAILED {endpoint}: {type(exc).__name__}: {exc}", flush=True)
+    rpc_pool = build_free_polygon_rpc_pool()
+    print(
+        f"Starting task-preserving Polygon RPC pool: providers={len(rpc_pool.records)}",
+        flush=True,
+    )
+    try:
+        result = _scan_rpc(rpc_pool, "failover-pool")
+        results.append(result)
+        print(
+            f"SUCCESS failover-pool: observations={result['observation_count']} "
+            f"gross_positive={result['gross_positive_count']} "
+            f"gross_max_usdc={result['gross_max_usdc']} "
+            f"dynamic_ceiling_usdc={result['aave_dynamic']['dynamic_ceiling_usdc']} "
+            f"blocks={result['blocks']}",
+            flush=True,
+        )
+    except Exception as exc:
+        failures.append({"endpoint": "failover-pool", "error": type(exc).__name__ + ": " + str(exc)})
+        print(f"FAILED failover-pool: {type(exc).__name__}: {exc}", flush=True)
 
     artifact = {
         "schema_version": 1,
@@ -357,13 +347,24 @@ def main() -> int:
         "uniswap_v3_fee_tiers": list(UNISWAP_V3_FEE_TIERS),
         "successful_endpoints": results,
         "failed_endpoints": failures,
+        "rpc_pool": {
+            "mode": "task_preserving_failover",
+            "provider_count": len(rpc_pool.records),
+            "providers": [asdict(record) for record in rpc_pool.records],
+            "attempt_count": len(rpc_pool.history),
+            "attempt_history": [asdict(attempt) for attempt in rpc_pool.history],
+            "provider_stats": list(rpc_pool.provider_stats()),
+        },
         "economic_certification": "NOT_PERFORMED",
         "profit_claim": "NONE",
         "notes": [
             "Gross-positive observations are quote evidence only.",
+            "Provider failure rotates the same logical read to another healthy provider.",
+            "Pinned market-block tags are preserved across failover when the replacement provider supports the block.",
             "No USD valuation, exact final executor-path gas, MEV/relay cost, or final requote is inferred here.",
             "No candidate is certified profitable solely from this scan.",
             "The explicit loan frontier is complete only over the listed amounts.",
+            "rpc_exhausted means infrastructure exhaustion, never market no-opportunity.",
         ],
     }
 
@@ -372,7 +373,7 @@ def main() -> int:
     print(f"Wrote {out}", flush=True)
 
     if not results:
-        print("No read-only Polygon endpoint produced a complete scan.", file=sys.stderr)
+        print("No read-only Polygon provider in the failover pool produced a complete scan.", file=sys.stderr)
         return 1
     return 0
 
