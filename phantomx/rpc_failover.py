@@ -90,7 +90,7 @@ class PolygonRPCFailoverPool:
     failure_threshold: int = 2
     circuit_cooldown_seconds: float = 20.0
     _states: dict[str, _State] = field(default_factory=dict, init=False, repr=False)
-    _cursor: int = field(default=0, init=False, repr=False)
+    _preferred_provider_id: str | None = field(default=None, init=False, repr=False)
     _history: list[RPCAttempt] = field(default_factory=list, init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -151,11 +151,15 @@ class PolygonRPCFailoverPool:
                 state.record.provider_id,
             )
         )
-        if states:
-            shift = self._cursor % len(states)
-            states = states[shift:] + states[:shift]
-            self._cursor += 1
-        return states
+        if self._preferred_provider_id is None:
+            return states
+        preferred = next(
+            (state for state in states if state.record.provider_id == self._preferred_provider_id),
+            None,
+        )
+        if preferred is None:
+            return states
+        return [preferred, *[state for state in states if state is not preferred]]
 
     @staticmethod
     def _extract_result(response: Mapping[str, Any], method: str) -> Any:
@@ -219,6 +223,7 @@ class PolygonRPCFailoverPool:
                 value = self._extract_result(response, method)
                 latency_ms = (perf_counter() - started) * 1000
                 self._record_success(state, latency_ms)
+                self._preferred_provider_id = state.record.provider_id
                 self._history.append(RPCAttempt(state.record.provider_id, True, False, latency_ms))
                 return value
             except Exception as exc:
@@ -228,15 +233,21 @@ class PolygonRPCFailoverPool:
                 self._history.append(
                     RPCAttempt(state.record.provider_id, False, recoverable, latency_ms, str(exc))
                 )
+                if self._preferred_provider_id == state.record.provider_id:
+                    self._preferred_provider_id = None
                 attempts.append(f"{state.record.provider_id}: {type(exc).__name__}: {exc}")
                 if not recoverable:
                     raise
         raise RPCPoolError("all eligible Polygon RPC providers failed: " + " | ".join(attempts))
 
+    def failure_history(self) -> tuple[RPCAttempt, ...]:
+        return tuple(item for item in self._history if not item.success)
+
     def reset_circuits(self) -> None:
         for state in self._states.values():
             state.circuit_open_until = 0.0
             state.consecutive_failures = 0
+        self._preferred_provider_id = None
 
 
 def build_free_polygon_rpc_pool() -> PolygonRPCFailoverPool:

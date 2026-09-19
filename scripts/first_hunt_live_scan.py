@@ -275,7 +275,7 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
             by_tile[tile] = item
 
     return {
-        "endpoint": endpoint,
+        "endpoint": provider_label,
         "chain_ids": chains,
         "blocks": blocks,
         "observation_count": len(observations),
@@ -352,7 +352,7 @@ def main() -> int:
             "provider_count": len(rpc_pool.records),
             "providers": [asdict(record) for record in rpc_pool.records],
             "attempt_count": len(rpc_pool.history),
-            "attempt_history": [asdict(attempt) for attempt in rpc_pool.history],
+            "failover_events": [asdict(attempt) for attempt in rpc_pool.failure_history()],
             "provider_stats": list(rpc_pool.provider_stats()),
         },
         "economic_certification": "NOT_PERFORMED",
