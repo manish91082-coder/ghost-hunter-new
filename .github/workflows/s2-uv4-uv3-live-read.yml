@@ -8,14 +8,15 @@ on:
       - "phantomx/uniswap_v4.py"
       - "phantomx/cross_venue_uv4_uv3_route.py"
       - "scripts/s2_uv4_uv3_live_scan.py"
+      - ".github/workflows/s2-uv4-uv3-live-read.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: phantomx-s2-v4-live-hunt
-  cancel-in-progress: true
+  group: phantomx-market-read-hunts-${{ github.workflow }}
+  cancel-in-progress: false
 
 jobs:
   s2-live-read:
@@ -27,6 +28,16 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+      - name: Verify exact branch checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REPOSITORY}" = "manish91082-coder/ghost-hunter-new"
+          test "${GITHUB_REF_NAME}" = "phase-19-e2e-harness"
+          test -n "${GITHUB_SHA}"
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          echo "EXACT_HEAD=${GITHUB_SHA}"
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
