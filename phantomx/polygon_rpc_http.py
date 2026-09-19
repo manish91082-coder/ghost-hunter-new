@@ -27,7 +27,6 @@ READ_ONLY_METHODS = frozenset(
         "eth_estimateGas",
         "eth_gasPrice",
         "eth_maxPriorityFeePerGas",
-        "eth_getLogs",
     }
 )
 _BLOCKED_METHODS = frozenset(
