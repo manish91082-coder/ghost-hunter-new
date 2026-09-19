@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from first_hunt_live_scan import (
+from scripts.first_hunt_live_scan import (
     ResultOnlyTransport,
     _endpoints,
     dynamic_loan_frontier_usdc,
