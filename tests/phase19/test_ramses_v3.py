@@ -6,6 +6,8 @@ from phantomx.ramses_v3 import (
     FEE_SELECTOR,
     GET_POOL_SELECTOR,
     QUOTE_EXACT_INPUT_SINGLE_SELECTOR,
+    SLOT0_SELECTOR,
+    LIQUIDITY_SELECTOR,
     RamsesV3Error,
     RamsesV3ExactQuoter,
     _encode_get_pool,
@@ -34,6 +36,19 @@ class FakeRpc:
             return "0x" + "00" * 12 + self.pool[2:]
         if data == "0x" + FEE_SELECTOR:
             return "0x" + self.fee.to_bytes(32, "big").hex()
+        if data == "0x" + SLOT0_SELECTOR:
+            words = [
+                (2**96).to_bytes(32, "big"),
+                (0).to_bytes(32, "big"),
+                (0).to_bytes(32, "big"),
+                (1).to_bytes(32, "big"),
+                (1).to_bytes(32, "big"),
+                (0).to_bytes(32, "big"),
+                (1).to_bytes(32, "big"),
+            ]
+            return "0x" + b"".join(words).hex()
+        if data == "0x" + LIQUIDITY_SELECTOR:
+            return "0x" + (10**18).to_bytes(32, "big").hex()
         if data.startswith("0x" + QUOTE_EXACT_INPUT_SINGLE_SELECTOR):
             values = (
                 self.amount_out.to_bytes(32, "big")
@@ -59,6 +74,8 @@ class RamsesV3AdapterTests(unittest.TestCase):
         self.assertEqual(QUOTE_EXACT_INPUT_SINGLE_SELECTOR, "9e7defe6")
         self.assertEqual(FEE_SELECTOR, "ddca3f43")
         self.assertEqual(DEFAULT_TICK_SPACINGS, (1, 5, 10, 50, 100, 200))
+        self.assertEqual(SLOT0_SELECTOR, "3850c7bd")
+        self.assertEqual(LIQUIDITY_SELECTOR, "1a686502")
 
     def test_pool_encoder_has_int24_word(self):
         data = _encode_get_pool(
@@ -79,6 +96,45 @@ class RamsesV3AdapterTests(unittest.TestCase):
         )
         self.assertTrue(data.startswith("0x9e7defe6"))
         self.assertEqual(len(data), 2 + 8 + 32 * 5 * 2)
+
+    def test_pool_state_requires_initialized_active_unlocked_pool(self):
+        rpc = FakeRpc()
+        quoter = RamsesV3ExactQuoter(
+            rpc,
+            "0x" + "33" * 20,
+            "0x" + "44" * 20,
+        )
+        state = quoter.pool_state(rpc.pool, snapshot())
+        self.assertEqual(state.sqrt_price_x96, 2**96)
+        self.assertEqual(state.active_liquidity, 10**18)
+        self.assertTrue(state.unlocked)
+        self.assertTrue(state.initialized_and_swappable)
+
+        class DormantRpc(FakeRpc):
+            def call(self, method, params):
+                call = params[0]
+                if method == "eth_call" and call["data"] == "0x" + SLOT0_SELECTOR:
+                    words = [
+                        (0).to_bytes(32, "big"),
+                        (0).to_bytes(32, "big"),
+                        (0).to_bytes(32, "big"),
+                        (0).to_bytes(32, "big"),
+                        (0).to_bytes(32, "big"),
+                        (0).to_bytes(32, "big"),
+                        (1).to_bytes(32, "big"),
+                    ]
+                    return "0x" + b"".join(words).hex()
+                if method == "eth_call" and call["data"] == "0x" + LIQUIDITY_SELECTOR:
+                    return "0x" + (0).to_bytes(32, "big").hex()
+                return super().call(method, params)
+
+        dormant = RamsesV3ExactQuoter(
+            DormantRpc(),
+            "0x" + "33" * 20,
+            "0x" + "44" * 20,
+        )
+        dormant_state = dormant.pool_state(rpc.pool, snapshot())
+        self.assertFalse(dormant_state.initialized_and_swappable)
 
     def test_quote_snapshot_reads_pool_fee_and_preserves_block(self):
         rpc = FakeRpc()
