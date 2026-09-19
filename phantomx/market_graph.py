@@ -82,6 +82,26 @@ class PolygonMarketGraph:
         self._edge_ids.add(key)
         self._outgoing.setdefault(edge.token_in.lower(), []).append(edge)
 
+    def add_bidirectional_pool(self, edge: PoolEdge) -> None:
+        """Add both executable directions for a two-token AMM pool."""
+        forward = PoolEdge(
+            edge_id=f"{edge.edge_id}:forward",
+            venue=edge.venue,
+            pool_id=edge.pool_id,
+            token_in=edge.token_in.lower(),
+            token_out=edge.token_out.lower(),
+            parameters=edge.parameters,
+        )
+        reverse = PoolEdge(
+            edge_id=f"{edge.edge_id}:reverse",
+            venue=edge.venue,
+            pool_id=edge.pool_id,
+            token_in=edge.token_out.lower(),
+            token_out=edge.token_in.lower(),
+            parameters=edge.parameters,
+        )
+        self.add_edge(forward)
+        self.add_edge(reverse)
     def add_edges(self, edges: Iterable[PoolEdge]) -> None:
         for edge in edges:
             self.add_edge(edge)

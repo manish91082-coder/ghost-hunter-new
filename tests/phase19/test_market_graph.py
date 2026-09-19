@@ -8,6 +8,12 @@ def edge(edge_id, venue, pool_id, token_in, token_out):
 
 
 class MarketGraphTests(unittest.TestCase):
+    def test_bidirectional_pool_creates_two_executable_edges(self):
+        g = PolygonMarketGraph()
+        g.add_bidirectional_pool(PoolEdge("pool", "v3", "p", "USDC", "WETH"))
+        cycles = g.cycles_from("USDC", max_legs=2)
+        self.assertEqual(len(cycles), 1)
+        self.assertEqual(cycles[0].token_path, ("usdc", "weth", "usdc"))
     def test_multiple_pools_for_same_pair_remain_distinct(self):
         g = PolygonMarketGraph()
         g.add_edges([
