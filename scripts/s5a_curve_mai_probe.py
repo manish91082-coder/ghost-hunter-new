@@ -19,6 +19,7 @@ from first_hunt_live_scan import ResultOnlyTransport, _endpoints, UNISWAP_V3_FAC
 USDC_E = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 MIMATIC = "0xa3Fa99A148fA48D14Ed51d610c367C61876997F1"
 CURVE_POOL = "0x53C38755748745e2dd7D0a136FBCC9fB1A5B83b2"
+PROBE_REVISION = 2
 UNISWAP_FEES = (100, 500, 3000, 10000)
 AMOUNTS = (100 * 10**6, 1000 * 10**6, 10_000 * 10**6)
 
@@ -87,6 +88,7 @@ def main() -> int:
             "git_ref": os.environ.get("GITHUB_REF", "UNKNOWN"),
             "workflow_run_id": os.environ.get("GITHUB_RUN_ID", "UNKNOWN"),
         },
+        "probe_revision": PROBE_REVISION,
         "curve_pool": CURVE_POOL, "token_a": USDC_E, "token_b": MIMATIC,
         "successful_endpoints": results, "failed_endpoints": failures,
         "economic_certification": "NOT_PERFORMED", "profit_claim": "NONE",
