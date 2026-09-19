@@ -22,7 +22,7 @@ from phantomx.dynamic_market_policy import DynamicLoanInputs, compute_dynamic_lo
 from phantomx.market_block import acquire_market_block
 from phantomx.polygon_rpc_http import PolygonRPCHTTPConfig, PolygonRPCHTTPTransport
 from phantomx.quickswap_v3 import QuickSwapV3ExactQuoter
-from phantomx.ramses_v3 import RamsesV3ExactQuoter
+from phantomx.ramses_v3 import DEFAULT_TICK_SPACINGS, RamsesV3Error, RamsesV3ExactQuoter
 from phantomx.triangular_route import simulate_multi_leg
 from phantomx.uniswap_v3 import UniswapV3ExactQuoter
 
@@ -47,15 +47,19 @@ BRIDGES = (
 VENUES = ("quickswap_v3", "ramses_v3", "uniswap_v3")
 
 
-def _quote(adapters, venue: str, amount: int, token_in: str, token_out: str, context):
+def _quote(adapters, venue: str, amount: int, token_in: str, token_out: str, context, *, ramses_tick_spacing: int | None = None):
     if venue == "quickswap_v3":
         return adapters["quickswap"].quote_snapshot(amount, token_in, token_out, context)
     if venue == "ramses_v3":
-        return adapters["ramses"].quote_snapshot(amount, token_in, token_out, 1, context)
+        if ramses_tick_spacing is None:
+            raise ValueError("Ramses tick spacing is required")
+        return adapters["ramses"].quote_snapshot(
+            amount, token_in, token_out, ramses_tick_spacing, context
+        )
     return adapters["uniswap"].quote_snapshot(amount, token_in, token_out, 500, context)
 
 
-def _record(venues, tokens, amount, sim, premium_bps):
+def _record(venues, tokens, amount, sim, premium_bps, ramses_tick_spacing):
     premium = (amount * premium_bps + 5000) // 10000
     return {
         "venue_path": "->".join(venues),
@@ -67,6 +71,7 @@ def _record(venues, tokens, amount, sim, premium_bps):
         "gross_delta_raw": sim.final_amount - sim.initial_amount,
         "gross_delta_usdc": str(Decimal(sim.final_amount - sim.initial_amount) / Decimal(10**6)),
         "flash_loan_premium_bps": premium_bps,
+        "ramses_tick_spacing": ramses_tick_spacing,
         "post_flash_premium_delta_raw": sim.final_amount - sim.initial_amount - premium,
         "post_flash_premium_delta_usdc": str(Decimal(sim.final_amount - sim.initial_amount - premium) / Decimal(10**6)),
         "chain_id": sim.chain_id,
@@ -122,26 +127,71 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
         second_name, second_addr = bridge_names[1]
         tokens = (first_addr, second_addr)
         for venues in itertools.permutations(VENUES, 3):
-            for amount in amounts:
+            route_tokens = (USDC_E, first_addr, second_addr, USDC_E)
+            ramses_index = venues.index("ramses_v3")
+            ramses_token_in = route_tokens[ramses_index]
+            ramses_token_out = route_tokens[ramses_index + 1]
+            available_spacings: list[int] = []
+            for spacing in DEFAULT_TICK_SPACINGS:
                 try:
-                    legs = []
-                    leg_amount = amount
-                    current = USDC_E
-                    for venue, nxt in zip(venues, (*tokens, USDC_E)):
-                        leg = _quote(adapters, venue, leg_amount, current, nxt, context)
-                        legs.append(leg)
-                        leg_amount = leg.amount_out
-                        current = nxt
-                    sim = simulate_multi_leg(legs)
-                    observations.append(_record(venues, (first_name, second_name), amount, sim, aave.flash_loan_premium_bps))
-                except Exception as exc:
-                    failures.append({
-                        "tokens": ["USDC.e", first_name, second_name],
-                        "venues": venues,
-                        "amount": amount,
-                        "error_type": type(exc).__name__,
-                        "error": str(exc),
-                    })
+                    adapters["ramses"].resolve_pool(
+                        ramses_token_in, ramses_token_out, spacing, context
+                    )
+                    available_spacings.append(spacing)
+                except RamsesV3Error:
+                    continue
+
+            if not available_spacings:
+                failures.append({
+                    "tokens": ["USDC.e", first_name, second_name],
+                    "venues": venues,
+                    "error_type": "NO_Ramses_POOL",
+                    "error": (
+                        f"no Ramses V3 pool for {ramses_token_in}->{ramses_token_out} "
+                        f"across supported tick spacings"
+                    ),
+                })
+                continue
+
+            for ramses_tick_spacing in available_spacings:
+                for amount in amounts:
+                    try:
+                        legs = []
+                        leg_amount = amount
+                        current = USDC_E
+                        for venue, nxt in zip(venues, (*tokens, USDC_E)):
+                            leg = _quote(
+                                adapters,
+                                venue,
+                                leg_amount,
+                                current,
+                                nxt,
+                                context,
+                                ramses_tick_spacing=ramses_tick_spacing,
+                            )
+                            legs.append(leg)
+                            leg_amount = leg.amount_out
+                            current = nxt
+                        sim = simulate_multi_leg(legs)
+                        observations.append(
+                            _record(
+                                venues,
+                                (first_name, second_name),
+                                amount,
+                                sim,
+                                aave.flash_loan_premium_bps,
+                                ramses_tick_spacing,
+                            )
+                        )
+                    except Exception as exc:
+                        failures.append({
+                            "tokens": ["USDC.e", first_name, second_name],
+                            "venues": venues,
+                            "ramses_tick_spacing": ramses_tick_spacing,
+                            "amount": amount,
+                            "error_type": type(exc).__name__,
+                            "error": str(exc),
+                        })
 
     ranked = sorted(observations, key=lambda x: x["gross_delta_raw"], reverse=True)
     return {
@@ -196,7 +246,7 @@ def main() -> int:
         "base_token": USDC_E,
         "bridge_assets": [name for name, _ in BRIDGES],
         "venue_families": list(VENUES),
-        "ramses_tick_spacing": 1,
+        "ramses_tick_spacings_supported": list(DEFAULT_TICK_SPACINGS),
         "uniswap_v3_fee_tier": 500,
         "provenance": {
             "git_commit_sha": os.environ.get("GITHUB_SHA", "UNKNOWN"),
