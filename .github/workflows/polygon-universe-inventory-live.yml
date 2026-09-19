@@ -1,0 +1,121 @@
+name: PHANTOMX Polygon Universe Inventory
+
+on:
+  workflow_dispatch:
+    inputs:
+      venue:
+        description: "Venue id; blank runs registered venue matrix"
+        required: false
+        type: string
+        default: ""
+      from_block:
+        description: "Explicit start block for backfill"
+        required: false
+        type: string
+        default: ""
+      to_block:
+        description: "Explicit end block"
+        required: false
+        type: string
+        default: ""
+      window_blocks:
+        description: "Rolling window when from_block is blank"
+        required: false
+        type: string
+        default: "5000"
+      chunk_size:
+        description: "eth_getLogs chunk size"
+        required: false
+        type: string
+        default: "2000"
+  schedule:
+    - cron: "*/30 * * * *"
+  push:
+    paths:
+      - ".github/workflows/polygon-universe-inventory-live.yml"
+      - "scripts/polygon_venue_inventory_live.py"
+      - "phantomx/polygon_universe_inventory.py"
+      - "phantomx/polygon_log_inventory.py"
+      - "phantomx/polygon_venue_inventory.py"
+      - "phantomx/rpc_failover.py"
+
+jobs:
+  inventory:
+    if: github.event_name != 'workflow_dispatch' || inputs.venue == ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        venue: [quickswap_v2, quickswap_v3, uniswap_v3, ramses_v3, uniswap_v4]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: phase-19-e2e-harness
+          fetch-depth: 0
+      - name: Verify exact branch checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REPOSITORY}" = "manish91082-coder/ghost-hunter-new"
+          test "${GITHUB_REF_NAME}" = "phase-19-e2e-harness"
+          test -n "${GITHUB_SHA}"
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          echo "EXACT_HEAD=${GITHUB_SHA}"
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
+      - name: Run read-only inventory task
+        env:
+          PHANTOMX_INVENTORY_VENUE: ${{ matrix.venue }}
+          PHANTOMX_INVENTORY_FROM_BLOCK: ${{ inputs.from_block }}
+          PHANTOMX_INVENTORY_TO_BLOCK: ${{ inputs.to_block }}
+          PHANTOMX_INVENTORY_WINDOW_BLOCKS: ${{ inputs.window_blocks || '5000' }}
+          PHANTOMX_INVENTORY_CHUNK_SIZE: ${{ inputs.chunk_size || '2000' }}
+        run: python scripts/polygon_venue_inventory_live.py
+      - name: Upload inventory evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: phantomx-polygon-inventory-${{ matrix.venue }}-${{ github.run_id }}
+          path: artifacts/polygon_inventory_${{ matrix.venue }}_*.json
+          if-no-files-found: error
+
+  single_venue_dispatch:
+    if: github.event_name == 'workflow_dispatch' && inputs.venue != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: phase-19-e2e-harness
+          fetch-depth: 0
+      - name: Verify exact branch checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REPOSITORY}" = "manish91082-coder/ghost-hunter-new"
+          test "${GITHUB_REF_NAME}" = "phase-19-e2e-harness"
+          test -n "${GITHUB_SHA}"
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          echo "EXACT_HEAD=${GITHUB_SHA}"
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
+      - name: Run selected read-only inventory task
+        env:
+          PHANTOMX_INVENTORY_VENUE: ${{ inputs.venue }}
+          PHANTOMX_INVENTORY_FROM_BLOCK: ${{ inputs.from_block }}
+          PHANTOMX_INVENTORY_TO_BLOCK: ${{ inputs.to_block }}
+          PHANTOMX_INVENTORY_WINDOW_BLOCKS: ${{ inputs.window_blocks }}
+          PHANTOMX_INVENTORY_CHUNK_SIZE: ${{ inputs.chunk_size }}
+        run: python scripts/polygon_venue_inventory_live.py
+      - name: Upload inventory evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: phantomx-polygon-inventory-selected-${{ inputs.venue }}-${{ github.run_id }}
+          path: artifacts/polygon_inventory_${{ inputs.venue }}_*.json
+          if-no-files-found: error
