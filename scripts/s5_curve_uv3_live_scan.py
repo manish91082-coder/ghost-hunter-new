@@ -36,6 +36,7 @@ WBTC = "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6"
 DAI = "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063"
 USDT_E = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"
 MIMATIC = "0xa3Fa99A148fA48D14Ed51d610c367C61876997F1"
+CURVE_SEED_POOLS = {("USDC.e/MIMATIC"): "0x53C38755748745e2dd7D0a136FBCC9fB1A5B83b2"}
 PAIRS = (
     ("USDC.e/WETH", WETH),
     ("USDC.e/WPOL", WPOL),
@@ -108,6 +109,14 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
 
     for pair_name, token_b in PAIRS:
         refs = curve.find_pools_for_pair(USDC_E, token_b, context, max_pools_per_registry=4)
+        seed = CURVE_SEED_POOLS.get(pair_name)
+        if seed is not None:
+            try:
+                direct = curve.direct_pool_ref(seed, USDC_E, token_b, context)
+                if all(existing.pool.lower() != direct.pool.lower() for existing in refs):
+                    refs.append(direct)
+            except Exception:
+                pass
         for ref in refs:
             for ufee in UNISWAP_V3_FEE_TIERS:
                 try:
