@@ -44,8 +44,7 @@ class InventoryTaskResult:
 
 
 def _hash_evidence(task: InventoryTask, logs: tuple[InventoryLog, ...], edges: tuple[PoolEdge, ...], status: str) -> str:
-    payload = "
-".join(
+    payload = "\\n".join(
         [
             task.venue_id,
             str(task.from_block),
