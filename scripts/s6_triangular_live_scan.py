@@ -154,6 +154,7 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
         first_name, first_addr = bridge_names[0]
         second_name, second_addr = bridge_names[1]
         tokens = (first_addr, second_addr)
+
         for venues in itertools.permutations(VENUES, 3):
             route_tokens = (USDC_E, first_addr, second_addr, USDC_E)
             # Exactly one leg is Uniswap V3 in every venue permutation.
@@ -161,109 +162,116 @@ def _scan_endpoint(endpoint: str) -> dict[str, Any]:
             # unquotable.
             for uniswap_fee in UNISWAP_V3_FEE_TIERS:
                 ramses_index = venues.index("ramses_v3")
-                        ramses_token_in = route_tokens[ramses_index]
-                        ramses_token_out = route_tokens[ramses_index + 1]
-                        available_spacings: list[int] = []
-                        for spacing in DEFAULT_TICK_SPACINGS:
-                            try:
-                                ramses_pool = adapters["ramses"].resolve_pool(
-                                    ramses_token_in, ramses_token_out, spacing, context
-                                )
-                                pool_state = adapters["ramses"].pool_state(ramses_pool, context)
-                                if not pool_state.initialized_and_swappable:
-                                    continue
-                                available_spacings.append(spacing)
-                            except RamsesV3Error:
-                                continue
+                ramses_token_in = route_tokens[ramses_index]
+                ramses_token_out = route_tokens[ramses_index + 1]
 
-                        if not available_spacings:
+                available_spacings: list[int] = []
+                for spacing in DEFAULT_TICK_SPACINGS:
+                    try:
+                        ramses_pool = adapters["ramses"].resolve_pool(
+                            ramses_token_in, ramses_token_out, spacing, context
+                        )
+                        pool_state = adapters["ramses"].pool_state(ramses_pool, context)
+                        if not pool_state.initialized_and_swappable:
+                            continue
+                        available_spacings.append(spacing)
+                    except RamsesV3Error:
+                        continue
+
+                if not available_spacings:
+                    failures.append({
+                        "tokens": ["USDC.e", first_name, second_name],
+                        "venues": venues,
+                        "uniswap_fee": uniswap_fee,
+                        "error_type": "NO_ACTIVE_Ramses_POOL",
+                        "error": (
+                            f"no initialized + active-liquidity Ramses V3 pool for "
+                            f"{ramses_token_in}->{ramses_token_out} across supported tick spacings"
+                        ),
+                    })
+                    continue
+
+                # Route-level eligibility gate: prove the complete 3-leg path
+                # can quote sequentially before spending the full frontier.
+                eligible_spacings: list[int] = []
+                for ramses_tick_spacing in available_spacings:
+                    try:
+                        probe_amount = min(amounts)
+                        probe_legs = []
+                        probe_current_amount = probe_amount
+                        probe_current_token = USDC_E
+                        for venue, nxt in zip(venues, (*tokens, USDC_E)):
+                            probe_leg = _quote(
+                                adapters,
+                                venue,
+                                probe_current_amount,
+                                probe_current_token,
+                                nxt,
+                                context,
+                                ramses_tick_spacing=ramses_tick_spacing,
+                                uniswap_fee=uniswap_fee,
+                            )
+                            probe_legs.append(probe_leg)
+                            probe_current_amount = probe_leg.amount_out
+                            probe_current_token = nxt
+                        simulate_multi_leg(probe_legs)
+                        eligible_spacings.append(ramses_tick_spacing)
+                    except Exception as exc:
+                        failures.append({
+                            "tokens": ["USDC.e", first_name, second_name],
+                            "venues": venues,
+                            "ramses_tick_spacing": ramses_tick_spacing,
+                            "uniswap_fee": uniswap_fee,
+                            "amount": min(amounts),
+                            "error_type": type(exc).__name__,
+                            "error": "route_probe_failed: " + str(exc),
+                        })
+
+                if not eligible_spacings:
+                    continue
+
+                for ramses_tick_spacing in eligible_spacings:
+                    for amount in amounts:
+                        try:
+                            legs = []
+                            leg_amount = amount
+                            current = USDC_E
+                            for venue, nxt in zip(venues, (*tokens, USDC_E)):
+                                leg = _quote(
+                                    adapters,
+                                    venue,
+                                    leg_amount,
+                                    current,
+                                    nxt,
+                                    context,
+                                    ramses_tick_spacing=ramses_tick_spacing,
+                                    uniswap_fee=uniswap_fee,
+                                )
+                                legs.append(leg)
+                                leg_amount = leg.amount_out
+                                current = nxt
+                            sim = simulate_multi_leg(legs)
+                            observations.append(
+                                _record(
+                                    venues,
+                                    (first_name, second_name),
+                                    amount,
+                                    sim,
+                                    aave.flash_loan_premium_bps,
+                                    ramses_tick_spacing,
+                                    uniswap_fee,
+                                )
+                            )
+                        except Exception as exc:
                             failures.append({
                                 "tokens": ["USDC.e", first_name, second_name],
                                 "venues": venues,
-                                "error_type": "NO_ACTIVE_Ramses_POOL",
-                                "error": (
-                                    f"no initialized + active-liquidity Ramses V3 pool for "
-                                    f"{ramses_token_in}->{ramses_token_out} across supported tick spacings"
-                                ),
+                                "ramses_tick_spacing": ramses_tick_spacing,
+                                "uniswap_fee": uniswap_fee,
+                                "amount": amount,
+                                "error_type": type(exc).__name__,
+                                "error": str(exc),
                             })
-                            continue
-
-                        # Route-level eligibility gate: prove the complete 3-leg path can
-                        # quote sequentially before spending the full loan frontier.
-                        eligible_spacings: list[int] = []
-                        for ramses_tick_spacing in available_spacings:
-                            try:
-                                probe_amount = min(amounts)
-                                probe_legs = []
-                                probe_current_amount = probe_amount
-                                probe_current_token = USDC_E
-                                for venue, nxt in zip(venues, (*tokens, USDC_E)):
-                                    probe_leg = _quote(
-                                        adapters,
-                                        venue,
-                                        probe_current_amount,
-                                        probe_current_token,
-                                        nxt,
-                                        context,
-                                        ramses_tick_spacing=ramses_tick_spacing,
-                                    )
-                                    probe_legs.append(probe_leg)
-                                    probe_current_amount = probe_leg.amount_out
-                                    probe_current_token = nxt
-                                simulate_multi_leg(probe_legs)
-                                eligible_spacings.append(ramses_tick_spacing)
-                            except Exception as exc:
-                                failures.append({
-                                    "tokens": ["USDC.e", first_name, second_name],
-                                    "venues": venues,
-                                    "ramses_tick_spacing": ramses_tick_spacing,
-                                    "amount": min(amounts),
-                                    "error_type": type(exc).__name__,
-                                    "error": "route_probe_failed: " + str(exc),
-                                })
-
-                        if not eligible_spacings:
-                            continue
-
-                        for ramses_tick_spacing in eligible_spacings:
-                            for amount in amounts:
-                                try:
-                                    legs = []
-                                    leg_amount = amount
-                                    current = USDC_E
-                                    for venue, nxt in zip(venues, (*tokens, USDC_E)):
-                                        leg = _quote(
-                                            adapters,
-                                            venue,
-                                            leg_amount,
-                                            current,
-                                            nxt,
-                                            context,
-                                            ramses_tick_spacing=ramses_tick_spacing,
-                                        )
-                                        legs.append(leg)
-                                        leg_amount = leg.amount_out
-                                        current = nxt
-                                    sim = simulate_multi_leg(legs)
-                                    observations.append(
-                                        _record(
-                                            venues,
-                                            (first_name, second_name),
-                                            amount,
-                                            sim,
-                                            aave.flash_loan_premium_bps,
-                                            ramses_tick_spacing,
-                                        )
-                                    )
-                                except Exception as exc:
-                                    failures.append({
-                                        "tokens": ["USDC.e", first_name, second_name],
-                                        "venues": venues,
-                                        "ramses_tick_spacing": ramses_tick_spacing,
-                                        "amount": amount,
-                                        "error_type": type(exc).__name__,
-                                        "error": str(exc),
-                                    })
 
     ranked = sorted(observations, key=lambda x: x["gross_delta_raw"], reverse=True)
     return {
