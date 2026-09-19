@@ -8,6 +8,9 @@ on:
       - "phantomx/quickswap_v3.py"
       - "phantomx/cross_venue_qsv3_route.py"
       - "phantomx/dynamic_*.py"
+      # S1 imports the canonical first-hunt frontier/constants; changes there
+      # must trigger a fresh S1 evidence run.
+      - "scripts/first_hunt_live_scan.py"
       - "scripts/s1_qsv3_live_scan.py"
   workflow_dispatch:
 
