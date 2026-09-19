@@ -20,6 +20,8 @@ from first_hunt_live_scan import (
     ResultOnlyTransport,
     _endpoints,
     dynamic_loan_frontier_usdc,
+    UNISWAP_V3_FACTORY,
+    UNISWAP_V3_QUOTER,
     UNISWAP_V3_FEE_TIERS,
 )
 from phantomx.aave_v3_dynamic import AaveV3PolygonDynamicReader
