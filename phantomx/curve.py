@@ -67,6 +67,19 @@ class CurvePoolRef:
     underlying: bool
     fee_raw: int
 
+    def reversed(self) -> "CurvePoolRef":
+        return CurvePoolRef(
+            self.registry_name,
+            self.registry_address,
+            self.pool,
+            self.token_out,
+            self.token_in,
+            self.j,
+            self.i,
+            self.underlying,
+            self.fee_raw,
+        )
+
 
 def _address_word(address: str) -> bytes:
     if not isinstance(address, str):
