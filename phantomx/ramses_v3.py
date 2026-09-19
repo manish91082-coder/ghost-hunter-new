@@ -7,6 +7,7 @@ This adapter never signs, submits, or executes swaps.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, Mapping, Protocol, Sequence
 
 from .market_block import MarketBlockSnapshot, acquire_market_block
@@ -17,6 +18,8 @@ POLYGON_CHAIN_ID = 137
 GET_POOL_SELECTOR = "28af8d0b"
 QUOTE_EXACT_INPUT_SINGLE_SELECTOR = "9e7defe6"
 FEE_SELECTOR = "ddca3f43"
+SLOT0_SELECTOR = "3850c7bd"
+LIQUIDITY_SELECTOR = "1a686502"
 DEFAULT_TICK_SPACINGS = (1, 5, 10, 50, 100, 200)
 
 
@@ -133,6 +136,19 @@ def _decode_quote(result: Any) -> tuple[int, int, int, int]:
     return amount_out, sqrt_after, ticks_crossed, gas_estimate
 
 
+@dataclass(frozen=True)
+class RamsesPoolState:
+    pool: str
+    block_number: int
+    sqrt_price_x96: int
+    active_liquidity: int
+    unlocked: bool
+
+    @property
+    def initialized_and_swappable(self) -> bool:
+        return self.sqrt_price_x96 > 0 and self.active_liquidity > 0 and self.unlocked
+
+
 class RamsesV3ExactQuoter:
     """Exact single-hop Ramses V3 QuoterV2 over injected read-only RPC."""
 
@@ -208,6 +224,37 @@ class RamsesV3ExactQuoter:
             raise RamsesV3Error("Ramses V3 pool returned zero fee")
         self._fee_cache[key] = fee
         return fee
+
+    def pool_state(self, pool: str, snapshot: BlockSnapshot) -> RamsesPoolState:
+        if snapshot.chain_id != self.chain_id:
+            raise RamsesV3Error("snapshot chain identity mismatch")
+
+        slot_result = self._rpc.call(
+            "eth_call",
+            [{"to": pool, "data": "0x" + SLOT0_SELECTOR}, hex(snapshot.block_number)],
+        )
+        slot_raw = _result_bytes(slot_result, "slot0")
+        if len(slot_raw) != 224:
+            raise RamsesV3Error("slot0: expected seven ABI words")
+        sqrt_price_x96 = int.from_bytes(slot_raw[0:32], "big")
+        unlocked = int.from_bytes(slot_raw[192:224], "big") != 0
+
+        liquidity_result = self._rpc.call(
+            "eth_call",
+            [{"to": pool, "data": "0x" + LIQUIDITY_SELECTOR}, hex(snapshot.block_number)],
+        )
+        liquidity_raw = _result_bytes(liquidity_result, "liquidity")
+        if len(liquidity_raw) != 32:
+            raise RamsesV3Error("liquidity: expected one ABI word")
+        active_liquidity = int.from_bytes(liquidity_raw, "big")
+
+        return RamsesPoolState(
+            pool=pool,
+            block_number=snapshot.block_number,
+            sqrt_price_x96=sqrt_price_x96,
+            active_liquidity=active_liquidity,
+            unlocked=unlocked,
+        )
 
     def quote(
         self,
@@ -299,6 +346,9 @@ __all__ = [
     "GET_POOL_SELECTOR",
     "QUOTE_EXACT_INPUT_SINGLE_SELECTOR",
     "RamsesV3Error",
+    "RamsesPoolState",
+    "SLOT0_SELECTOR",
+    "LIQUIDITY_SELECTOR",
     "RamsesV3ExactQuoter",
     "_encode_get_pool",
     "_encode_quote_exact_input_single",
