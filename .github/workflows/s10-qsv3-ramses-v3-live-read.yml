@@ -17,8 +17,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: phantomx-market-read-hunts
-  cancel-in-progress: true
+  group: phantomx-market-read-hunts-${{ github.workflow }}
+  cancel-in-progress: false
 
 jobs:
   s10-live-read:
