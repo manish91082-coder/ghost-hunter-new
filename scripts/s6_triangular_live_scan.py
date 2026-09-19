@@ -48,15 +48,23 @@ VENUES = ("quickswap_v3", "ramses_v3", "uniswap_v3")
 
 
 def _quote(adapters, venue: str, amount: int, token_in: str, token_out: str, context, *, ramses_tick_spacing: int | None = None):
-    if venue == "quickswap_v3":
-        return adapters["quickswap"].quote_snapshot(amount, token_in, token_out, context)
-    if venue == "ramses_v3":
-        if ramses_tick_spacing is None:
-            raise ValueError("Ramses tick spacing is required")
-        return adapters["ramses"].quote_snapshot(
-            amount, token_in, token_out, ramses_tick_spacing, context
-        )
-    return adapters["uniswap"].quote_snapshot(amount, token_in, token_out, 500, context)
+    try:
+        if venue == "quickswap_v3":
+            return adapters["quickswap"].quote_snapshot(amount, token_in, token_out, context)
+        if venue == "ramses_v3":
+            if ramses_tick_spacing is None:
+                raise ValueError("Ramses tick spacing is required")
+            return adapters["ramses"].quote_snapshot(
+                amount, token_in, token_out, ramses_tick_spacing, context
+            )
+        if venue == "uniswap_v3":
+            return adapters["uniswap"].quote_snapshot(amount, token_in, token_out, 500, context)
+        raise ValueError(f"unsupported venue: {venue}")
+    except Exception as exc:
+        raise RuntimeError(
+            f"quote_failed venue={venue} token_in={token_in} token_out={token_out} "
+            f"amount={amount}: {type(exc).__name__}: {exc}"
+        ) from exc
 
 
 def _record(venues, tokens, amount, sim, premium_bps, ramses_tick_spacing):
