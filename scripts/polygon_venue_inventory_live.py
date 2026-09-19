@@ -33,14 +33,32 @@ def _resolve_range(rpc_pool) -> tuple[int, int, str]:
     latest = int(str(rpc_pool.call("eth_blockNumber", [])), 16)
     explicit_from = _int_env("PHANTOMX_INVENTORY_FROM_BLOCK")
     explicit_to = _int_env("PHANTOMX_INVENTORY_TO_BLOCK", latest)
-    if explicit_from is None:
+    event_name = os.getenv("GITHUB_EVENT_NAME", "").strip()
+
+    if explicit_from is not None:
+        mode = "explicit-backfill"
+    elif event_name == "schedule":
+        slice_blocks = _int_env("PHANTOMX_INVENTORY_SCHEDULE_SLICE_BLOCKS", 100_000) or 100_000
+        if slice_blocks < 1:
+            raise ValueError("PHANTOMX_INVENTORY_SCHEDULE_SLICE_BLOCKS must be positive")
+        run_number = _int_env("GITHUB_RUN_NUMBER", 1) or 1
+        slot = max(0, run_number - 1)
+        scheduled_from = slot * slice_blocks
+        if scheduled_from <= latest:
+            explicit_from = scheduled_from
+            explicit_to = min(latest, scheduled_from + slice_blocks - 1)
+            mode = "scheduled-historical-backfill"
+        else:
+            explicit_from = max(0, latest - slice_blocks + 1)
+            explicit_to = latest
+            mode = "scheduled-head-refresh"
+    else:
         window = _int_env("PHANTOMX_INVENTORY_WINDOW_BLOCKS", 5000)
         if window is None or window < 1:
             raise ValueError("PHANTOMX_INVENTORY_WINDOW_BLOCKS must be positive")
         explicit_from = max(0, explicit_to - window + 1)
         mode = "rolling-window"
-    else:
-        mode = "explicit-backfill"
+
     if explicit_to < explicit_from or explicit_to > latest:
         raise ValueError("invalid inventory block range")
     return explicit_from, explicit_to, mode
