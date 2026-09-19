@@ -29,7 +29,7 @@ on:
         type: string
         default: "2000"
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "*/15 * * * *"
   push:
     paths:
       - ".github/workflows/polygon-universe-inventory-live.yml"
@@ -74,6 +74,7 @@ jobs:
           PHANTOMX_INVENTORY_TO_BLOCK: ${{ inputs.to_block }}
           PHANTOMX_INVENTORY_WINDOW_BLOCKS: ${{ inputs.window_blocks || '5000' }}
           PHANTOMX_INVENTORY_CHUNK_SIZE: ${{ inputs.chunk_size || '2000' }}
+          PHANTOMX_INVENTORY_SCHEDULE_SLICE_BLOCKS: "100000"
         run: python scripts/polygon_venue_inventory_live.py
       - name: Upload inventory evidence
         uses: actions/upload-artifact@v4
