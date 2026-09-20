@@ -13,6 +13,7 @@ from decimal import Decimal
 from pathlib import Path
 
 EXPECTED_FEES = (100, 500, 3000, 10000)
+EXPECTED_GROUPS = (0, 1)
 COMPLETE_COVERAGE = {"COMPLETE", "COMPLETE_NO_COMMON_ROUTE"}
 
 
@@ -33,7 +34,7 @@ def main() -> int:
     out = Path(sys.argv[2] if len(sys.argv) > 2 else "artifacts/first_hunt_live_scan.json")
     shards = load_shards(root)
 
-    by_fee: dict[int, dict] = {}
+    by_shard: dict[tuple[int, int], dict] = {}
     rejected: list[dict] = []
     for shard in shards:
         fees = tuple(int(x) for x in shard.get("selected_fee_tiers", ()))
@@ -41,16 +42,26 @@ def main() -> int:
             rejected.append({"reason": "invalid_fee_shard", "fees": list(fees)})
             continue
         fee = fees[0]
-        if fee in by_fee:
-            rejected.append({"reason": "duplicate_fee_shard", "fee": fee})
+        try:
+            group = int(shard.get("pair_group"))
+        except (TypeError, ValueError):
+            rejected.append({"reason": "invalid_pair_group", "fee": fee})
+            continue
+        if group not in EXPECTED_GROUPS:
+            rejected.append({"reason": "invalid_pair_group", "fee": fee, "pair_group": group})
+            continue
+        key = (fee, group)
+        if key in by_shard:
+            rejected.append({"reason": "duplicate_fee_pair_group_shard", "fee": fee, "pair_group": group})
             continue
         results = shard.get("successful_endpoints", [])
         if len(results) != 1:
             rejected.append({"reason": "missing_successful_endpoint", "fee": fee})
             continue
-        by_fee[fee] = shard
+        by_shard[key] = shard
 
-    missing = [fee for fee in EXPECTED_FEES if fee not in by_fee]
+    expected_keys = [(fee, group) for fee in EXPECTED_FEES for group in EXPECTED_GROUPS]
+    missing = [{"fee": fee, "pair_group": group} for fee, group in expected_keys if (fee, group) not in by_shard]
     incomplete = []
     observations: list[dict] = []
     gross_positive: list[dict] = []
@@ -60,8 +71,8 @@ def main() -> int:
     shard_blocks: set[int] = set()
     shard_chains: set[int] = set()
 
-    for fee in EXPECTED_FEES:
-        shard = by_fee.get(fee)
+    for fee, group in expected_keys:
+        shard = by_shard.get((fee, group))
         if shard is None:
             continue
         result = shard["successful_endpoints"][0]
@@ -104,9 +115,9 @@ def main() -> int:
         "broadcast": False,
         "live_capital": False,
         "selected_fee_tiers": list(EXPECTED_FEES),
-        "shard_count": len(by_fee),
-        "expected_shard_count": len(EXPECTED_FEES),
-        "missing_fee_tiers": missing,
+        "shard_count": len(by_shard),
+        "expected_shard_count": len(expected_keys),
+        "missing_shards": missing,
         "rejected_shards": rejected,
         "incomplete_shards": incomplete,
         "market_block_numbers": sorted(shard_blocks),
@@ -155,7 +166,7 @@ def main() -> int:
         "profit_claim": "NONE",
         "notes": [
             "Each Uniswap V3 fee tier is independently bounded to nine declared pairs.",
-            "The aggregate is green only when all four fee shards and all 36 pair/fee tiles are complete.",
+            "The aggregate is green only when all eight fee/pair-group shards and all 36 pair/fee tiles are complete.",
             "Gross-positive observations are quote evidence only.",
             "Post-flash-positive observations are still not net-profit proof.",
             "Exact gas, valuation, relay cost, final requote and realized PnL remain outside this scan.",
