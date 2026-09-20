@@ -71,14 +71,46 @@ class OpportunityDiscoveryResult:
 
 def _is_retryable_failure(exc: BaseException) -> bool:
     """Only explicit RPC/infrastructure failures are retryable."""
+    infrastructure_types = {
+        "RPCPoolError",
+        "PolygonRPCHTTPError",
+        "URLError",
+        "TimeoutError",
+    }
+    retry_markers = (
+        "rpc error",
+        "missing result",
+        "historical state",
+        "missing trie",
+        "connection reset",
+        "connection refused",
+        "rate limit",
+        "too many requests",
+        "gateway",
+        "service unavailable",
+        "temporarily unavailable",
+        "timeout",
+        "timed out",
+    )
+    terminal_market_markers = (
+        "no pair",
+        "pool does not exist",
+        "returned zero output",
+        "zero output",
+    )
     current: BaseException | None = exc
     seen: set[int] = set()
     while current is not None and id(current) not in seen:
         seen.add(id(current))
-        if type(current).__name__ in {"RPCPoolError", "PolygonRPCHTTPError", "URLError", "TimeoutError"}:
+        if type(current).__name__ in infrastructure_types:
             return True
         cause_type = getattr(current, "cause_type", None)
-        if cause_type in {"RPCPoolError", "PolygonRPCHTTPError", "URLError", "TimeoutError"}:
+        if cause_type in infrastructure_types:
+            return True
+        message = str(current).lower()
+        if any(marker in message for marker in terminal_market_markers):
+            return False
+        if any(marker in message for marker in retry_markers):
             return True
         current = current.__cause__
     return False
