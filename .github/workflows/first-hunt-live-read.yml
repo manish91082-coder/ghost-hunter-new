@@ -49,53 +49,43 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PY' > /tmp/market
-          import json
-          import time
-          import urllib.request
-
-          endpoints = (
-              "https://polygon.drpc.org/",
-              "https://public.1rpc.io/matic",
-              "https://polygon-bor-rpc.publicnode.com",
+          endpoints=(
+            "https://polygon.drpc.org/"
+            "https://public.1rpc.io/matic"
+            "https://polygon-bor-rpc.publicnode.com"
           )
 
-          def call(url, method):
-              request = urllib.request.Request(
-                  url,
-                  data=json.dumps({
-                      "jsonrpc": "2.0",
-                      "id": 1,
-                      "method": method,
-                      "params": [],
-                  }).encode(),
-                  headers={"Content-Type": "application/json"},
-              )
-              with urllib.request.urlopen(request, timeout=8) as response:
-                  payload = json.loads(response.read().decode())
-              if payload.get("error") is not None:
-                  raise RuntimeError(str(payload["error"]))
-              return payload["result"]
-
-          last_error = None
-          for endpoint in endpoints:
-              try:
-                  chain_id = int(call(endpoint, "eth_chainId"), 16)
-                  if chain_id != 137:
-                      raise RuntimeError(f"unexpected chain id: {chain_id}")
-                  block_number = int(call(endpoint, "eth_blockNumber"), 16)
-                  if block_number <= 0:
-                      raise RuntimeError("resolved block must be positive")
-                  print(f"block_number={block_number}")
-                  print(f"resolved_at_unix={int(time.time())}")
-                  break
-              except Exception as exc:
-                  last_error = exc
-          else:
-              raise SystemExit(f"unable to resolve shared Polygon block: {last_error}")
-          PY
-          cat /tmp/market >> "$GITHUB_OUTPUT"
-          cat /tmp/market
+          last_error=""
+          for endpoint in "${endpoints[@]}"; do
+            chain_hex="$(curl --silent --show-error --max-time 8               -A "PHANTOMX-First-Hunt/1.0"               -H "Content-Type: application/json"               --data '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}'               "$endpoint" || true)"
+            block_hex="$(curl --silent --show-error --max-time 8               -A "PHANTOMX-First-Hunt/1.0"               -H "Content-Type: application/json"               --data '{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber","params":[]}'               "$endpoint" || true)"
+            if [ -z "$chain_hex" ] || [ -z "$block_hex" ]; then
+              last_error="empty RPC response from $endpoint"
+              continue
+            fi
+            python - "$chain_hex" "$block_hex" <<'PY' > /tmp/market
+import json
+import sys
+chain = json.loads(sys.argv[1])
+block = json.loads(sys.argv[2])
+if chain.get("error") is not None or block.get("error") is not None:
+    raise SystemExit("RPC error")
+chain_id = int(chain["result"], 16)
+block_number = int(block["result"], 16)
+if chain_id != 137:
+    raise SystemExit(f"unexpected chain id: {chain_id}")
+if block_number <= 0:
+    raise SystemExit("resolved block must be positive")
+print(f"block_number={block_number}")
+PY
+            cat /tmp/market >> "$GITHUB_OUTPUT"
+            cat /tmp/market
+            break
+          done
+          if [ ! -s /tmp/market ]; then
+            echo "unable to resolve shared Polygon block: $last_error" >&2
+            exit 1
+          fi
 
   first-hunt-shard:
     needs: resolve-market-block
