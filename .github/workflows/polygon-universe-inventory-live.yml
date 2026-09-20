@@ -3,6 +3,28 @@ name: PHANTOMX Polygon Universe Inventory
 on:
   schedule:
     - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      venue:
+        description: "Blank = all venues"
+        required: false
+        default: ""
+      from_block:
+        description: "Explicit start block for manual backfill"
+        required: false
+        default: ""
+      to_block:
+        description: "Explicit end block; blank uses current head"
+        required: false
+        default: ""
+      window_blocks:
+        description: "Rolling window when no explicit range"
+        required: false
+        default: "5000"
+      chunk_size:
+        description: "eth_getLogs chunk size"
+        required: false
+        default: "2000"
 
 permissions:
   contents: read
@@ -19,15 +41,19 @@ jobs:
       from_block: ${{ steps.resolve.outputs.from_block }}
       to_block: ${{ steps.resolve.outputs.to_block }}
       latest_block: ${{ steps.resolve.outputs.latest_block }}
+      mode: ${{ steps.resolve.outputs.mode }}
     steps:
-      - name: Resolve persistent inventory cursor
+      - name: Resolve inventory range
         id: resolve
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EXPLICIT_FROM: ${{ inputs.from_block }}
+          EXPLICIT_TO: ${{ inputs.to_block }}
         run: |
           set -euo pipefail
-          rpc_urls=(
+          urls=(
             "https://polygon.drpc.org/"
             "https://polygon-bor-rpc.publicnode.com"
             "https://public.1rpc.io/matic"
@@ -42,57 +68,60 @@ jobs:
             "https://polygon.croswap.com/rpc"
           )
           latest=""
-          for url in "${rpc_urls[@]}"; do
-            response=$(curl -fsSL --max-time 8 -H "content-type: application/json" \
-              --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' "$url" 2>/dev/null || true)
-            value=$(printf '%s' "$response" | python -c 'import json,sys; d=json.load(sys.stdin); print(int(d["result"],16))' 2>/dev/null || true)
+          for url in "${urls[@]}"; do
+            response=$(curl -fsSL --max-time 8 -H "content-type: application/json" --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' "$url" 2>/dev/null || true)
+            value=$(printf '%s' "$response" | python -c 'import json,sys; print(int(json.load(sys.stdin)["result"],16))' 2>/dev/null || true)
             if [ -n "$value" ]; then latest="$value"; break; fi
           done
-          if [ -z "$latest" ]; then
-            echo "No free Polygon RPC supplied a current block" >&2
-            exit 1
-          fi
+          [ -n "$latest" ] || { echo "No free Polygon RPC returned a head" >&2; exit 1; }
           echo "latest_block=$latest" >> "$GITHUB_OUTPUT"
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ -n "$EXPLICIT_FROM" ]; then
+              from="$EXPLICIT_FROM"
+            else
+              from=$(( latest > 4999 ? latest - 4999 : 0 ))
+            fi
+            if [ -n "$EXPLICIT_TO" ]; then to="$EXPLICIT_TO"; else to="$latest"; fi
+            echo "from_block=$from" >> "$GITHUB_OUTPUT"
+            echo "to_block=$to" >> "$GITHUB_OUTPUT"
+            echo "mode=manual" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           api="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=phantomx-polygon-inventory-cursor&per_page=1"
           archive=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" "$api" | python -c 'import json,sys; d=json.load(sys.stdin); print(d["artifacts"][0]["archive_download_url"] if d.get("artifacts") else "")')
           if [ -n "$archive" ]; then
             rm -rf /tmp/cursor && mkdir -p /tmp/cursor
-            if curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" "$archive" -o /tmp/cursor.zip; then
-              unzip -oq /tmp/cursor.zip -d /tmp/cursor || true
-              cursor_json=$(find /tmp/cursor -name cursor.json -type f | head -1)
-              if [ -n "$cursor_json" ]; then
-                mode=$(python - "$cursor_json" <<'PY'
+            curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" "$archive" -o /tmp/cursor.zip
+            unzip -oq /tmp/cursor.zip -d /tmp/cursor
+            cursor_json=$(find /tmp/cursor -name cursor.json -type f | head -1)
+            if [ -n "$cursor_json" ]; then
+              from=$(python - "$cursor_json" <<'PY'
 import json,sys
-print(json.load(open(sys.argv[1],encoding="utf-8")).get("mode","scheduled-historical-backfill"))
+print(int(json.load(open(sys.argv[1],encoding="utf-8"))["next_from_block"]))
 PY
 )
-                if [ "$mode" = "scheduled-head-refresh" ]; then
-                  from_block=$(( latest > 5000 ? latest - 4999 : 0 ))
-                  to_block="$latest"
-                else
-                  from_block=$(python - "$cursor_json" - "$latest" <<'PY'
+              to=$(python - "$cursor_json" <<'PY'
 import json,sys
-d=json.load(open(sys.argv[1],encoding="utf-8"))
-latest=int(sys.argv[2]); print(min(int(d["next_from_block"]),latest))
+d=json.load(open(sys.argv[1],encoding="utf-8")); print(d.get("next_to_block", ""))
 PY
 )
-                  to_block=$(( from_block + 100000 - 1 ))
-                  if [ "$to_block" -gt "$latest" ]; then to_block="$latest"; fi
-                fi
-                echo "from_block=$from_block" >> "$GITHUB_OUTPUT"
-                echo "to_block=$to_block" >> "$GITHUB_OUTPUT"
-                exit 0
-              fi
+              echo "from_block=$from" >> "$GITHUB_OUTPUT"
+              echo "to_block=$to" >> "$GITHUB_OUTPUT"
+              echo "mode=scheduled" >> "$GITHUB_OUTPUT"
+              exit 0
             fi
           fi
-          from_block=0
-          to_block=$(( latest < 100000 ? latest : 99999 ))
-          echo "from_block=$from_block" >> "$GITHUB_OUTPUT"
-          echo "to_block=$to_block" >> "$GITHUB_OUTPUT"
-          echo "latest_block=$latest" >> "$GITHUB_OUTPUT"
+          from=0
+          to=$(( latest < 100000 ? latest : 99999 ))
+          echo "from_block=$from" >> "$GITHUB_OUTPUT"
+          echo "to_block=$to" >> "$GITHUB_OUTPUT"
+          echo "mode=scheduled-first-run" >> "$GITHUB_OUTPUT"
+
   inventory:
     needs: resolve_cursor
-    if: needs.resolve_cursor.result == 'success'
+    if: needs.resolve_cursor.result == 'success' && (github.event_name == 'schedule' || inputs.venue == '')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -118,25 +147,60 @@ PY
           python-version: "3.11"
       - name: Install dependencies
         run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
-      - name: Run read-only inventory task
+      - name: Run venue inventory
         env:
           PHANTOMX_INVENTORY_VENUE: ${{ matrix.venue }}
           PHANTOMX_INVENTORY_FROM_BLOCK: ${{ needs.resolve_cursor.outputs.from_block }}
           PHANTOMX_INVENTORY_TO_BLOCK: ${{ needs.resolve_cursor.outputs.to_block }}
-          PHANTOMX_INVENTORY_WINDOW_BLOCKS: '5000'
-          PHANTOMX_INVENTORY_CHUNK_SIZE: '2000'
-          PHANTOMX_INVENTORY_SCHEDULE_SLICE_BLOCKS: "100000"
+          PHANTOMX_INVENTORY_WINDOW_BLOCKS: "5000"
+          PHANTOMX_INVENTORY_CHUNK_SIZE: "2000"
         run: python scripts/polygon_venue_inventory_live.py
-      - name: Upload inventory evidence
+      - name: Upload venue evidence
         uses: actions/upload-artifact@v4
         with:
           name: phantomx-polygon-inventory-${{ matrix.venue }}-${{ github.run_id }}
           path: artifacts/polygon_inventory_${{ matrix.venue }}_*.json
           if-no-files-found: error
 
+  balancer_inventory:
+    needs: resolve_cursor
+    if: needs.resolve_cursor.result == 'success' && (github.event_name == 'schedule' || inputs.venue == '')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: phase-19-e2e-harness
+          fetch-depth: 0
+      - name: Verify exact branch checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REPOSITORY}" = "manish91082-coder/ghost-hunter-new"
+          test "${GITHUB_REF_NAME}" = "phase-19-e2e-harness"
+          test -n "${GITHUB_SHA}"
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
+      - name: Run Balancer inventory
+        env:
+          PHANTOMX_INVENTORY_FROM_BLOCK: ${{ needs.resolve_cursor.outputs.from_block }}
+          PHANTOMX_INVENTORY_TO_BLOCK: ${{ needs.resolve_cursor.outputs.to_block }}
+          PHANTOMX_INVENTORY_CHUNK_SIZE: "2000"
+        run: python scripts/balancer_v2_inventory_live.py
+      - name: Upload Balancer evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: phantomx-polygon-inventory-balancer-v2-${{ github.run_id }}
+          path: artifacts/balancer_v2_inventory_*.json
+          if-no-files-found: error
+
   publish_cursor:
-    needs: [resolve_cursor, inventory, balancer-inventory]
-    if: needs.inventory.result == 'success' && needs.balancer-inventory.result == 'success'
+    needs: [resolve_cursor, inventory, balancer_inventory]
+    if: github.event_name == 'schedule' && needs.inventory.result == 'success' && needs.balancer_inventory.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Build next cursor
@@ -144,11 +208,12 @@ PY
           FROM_BLOCK: ${{ needs.resolve_cursor.outputs.from_block }}
           TO_BLOCK: ${{ needs.resolve_cursor.outputs.to_block }}
           LATEST_BLOCK: ${{ needs.resolve_cursor.outputs.latest_block }}
+        shell: bash
         run: |
           set -euo pipefail
-          next=$((TO_BLOCK + 1))
+          next=$(( TO_BLOCK + 1 ))
           if [ "$TO_BLOCK" -ge "$LATEST_BLOCK" ]; then
-            next_from=$(( LATEST_BLOCK > 5000 ? LATEST_BLOCK - 4999 : 0 ))
+            next_from=$(( LATEST_BLOCK > 4999 ? LATEST_BLOCK - 4999 : 0 ))
             next_to="$LATEST_BLOCK"
             mode="scheduled-head-refresh"
           else
@@ -167,44 +232,4 @@ PY
         with:
           name: phantomx-polygon-inventory-cursor
           path: cursor-out/cursor.json
-          if-no-files-found: error
-  balancer-inventory:
-    needs: resolve_cursor
-    if: needs.resolve_cursor.result == 'success'
-    name: inventory (balancer_v2)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout exact branch head
-        uses: actions/checkout@v5
-        with:
-          ref: phase-19-e2e-harness
-          fetch-depth: 0
-      - name: Verify exact branch checkout
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "${GITHUB_REPOSITORY}" = "manish91082-coder/ghost-hunter-new"
-          test "${GITHUB_REF_NAME}" = "phase-19-e2e-harness"
-          test -n "${GITHUB_SHA}"
-          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
-          echo "EXACT_HEAD=${GITHUB_SHA}"
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
-      - name: Install dependencies
-        run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
-      - name: Run Balancer read-only inventory
-        env:
-          PHANTOMX_INVENTORY_FROM_BLOCK: ${{ needs.resolve_cursor.outputs.from_block }}
-          PHANTOMX_INVENTORY_TO_BLOCK: ${{ needs.resolve_cursor.outputs.to_block }}
-          PHANTOMX_INVENTORY_WINDOW_BLOCKS: '5000'
-          PHANTOMX_INVENTORY_CHUNK_SIZE: '2000'
-          PHANTOMX_INVENTORY_SCHEDULE_SLICE_BLOCKS: "100000"
-        run: python scripts/balancer_v2_inventory_live.py
-      - name: Upload Balancer inventory evidence
-        uses: actions/upload-artifact@v4
-        with:
-          name: phantomx-polygon-inventory-balancer-v2-${{ github.run_id }}
-          path: artifacts/balancer_v2_inventory_*.json
           if-no-files-found: error
