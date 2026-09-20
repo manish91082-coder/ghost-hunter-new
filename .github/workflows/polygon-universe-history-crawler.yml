@@ -1,5 +1,7 @@
 name: PHANTOMX Polygon Historical Universe Crawler
 
+# P0: fixed-snapshot, contiguous, read-only inventory coverage. A successful slice is the only event that advances the campaign.
+
 on:
   push:
     branches:
