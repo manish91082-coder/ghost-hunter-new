@@ -1,3 +1,4 @@
 PHANTOMX first-hunt controlled read-only trigger
-campaign=pair-sharded-v2
-timestamp=2026-09-20T18:06:00+05:30
+campaign=atomic-36-v3
+pairs=9
+fee_tiers=4
