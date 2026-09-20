@@ -128,5 +128,19 @@ class EconomicProofTests(unittest.TestCase):
                 self.build(final_settlement_usd=value)
 
 
+    def test_optional_profit_gate_retains_below_floor_proof(self):
+        proof = build_economic_proof(
+            route_hash="0x" + "11" * 32,
+            quote_hashes=("0x" + "22" * 32,),
+            valuation_hash="0x" + "33" * 32,
+            final_settlement_usd="100.00",
+            loan_principal_usd="100.00",
+            costs=CostBreakdown(flash_loan_fee="0.01"),
+            max_gas_usd="0.10",
+            max_relay_usd="0.05",
+            require_profitable=False,
+        )
+        self.assertFalse(proof.economically_valid)
+
 if __name__ == "__main__":
     unittest.main()
