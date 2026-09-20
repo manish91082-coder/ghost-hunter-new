@@ -260,12 +260,24 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
                     "max_route_degradation_bps": ceiling.max_degradation_bps,
                 })
             except (DynamicRouteGuardError, Exception) as exc:
+                detail = {
+                    "error_type": type(exc).__name__,
+                    "error": str(exc),
+                }
+                cause = getattr(exc, "cause", None)
+                if cause is not None:
+                    detail["cause_type"] = type(cause).__name__
+                    detail["cause"] = str(cause)
+                detail.update({
+                    key: getattr(exc, key)
+                    for key in ("leg", "venue", "token_in", "token_out", "amount_in", "fee")
+                    if hasattr(exc, key)
+                })
                 tile_results.append({
                     "pair": pair.name,
                     "uniswap_fee_tier": fee_tier,
                     "status": "UNAVAILABLE_OR_FAILED",
-                    "error_type": type(exc).__name__,
-                    "error": str(exc),
+                    **detail,
                 })
 
     if not observations:

@@ -45,6 +45,24 @@ class FirstHuntLiveScanContractTests(unittest.TestCase):
         self.assertEqual(classify_tile_coverage(partial), "PARTIAL_INCOMPLETE")
         self.assertNotEqual(classify_tile_coverage(partial), "COMPLETE")
 
+    def test_tile_failure_diagnostic_fields_are_preserved(self):
+        diagnostic = {
+            "status": "UNAVAILABLE_OR_FAILED",
+            "error_type": "OpportunityDiscoveryError",
+            "error": "route evaluation failed",
+            "cause_type": "CrossVenueRouteError",
+            "cause": "first leg failed",
+            "leg": "first",
+            "venue": "quickswap_v2",
+            "token_in": "A",
+            "token_out": "B",
+            "amount_in": 1000,
+            "fee": None,
+        }
+        self.assertEqual(diagnostic["cause_type"], "CrossVenueRouteError")
+        self.assertEqual(diagnostic["leg"], "first")
+        self.assertEqual(diagnostic["venue"], "quickswap_v2")
+
     def test_artifact_profit_policy_is_non_claiming(self):
         payload = {
             "economic_certification": "NOT_PERFORMED",
