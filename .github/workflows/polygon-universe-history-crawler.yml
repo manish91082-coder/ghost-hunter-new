@@ -101,6 +101,11 @@ jobs:
                   raise SystemExit(f"{name} must be >= 1")
               return value
 
+          raw_snapshot = os.environ.get("INPUT_SNAPSHOT_TO", "").strip()
+          raw_from = os.environ.get("INPUT_FROM", "").strip()
+          raw_campaign = os.environ.get("INPUT_CAMPAIGN", "").strip()
+          raw_commit = os.environ.get("INPUT_COMMIT", "").strip()
+
           def latest_certified_cursor():
               token = os.environ.get("GH_TOKEN", "").strip()
               repository = os.environ.get("GITHUB_REPOSITORY", "").strip()
@@ -148,10 +153,6 @@ jobs:
                   raw_from = str(cursor["next_from_block"]) if cursor.get("next_from_block") is not None else str(int(cursor["campaign_snapshot_to_block"]) + 1)
                   raw_campaign = str(cursor["campaign_id"])
                   raw_commit = str(cursor["commit_sha"])
-          raw_snapshot = os.environ.get("INPUT_SNAPSHOT_TO", "").strip()
-          raw_from = os.environ.get("INPUT_FROM", "").strip()
-          raw_campaign = os.environ.get("INPUT_CAMPAIGN", "").strip()
-          raw_commit = os.environ.get("INPUT_COMMIT", "").strip()
           campaign_commit = raw_commit or os.environ["GITHUB_SHA"]
           slice_blocks = positive("INPUT_SLICE", 100_000)
 
