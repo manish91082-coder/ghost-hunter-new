@@ -264,10 +264,15 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
                     "error_type": type(exc).__name__,
                     "error": str(exc),
                 }
-                cause = getattr(exc, "cause", None)
+                cause = getattr(exc, "__cause__", None)
                 if cause is not None:
                     detail["cause_type"] = type(cause).__name__
                     detail["cause"] = str(cause)
+                    detail.update({
+                        key: getattr(cause, key)
+                        for key in ("leg", "venue", "token_in", "token_out", "amount_in", "fee")
+                        if hasattr(cause, key)
+                    })
                 detail.update({
                     key: getattr(exc, key)
                     for key in ("leg", "venue", "token_in", "token_out", "amount_in", "fee")
