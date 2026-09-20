@@ -114,7 +114,7 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
         seed_pairs = tuple(PAIRS)
         pair_surface = discover_live_base_pairs(
             rpc, base_token=USDC_E, seed_pairs=seed_pairs,
-            required_venues=(("quickswap_v2","ramses_v3")), lookback_blocks=25_000, chunk_size=2_000,
+            required_venues=(("quickswap_v2","ramses_v3")), lookback_blocks=25_000, chunk_size=50,
         )
         active_pairs = tuple((p.name, p.token_b) for p in pair_surface.pairs)
         pair_surface_status = pair_surface.status
