@@ -45,6 +45,10 @@ class FirstHuntLiveScanContractTests(unittest.TestCase):
         self.assertEqual(classify_tile_coverage(partial), "PARTIAL_INCOMPLETE")
         self.assertNotEqual(classify_tile_coverage(partial), "COMPLETE")
 
+    def test_classify_tile_accepts_complete_no_common_route(self):
+        complete = [{"status": "SUCCESS", "coverage_status": "COMPLETE_NO_COMMON_ROUTE"}]
+        self.assertEqual(classify_tile_coverage(complete), "COMPLETE")
+
     def test_tile_failure_diagnostic_fields_are_preserved(self):
         diagnostic = {
             "status": "UNAVAILABLE_OR_FAILED",

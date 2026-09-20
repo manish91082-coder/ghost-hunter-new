@@ -196,6 +196,11 @@ def discover_exact_opportunities(
 
     blocks = {(item.simulation.chain_id, item.simulation.block_number) for item in evaluated}
     if len(blocks) != 1:
+        if continue_on_error and failures and not evaluated:
+            return OpportunityDiscoveryResult(
+                evaluated=tuple(),
+                failures=tuple(failures),
+            )
         raise OpportunityDiscoveryError("all discovered candidates must share one chain and pinned block")
 
     return OpportunityDiscoveryResult(
