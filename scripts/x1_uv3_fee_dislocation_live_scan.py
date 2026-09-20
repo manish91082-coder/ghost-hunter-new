@@ -30,7 +30,7 @@ def _scan_rpc(rpc:Any,provider_label:str)->dict[str,Any]:
     try:
         pair_surface = discover_live_base_pairs(
             rpc, base_token=USDC,
-            seed_pairs=tuple(PAIRS),
+            seed_pairs=tuple((p.name, p.token_b) for p in PAIRS),
             required_venues=("uniswap_v3",),
             lookback_blocks=25_000,
             chunk_size=2_000,
