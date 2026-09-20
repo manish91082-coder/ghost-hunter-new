@@ -92,4 +92,7 @@ def discover_cross_venue_opportunities(
     )
 
     combined: tuple[OpportunityCandidate, ...] = forward.evaluated + reverse.evaluated
-    return OpportunityDiscoveryResult(evaluated=combined)
+    return OpportunityDiscoveryResult(
+        evaluated=combined,
+        failures=forward.failures + reverse.failures,
+    )
