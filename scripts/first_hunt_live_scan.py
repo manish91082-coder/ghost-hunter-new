@@ -338,6 +338,40 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
                         "max_route_degradation_bps": 100,
                     })
                     continue
+                common_route_amounts = set(item.loan_amount for item in discovered.evaluated if item.venue_path == "quickswap_v2->uniswap_v3") & set(item.loan_amount for item in discovered.evaluated if item.venue_path == "uniswap_v3->quickswap_v2")
+                accounted_evaluations = len(discovered.evaluated) + len(discovered.failures)
+                expected_evaluations = len(loan_amounts_raw) * 2
+                if (
+                    accounted_evaluations == expected_evaluations
+                    and not discovered.retryable_failures
+                    and not common_route_amounts
+                ):
+                    tile_results.append({
+                        "pair": pair.name,
+                        "uniswap_fee_tier": fee_tier,
+                        "status": "SUCCESS",
+                        "coverage_status": "COMPLETE_NO_COMMON_ROUTE",
+                        "expected_direction_evaluations": expected_evaluations,
+                        "accounted_direction_evaluations": accounted_evaluations,
+                        "retryable_failure_count": 0,
+                        "terminal_failure_count": len(discovered.terminal_failures),
+                        "failure_diagnostics": [
+                            {
+                                "loan_amount_raw": item.loan_amount,
+                                "venue_path": item.venue_path,
+                                "error_type": item.error_type,
+                                "error": item.error_message,
+                                "retryable": item.retryable,
+                            }
+                            for item in discovered.failures
+                        ],
+                        "observation_count": 0,
+                        "safe_observation_count": 0,
+                        "dynamic_route_ceiling_usdc": "0",
+                        "reference_amount_usdc": "0",
+                        "max_route_degradation_bps": 100,
+                    })
+                    continue
                 ceiling = evaluate_simulation_domain(
                     forward=forward_observations,
                     reverse=reverse_observations,
