@@ -37,7 +37,6 @@ class OpportunityCandidate:
 
 
 @dataclass(frozen=True)
-@dataclass(frozen=True)
 class OpportunityFailure:
     """One exact route-evaluation failure retained as evidence."""
 
@@ -50,8 +49,9 @@ class OpportunityFailure:
     retryable: bool
 
 
+@dataclass(frozen=True)
 class OpportunityDiscoveryResult:
-    """Complete evaluated frontier plus exact gross-positive candidates."""
+    """Evaluated frontier plus explicit success/failure evidence."""
 
     evaluated: tuple[OpportunityCandidate, ...]
     failures: tuple[OpportunityFailure, ...] = ()
