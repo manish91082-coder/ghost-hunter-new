@@ -40,52 +40,42 @@ jobs:
   resolve-market-block:
     name: Resolve shared Polygon market block
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     outputs:
-      block_number: ${{ steps.market.outputs.block_number }}
+      block_number: ${{ steps.market.outputs.PHANTOMX_INVENTORY_PINNED_BLOCK }}
     steps:
-      - name: Resolve one chain-verified block
-        id: market
+      - name: Checkout exact branch
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Verify exact branch checkout
         shell: bash
         run: |
           set -euo pipefail
-          endpoints=(
-            "https://polygon.drpc.org/"
-            "https://public.1rpc.io/matic"
-            "https://polygon-bor-rpc.publicnode.com"
-          )
+          test "$GITHUB_REPOSITORY" = "manish91082-coder/ghost-hunter-new"
+          test "$GITHUB_REF_NAME" = "phase-19-e2e-harness"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          echo "EXACT_HEAD=$GITHUB_SHA"
 
-          last_error=""
-          for endpoint in "${endpoints[@]}"; do
-            chain_hex="$(curl --silent --show-error --max-time 8               -A "PHANTOMX-First-Hunt/1.0"               -H "Content-Type: application/json"               --data '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}'               "$endpoint" || true)"
-            block_hex="$(curl --silent --show-error --max-time 8               -A "PHANTOMX-First-Hunt/1.0"               -H "Content-Type: application/json"               --data '{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber","params":[]}'               "$endpoint" || true)"
-            if [ -z "$chain_hex" ] || [ -z "$block_hex" ]; then
-              last_error="empty RPC response from $endpoint"
-              continue
-            fi
-            python - "$chain_hex" "$block_hex" <<'PY' > /tmp/market
-import json
-import sys
-chain = json.loads(sys.argv[1])
-block = json.loads(sys.argv[2])
-if chain.get("error") is not None or block.get("error") is not None:
-    raise SystemExit("RPC error")
-chain_id = int(chain["result"], 16)
-block_number = int(block["result"], 16)
-if chain_id != 137:
-    raise SystemExit(f"unexpected chain id: {chain_id}")
-if block_number <= 0:
-    raise SystemExit("resolved block must be positive")
-print(f"block_number={block_number}")
-PY
-            cat /tmp/market >> "$GITHUB_OUTPUT"
-            cat /tmp/market
-            break
-          done
-          if [ ! -s /tmp/market ]; then
-            echo "unable to resolve shared Polygon block: $last_error" >&2
-            exit 1
-          fi
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install Phase-19 dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
+
+      - name: Resolve one chain-verified block through free RPC pool
+        id: market
+        shell: bash
+        env:
+          PHANTOMX_INVENTORY_WINDOW_BLOCKS: "1"
+        run: |
+          set -euo pipefail
+          python scripts/resolve_inventory_context.py | tee /tmp/market
+          cat /tmp/market >> "$GITHUB_OUTPUT"
+          cat /tmp/market
 
   first-hunt-shard:
     needs: resolve-market-block
