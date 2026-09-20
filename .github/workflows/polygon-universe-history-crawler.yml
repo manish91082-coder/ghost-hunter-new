@@ -23,7 +23,11 @@ on:
         required: false
         default: "100000"
       campaign_id:
-        description: "Stable campaign identifier. Blank becomes polygon-genesis-<snapshot_to_block>."
+        description: "Stable campaign identifier. Blank resumes the latest certified campaign, or starts polygon-genesis-<snapshot_to_block>."
+        required: false
+        default: ""
+      campaign_commit:
+        description: "Immutable Git commit for this campaign. Blank resumes the latest certified campaign commit, or uses current HEAD for a new campaign."
         required: false
         default: ""
       continue_automatically:
@@ -75,6 +79,8 @@ jobs:
           INPUT_SNAPSHOT_TO: ${{ inputs.snapshot_to_block }}
           INPUT_SLICE: ${{ inputs.slice_blocks }}
           INPUT_CAMPAIGN: ${{ inputs.campaign_id }}
+          INPUT_COMMIT: ${{ inputs.campaign_commit }}
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -116,7 +122,7 @@ jobs:
           campaign = os.environ.get("INPUT_CAMPAIGN", "").strip() or f"polygon-genesis-{snapshot_to}"
           complete = "true" if from_block > snapshot_to else "false"
 
-          print(f"commit_sha={os.environ['GITHUB_SHA']}")
+          print(f"commit_sha={campaign_commit}")
           print(f"snapshot_to={snapshot_to}")
           print(f"from_block={from_block}")
           print(f"to_block={to_block}")
@@ -310,6 +316,7 @@ jobs:
                       "snapshot_to_block": str(snapshot_to),
                       "slice_blocks": os.environ["SLICE_BLOCKS"],
                       "campaign_id": os.environ["CAMPAIGN_ID"],
+                    "campaign_commit": os.environ["COMMIT_SHA"],
                       "continue_automatically": "true",
                   },
               }).encode()
