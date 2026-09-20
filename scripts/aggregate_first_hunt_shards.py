@@ -176,7 +176,7 @@ def main() -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(aggregate, indent=2, sort_keys=True), encoding="utf-8")
     print(
-        f"{aggregate['coverage']['status']} shards={len(by_fee)}/{len(EXPECTED_FEES)} "
+        f"{aggregate['coverage']['status']} shards={len(by_shard)}/{len(EXPECTED_FEES)} "
         f"tiles={aggregate['coverage']['completed_tile_count']}/{aggregate['coverage']['expected_tile_count']} "
         f"observations={aggregate['observation_count']} "
         f"gross_positive={aggregate['gross_positive_count']} "
