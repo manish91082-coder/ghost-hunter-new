@@ -35,6 +35,7 @@ from phantomx.uniswap_v3 import UniswapV3ExactQuoter
 
 from first_hunt_live_scan import (
     PAIRS,
+    PairSpec,
     SEED_LOAN_USDC,
     UNISWAP_V3_FACTORY,
     UNISWAP_V3_FEE_TIERS,
@@ -238,13 +239,3 @@ def main() -> int:
         },
         "failed_endpoints": failures,
         "economic_certification": "NOT_PERFORMED",
-        "profit_claim": "NONE",
-    }
-    Path("artifacts/s1_qsv3_live_scan.json").write_text(
-        json.dumps(artifact, indent=2, sort_keys=True), encoding="utf-8"
-    )
-    return 0 if results else 1
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
