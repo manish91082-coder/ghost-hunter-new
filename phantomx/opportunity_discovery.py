@@ -91,7 +91,8 @@ def discover_exact_opportunities(
                 simulation = evaluate_route(token_a, token_b, amount)
             except Exception as exc:
                 raise OpportunityDiscoveryError(
-                    f"route evaluation failed for {token_a}->{token_b} amount={amount}"
+                    f"route evaluation failed for {token_a}->{token_b} amount={amount}: "
+                    f"{type(exc).__name__}: {exc}"
                 ) from exc
             if not isinstance(simulation, RouteSimulation):
                 raise OpportunityDiscoveryError("route evaluator returned an invalid simulation")

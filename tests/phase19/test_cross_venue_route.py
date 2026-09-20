@@ -1,6 +1,6 @@
 import unittest
 
-from phantomx.cross_venue_route import build_quickswap_to_uniswap_route, build_uniswap_to_quickswap_route
+from phantomx.cross_venue_route import CrossVenueRouteError, build_quickswap_to_uniswap_route, build_uniswap_to_quickswap_route
 from phantomx.market_block import MarketBlockSnapshot
 from phantomx.quickswap_v2 import QuickSwapV2ExactQuoter
 from phantomx.uniswap_v3 import UniswapV3ExactQuoter
@@ -84,6 +84,45 @@ class CrossVenueRouteTests(unittest.TestCase):
         self.assertEqual(route.legs[0].observed_at_unix, 0x2000)
         self.assertEqual(route.legs[1].observed_at_unix, 0x2000)
         self.assertFalse(any(x[0] == "eth_blockNumber" for x in rpc.calls))
+
+    def test_forward_route_reports_failing_leg_and_underlying_cause(self):
+        class FailRpc(FakeRpc):
+            def call(self, method, params):
+                if method == "eth_call" and params[0]["to"] == ROUTER:
+                    raise RuntimeError("execution reverted: no pair")
+                return super().call(method, params)
+
+        rpc = FailRpc()
+        with self.assertRaises(CrossVenueRouteError) as ctx:
+            build_quickswap_to_uniswap_route(
+                rpc, QuickSwapV2ExactQuoter(rpc, ROUTER),
+                UniswapV3ExactQuoter(rpc, FACTORY, QUOTER),
+                amount_in=1000, token_a=A, token_b=B, uniswap_fee=500,
+                block=MarketBlockSnapshot(137, 0x1234, 0x1000),
+            )
+        self.assertEqual(ctx.exception.leg, "first")
+        self.assertEqual(ctx.exception.venue, "quickswap_v2")
+        self.assertIn("no pair", str(ctx.exception))
+
+    def test_reverse_route_reports_failing_uniswap_leg_and_fee(self):
+        class FailRpc(FakeRpc):
+            def call(self, method, params):
+                if method == "eth_call" and params[0]["to"] == FACTORY:
+                    return "0x" + "00" * 32
+                return super().call(method, params)
+
+        rpc = FailRpc()
+        with self.assertRaises(CrossVenueRouteError) as ctx:
+            build_uniswap_to_quickswap_route(
+                rpc, QuickSwapV2ExactQuoter(rpc, ROUTER),
+                UniswapV3ExactQuoter(rpc, FACTORY, QUOTER),
+                amount_in=1000, token_a=A, token_b=B, uniswap_fee=100,
+                block=MarketBlockSnapshot(137, 0x1234, 0x1000),
+            )
+        self.assertEqual(ctx.exception.leg, "first")
+        self.assertEqual(ctx.exception.venue, "uniswap_v3")
+        self.assertEqual(ctx.exception.fee, 100)
+        self.assertIn("pool does not exist", str(ctx.exception))
 
     def test_explicit_shared_context_prevents_second_block_acquisition(self):
         rpc = FakeRpc()
