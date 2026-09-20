@@ -96,6 +96,7 @@ jobs:
           CANONICAL_CAMPAIGN_ID = "polygon-genesis-94135487"
           CANONICAL_SNAPSHOT_TO = 94135487
           CANONICAL_COMMIT_SHA = "68b35b09441d9d7f3b64530096114fb66eb78938"
+          CANONICAL_FIRST_RESUME_FROM = 100000
           from phantomx.rpc_failover import build_free_polygon_rpc_pool
 
           def positive(name: str, default: int) -> int:
@@ -190,13 +191,19 @@ jobs:
                   raise SystemExit(f"unexpected Polygon chain id: {chain_id}")
               snapshot_to = latest
 
-          if raw_campaign or raw_snapshot or raw_commit:
-              snapshot_to = CANONICAL_SNAPSHOT_TO
+          # This repository owns one canonical historical campaign. Never bind
+          # that campaign ID to a live-head snapshot by accident.
+          snapshot_to = CANONICAL_SNAPSHOT_TO
 
           if snapshot_to < 0:
               raise SystemExit("snapshot_to_block must be >= 0")
 
-          from_block = 0 if not raw_from else int(raw_from)
+          if raw_from:
+              from_block = int(raw_from)
+          elif raw_campaign == CANONICAL_CAMPAIGN_ID or raw_snapshot == str(CANONICAL_SNAPSHOT_TO) or raw_commit == CANONICAL_COMMIT_SHA:
+              from_block = CANONICAL_FIRST_RESUME_FROM
+          else:
+              from_block = CANONICAL_FIRST_RESUME_FROM
           if from_block < 0 or from_block > snapshot_to:
               raise SystemExit("from_block must be within the campaign snapshot")
 
