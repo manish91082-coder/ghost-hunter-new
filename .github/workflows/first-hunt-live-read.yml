@@ -61,16 +61,25 @@ jobs:
 
   first-hunt-shard:
     needs: resolve-market-block
-    name: First-Hunt fee ${{ matrix.fee_tier }}
+    name: First-Hunt fee ${{ matrix.fee_tier }} group ${{ matrix.pair_group }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
       max-parallel: 2
       matrix:
-        fee_tier: [100, 500, 3000, 10000]
+        include:
+          - { fee_tier: 100, pair_group: 0 }
+          - { fee_tier: 100, pair_group: 1 }
+          - { fee_tier: 500, pair_group: 0 }
+          - { fee_tier: 500, pair_group: 1 }
+          - { fee_tier: 3000, pair_group: 0 }
+          - { fee_tier: 3000, pair_group: 1 }
+          - { fee_tier: 10000, pair_group: 0 }
+          - { fee_tier: 10000, pair_group: 1 }
     env:
       PHANTOMX_HUNT_FEE_TIER: ${{ matrix.fee_tier }}
+      PHANTOMX_HUNT_PAIR_GROUP: ${{ matrix.pair_group }}
       PHANTOMX_HUNT_BLOCK_NUMBER: ${{ needs.resolve-market-block.outputs.block_number }}
 
     steps:
@@ -127,7 +136,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: phantomx-first-hunt-shard-${{ matrix.fee_tier }}
+          name: phantomx-first-hunt-shard-fee-${{ matrix.fee_tier }}-group-${{ matrix.pair_group }}
           path: artifacts/first_hunt_live_scan.json
           if-no-files-found: error
 
@@ -161,7 +170,7 @@ jobs:
         if: always()
         uses: actions/download-artifact@v4
         with:
-          pattern: phantomx-first-hunt-shard-*
+          pattern: phantomx-first-hunt-shard-fee-*
           path: downloaded-shards
 
       - name: Initialize aggregate evidence
