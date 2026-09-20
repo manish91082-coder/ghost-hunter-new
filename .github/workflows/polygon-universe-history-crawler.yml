@@ -95,8 +95,8 @@ jobs:
 
           CANONICAL_CAMPAIGN_ID = "polygon-genesis-94135487"
           CANONICAL_SNAPSHOT_TO = 94135487
-          CANONICAL_COMMIT_SHA = "68b35b09441d9d7f3b64530096114fb66eb78938"
-          CANONICAL_FIRST_RESUME_FROM = 100000
+          CANONICAL_COMMIT_SHA = "af4f6dc4ef007c503cef01c078e92e98a931ec3a"
+          CANONICAL_FIRST_RESUME_FROM = 200000
           from phantomx.rpc_failover import build_free_polygon_rpc_pool
 
           def positive(name: str, default: int) -> int:
