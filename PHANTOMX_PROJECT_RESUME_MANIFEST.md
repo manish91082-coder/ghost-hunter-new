@@ -255,3 +255,15 @@ Missing lane = BLOCKED.
 - Current First-Hunt #45 is running on `810b190e...` with fail-closed coverage semantics.
 - Historical Universe Crawler #5 completed only the first `0-99999` slice to fixed snapshot `94129645`; automatic continuation was disabled. Historical universe exhaustion remains open.
 - Live signing, public broadcast and live capital remain blocked/locked.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-20 • LATEST
+
+- Canonical branch HEAD: `a3fda4b0ce4c3090f06a5db059bb106bd7946efb` after status synchronization.
+- Historical campaign is immutable: campaign `polygon-genesis-94135487`, snapshot `94135487`, campaign commit `68b35b09441d9d7f3b64530096114fb66eb78938`.
+- Certified genesis slice: run `#12`, `0-99999`, next resume `100000`.
+- History crawler orchestration is now single-flight and canonical-locked. It triggers only through the dedicated history-kick sentinel or manual workflow dispatch.
+- Legacy race-created campaigns are explicitly non-canonical and rejected by resolver validation.
+- Current completed Phase-19 remains GREEN through run `#899`; the latest push has an active verification run.
+- Broad current-head S0 proof is still missing. No strict `net > $0.20` EconomicProof or realized PnL exists.
+- S10 gross-positive observations remain below flash-premium economics; do not promote them.
+- Next deterministic priority: let canonical historical crawler resume from block `100000`, while keeping the discovery/economic gates fail-closed. Then reconcile fresh current-head S0 evidence before any execution-bound promotion.
