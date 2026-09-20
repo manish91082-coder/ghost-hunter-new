@@ -31,6 +31,7 @@ from phantomx.market_block import acquire_market_block
 from phantomx.uniswap_v3 import UniswapV3ExactQuoter
 from phantomx.uniswap_v4 import DEFAULT_FEE_TIERS, DEFAULT_TICK_SPACINGS, V4PoolKey, ZERO_HOOK, UniswapV4ExactQuoter
 from phantomx.rpc_failover import build_free_polygon_rpc_pool
+from phantomx.dynamic_pair_surface import discover_live_base_pairs
 from first_hunt_live_scan import UNISWAP_V3_FACTORY, UNISWAP_V3_QUOTER, UNISWAP_V3_FEE_TIERS, dynamic_loan_frontier_usdc
 
 POLYGON_CHAIN_ID = 137
@@ -110,10 +111,22 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
     ))
     amounts = tuple(x * 10**6 for x in dynamic_loan_frontier_usdc(ceiling // 10**6))
     observations, tiles = [], []
+    pair_surface_status = "SEED_ONLY"
+    active_pairs = PAIRS
+    try:
+        pair_surface = discover_live_base_pairs(
+            rpc, base_token=USDC_E, seed_pairs=tuple(PAIRS),
+            required_venues=("uniswap_v4", "uniswap_v3"), lookback_blocks=25_000, chunk_size=2_000,
+        )
+        active_pairs = tuple((p.name, p.token_b) for p in pair_surface.pairs)
+        pair_surface_status = pair_surface.status
+    except Exception as exc:
+        pair_surface_status = "PAIR_UNIVERSE_INCOMPLETE"
+        print(f"PAIR_DISCOVERY_FALLBACK: {type(exc).__name__}: {exc}", flush=True)
 
     for fee in DEFAULT_FEE_TIERS:
         for spacing in DEFAULT_TICK_SPACINGS:
-            for pair_name, token_b in PAIRS:
+            for pair_name, token_b in active_pairs:
                 try:
                     key = _key_for(USDC_E, token_b, fee, spacing)
                     forward = tuple(build_uniswap_v4_to_v3_route(
@@ -166,6 +179,7 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
             "dynamic_ceiling_usdc": str(Decimal(ceiling) / Decimal(10**6)),
         },
         "status": "SUCCESS",
+        "pair_universe": {"status": pair_surface_status, "active_count": len(active_pairs)},
     }
 
 
@@ -214,6 +228,7 @@ def main() -> int:
             "workflow_run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT", "UNKNOWN"),
         },
         "successful_endpoints": results,
+        "pair_universe": {"status": results[0].get("pair_universe", {}).get("status", "PAIR_UNIVERSE_INCOMPLETE") if results else "PAIR_UNIVERSE_INCOMPLETE", "active_count": results[0].get("pair_universe", {}).get("active_count", 0) if results else 0},
         "rpc_pool": {
             "mode": "task_preserving_failover",
             "provider_count": len(rpc_pool.records),
