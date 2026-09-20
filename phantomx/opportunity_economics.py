@@ -140,5 +140,6 @@ def make_economic_proof_builder(
             max_gas_usd=max_gas_usd,
             max_relay_usd=max_relay_usd,
             minimum_net_profit_usd=minimum_net_profit_usd,
+            require_profitable=False,
         )
     return build
