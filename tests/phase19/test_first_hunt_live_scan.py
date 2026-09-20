@@ -37,11 +37,11 @@ class FirstHuntLiveScanContractTests(unittest.TestCase):
         self.assertEqual(len(set(UNISWAP_V3_FEE_TIERS)), len(UNISWAP_V3_FEE_TIERS))
 
     def test_tile_coverage_requires_every_declared_tile(self):
-        complete = [{"status": "SUCCESS"} for _ in range(len(PAIRS) * len(UNISWAP_V3_FEE_TIERS))]
+        complete = [{"status": "SUCCESS", "coverage_status": "COMPLETE"} for _ in range(len(PAIRS) * len(UNISWAP_V3_FEE_TIERS))]
         self.assertEqual(classify_tile_coverage(complete), "COMPLETE")
 
     def test_tile_coverage_marks_missing_tile_as_incomplete(self):
-        partial = [{"status": "SUCCESS"} for _ in range(2)] + [{"status": "UNAVAILABLE_OR_FAILED"}]
+        partial = [{"status": "SUCCESS", "coverage_status": "COMPLETE"} for _ in range(2)] + [{"status": "UNAVAILABLE_OR_FAILED", "coverage_status": "PARTIAL_RETRYABLE"}]
         self.assertEqual(classify_tile_coverage(partial), "PARTIAL_INCOMPLETE")
         self.assertNotEqual(classify_tile_coverage(partial), "COMPLETE")
 
