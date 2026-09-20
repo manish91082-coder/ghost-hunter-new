@@ -133,3 +133,15 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - The opportunity-discovery layer now retains per-loan-size failure evidence and classifies explicit RPC/infrastructure failures as retryable. Cross-venue discovery now propagates forward/reverse failure evidence instead of discarding it.
 - Historical Polygon Universe Crawler remains non-exhausted. The last certified historical slice reached only `0-99999` against a fixed snapshot and required explicit continuation.
 - Production execution remains BLOCKED; public broadcast is BLOCKED; live capital remains LOCKED. No profitability certificate has been accepted.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-20 • LATEST
+
+- Canonical HEAD: `bd991f7d4c35e84db50947f1a235f16bc7eb37cc` (`fix: hard-lock canonical history snapshot and resume`).
+- Latest completed Phase-19: run `#899` / `35513275509` GREEN on `dccae7dc...`; run `#900` is the active verification on the current HEAD.
+- Canonical historical campaign: `polygon-genesis-94135487`, fixed snapshot `94135487`, immutable campaign commit `68b35b09441d9d7f3b64530096114fb66eb78938`.
+- Canonical bootstrap evidence from run `#12` certifies slice `0-99999` with `next_from_block=100000`. Historical exhaustion is not achieved.
+- Runs created from older cursor races (`polygon-genesis-94135367`, `polygon-genesis-94136591`) are non-canonical. New resolver logic rejects them.
+- History crawler now uses a single-flight concurrency lock and a dedicated `.github/PHANTOMX_HISTORY_KICK` trigger. Ordinary code changes no longer bootstrap a new history campaign.
+- Current broad S0 hunt #52 was cancelled before completion. No current-head S0 profitability certificate exists. Latest completed broad evidence remains #45 on `810b190e...`: 1,216 observations, 0 gross-positive, 0 post-flash-positive, with 32/36 tiles complete.
+- S10 QSV3↔Ramses V3 produced gross-positive observations on an applicable older scanner head, but best post-flash result remained negative (`-$0.118598`), so no economic certificate exists.
+- S1 and S9 latest completed reads remain non-profitable on their applicable scanner heads. Production execution, signing, public broadcast and live capital remain blocked/locked.
