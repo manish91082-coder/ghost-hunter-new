@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+"""Aggregate bounded First-Hunt fee-tier shard evidence.
+
+The aggregator is fail-closed: every declared Uniswap V3 fee tier must supply
+one artifact whose coverage is COMPLETE. Gross-positive observations remain
+read-only quote evidence and are never converted into profit claims.
+"""
+from __future__ import annotations
+
+import json
+import sys
+from decimal import Decimal
+from pathlib import Path
+
+EXPECTED_FEES = (100, 500, 3000, 10000)
+COMPLETE_COVERAGE = {"COMPLETE", "COMPLETE_NO_COMMON_ROUTE"}
+
+
+def load_shards(root: Path) -> list[dict]:
+    files = sorted(root.glob("*/first_hunt_live_scan.json"))
+    shards: list[dict] = []
+    for path in files:
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise SystemExit(f"invalid shard artifact {path}: {type(exc).__name__}: {exc}") from exc
+        shards.append(payload)
+    return shards
+
+
+def main() -> int:
+    root = Path(sys.argv[1] if len(sys.argv) > 1 else "downloaded-shards")
+    out = Path(sys.argv[2] if len(sys.argv) > 2 else "artifacts/first_hunt_live_scan.json")
+    shards = load_shards(root)
+
+    by_fee: dict[int, dict] = {}
+    rejected: list[dict] = []
+    for shard in shards:
+        fees = tuple(int(x) for x in shard.get("selected_fee_tiers", ()))
+        if len(fees) != 1 or fees[0] not in EXPECTED_FEES:
+            rejected.append({"reason": "invalid_fee_shard", "fees": list(fees)})
+            continue
+        fee = fees[0]
+        if fee in by_fee:
+            rejected.append({"reason": "duplicate_fee_shard", "fee": fee})
+            continue
+        results = shard.get("successful_endpoints", [])
+        if len(results) != 1:
+            rejected.append({"reason": "missing_successful_endpoint", "fee": fee})
+            continue
+        by_fee[fee] = shard
+
+    missing = [fee for fee in EXPECTED_FEES if fee not in by_fee]
+    incomplete = []
+    observations: list[dict] = []
+    gross_positive: list[dict] = []
+    post_flash_positive: list[dict] = []
+    tile_results: list[dict] = []
+    attempts = 0
+
+    for fee in EXPECTED_FEES:
+        shard = by_fee.get(fee)
+        if shard is None:
+            continue
+        result = shard["successful_endpoints"][0]
+        coverage = result.get("coverage", {})
+        if coverage.get("status") != "COMPLETE":
+            incomplete.append({
+                "fee": fee,
+                "coverage_status": coverage.get("status"),
+                "completed_tile_count": coverage.get("completed_tile_count"),
+                "expected_tile_count": coverage.get("expected_tile_count"),
+            })
+        tile_results.extend(result.get("fee_tier_tile_results", []))
+        observations.extend(result.get("observations", []))
+        gross_positive.extend(result.get("gross_positive_observations", []))
+        post_flash_positive.extend(
+            item for item in result.get("observations", [])
+            if int(item.get("post_flash_premium_delta_raw", 0)) > 0
+        )
+        attempts += int(shard.get("rpc_pool", {}).get("attempt_count", 0))
+
+    ranked = sorted(observations, key=lambda item: int(item["gross_delta_raw"]), reverse=True)
+
+    aggregate = {
+        "schema_version": 2,
+        "mission": "PHANTOMX FIRST HUNT READ-ONLY LIVE SCAN",
+        "read_only": True,
+        "signing": False,
+        "submission": False,
+        "broadcast": False,
+        "live_capital": False,
+        "selected_fee_tiers": list(EXPECTED_FEES),
+        "shard_count": len(by_fee),
+        "expected_shard_count": len(EXPECTED_FEES),
+        "missing_fee_tiers": missing,
+        "rejected_shards": rejected,
+        "incomplete_shards": incomplete,
+        "coverage": {
+            "expected_tile_count": 9 * len(EXPECTED_FEES),
+            "completed_tile_count": sum(
+                1 for item in tile_results
+                if item.get("coverage_status") in COMPLETE_COVERAGE
+            ),
+            "incomplete_tile_count": sum(
+                1 for item in tile_results
+                if item.get("coverage_status") not in COMPLETE_COVERAGE
+            ),
+            "status": (
+                "COMPLETE"
+                if not missing and not rejected and not incomplete
+                and len(tile_results) == 9 * len(EXPECTED_FEES)
+                else "PARTIAL_INCOMPLETE"
+            ),
+        },
+        "observation_count": len(observations),
+        "gross_positive_count": len(gross_positive),
+        "post_flash_positive_count": len(post_flash_positive),
+        "gross_max_usdc": (
+            str(Decimal(ranked[0]["gross_delta_raw"]) / Decimal(10**6))
+            if ranked else "0"
+        ),
+        "post_flash_max_usdc": (
+            str(
+                Decimal(
+                    max(
+                        (int(item["post_flash_premium_delta_raw"]) for item in observations),
+                        default=0,
+                    )
+                ) / Decimal(10**6)
+            )
+        ),
+        "top_gross_observations": ranked[:20],
+        "fee_tier_tile_results": tile_results,
+        "rpc_attempt_count": attempts,
+        "economic_certification": "NOT_PERFORMED",
+        "profit_claim": "NONE",
+        "notes": [
+            "Each Uniswap V3 fee tier is independently bounded to nine declared pairs.",
+            "The aggregate is green only when all four fee shards and all 36 pair/fee tiles are complete.",
+            "Gross-positive observations are quote evidence only.",
+            "Post-flash-positive observations are still not net-profit proof.",
+            "Exact gas, valuation, relay cost, final requote and realized PnL remain outside this scan.",
+        ],
+    }
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(aggregate, indent=2, sort_keys=True), encoding="utf-8")
+    print(
+        f"{aggregate['coverage']['status']} shards={len(by_fee)}/{len(EXPECTED_FEES)} "
+        f"tiles={aggregate['coverage']['completed_tile_count']}/{aggregate['coverage']['expected_tile_count']} "
+        f"observations={aggregate['observation_count']} "
+        f"gross_positive={aggregate['gross_positive_count']} "
+        f"post_flash_positive={aggregate['post_flash_positive_count']} "
+        f"gross_max_usdc={aggregate['gross_max_usdc']} "
+        f"post_flash_max_usdc={aggregate['post_flash_max_usdc']}",
+        flush=True,
+    )
+    return 0 if aggregate["coverage"]["status"] == "COMPLETE" else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
