@@ -276,3 +276,13 @@ Missing lane = BLOCKED.
 - Six venue inventory lanes are active for the canonical slice. Certification is pending until all declared venue evidence passes.
 - The canonical history workflow is single-flight, canonical-locked, and only kickable through the dedicated sentinel or explicit manual dispatch. Ordinary code changes do not start a new campaign.
 - No current-head broad S0 profitability certificate exists. Live signing, public broadcast and live capital remain blocked/locked.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-20 • HEAD 00547
+
+- Current HEAD: `00547b3c22d49dd21b0cb5c48c0c2b7b99b84cfb`.
+- Phase-19 #905 is GREEN on current HEAD.
+- Canonical historical inventory campaign is locked to snapshot `94135487`. Certified contiguous coverage: `0-99999`, `100000-199999`; active next slice: `200000-299999`.
+- S0 First-Hunt #53 is running on `625f6385...`; it is the first clean broad hunt after discovery retry/coverage corrections.
+- No current-head profitable certificate exists. Gross-positive observations from S10 are below the flash-premium floor and have not reached gas/economic/final-lock stages.
+- Production execution gates remain blocked until a current genuine candidate passes complete EconomicProof, exact final gas/valuation, final requote/state lock, external authority/signer/relay/shadow gates, and realized PnL > $0.20.

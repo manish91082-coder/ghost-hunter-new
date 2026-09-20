@@ -153,3 +153,17 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Historical Universe Crawler run `#27` / `35513839962` is active on this HEAD and has resolved the canonical campaign exactly as `polygon-genesis-94135487`, snapshot `94135487`, resume range `100000-199999`.
 - Six venue inventory jobs are currently running for that exact slice; no claim of completion is made until all six plus slice certification pass.
 - This confirms the history campaign is no longer starting from an accidental live-head snapshot. Legacy rogue campaign runs remain rejected/non-canonical.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-20 • HEAD 00547
+
+- Canonical HEAD: `00547b3c22d49dd21b0cb5c48c0c2b7b99b84cfb`.
+- Phase-19 run #905 / `35514485134`: GREEN on this HEAD.
+- Canonical historical campaign: `polygon-genesis-94135487`, fixed snapshot `94135487`. Certified contiguous slices now cover `0-99999` and `100000-199999`; next canonical slice is `200000-299999`.
+- Historical crawler run #27 / `35513839962`: GREEN, certified slice `100000-199999`, next cursor `200000`. Run #29 is the active canonical continuation at `200000-299999`.
+- Legacy crawler run #28 failed because it carried an older workflow commit into the locked campaign. New campaign logic rejects that mismatch; no market inventory result from #28 is accepted.
+- S0 First-Hunt #53 / `35514040865` is the latest clean current scanner run on `625f6385...`; it is still in progress. It includes per-size failure retention and one bounded retry for retryable RPC/infrastructure failures.
+- Latest completed broad S0 hunt before #53 remains #45: 1,216 observations, 0 gross-positive, 0 post-flash-positive, with incomplete 32/36 tile coverage. It is not exhaustion proof.
+- Latest completed S10 QSV3↔Ramses V3 run #13 on `2db8206...`: 38 observations, 3 gross-positive, best gross `+$0.006402`, but best post-flash `-$0.118598`. No EconomicProof certificate.
+- Latest completed S9 QSV2↔Ramses V3 run #14 on `d480ae7...`: 38 observations, 0 gross-positive, best gross approximately `-$0.164295`.
+- Live signing remains BLOCKED; public broadcast BLOCKED; live capital LOCKED. Realized net profit > $0.20 is NOT proven.
