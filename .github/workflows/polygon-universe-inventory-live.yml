@@ -11,6 +11,8 @@ permissions:
 concurrency:
   group: phantomx-polygon-universe-inventory
   cancel-in-progress: false
+
+jobs:
   resolve_cursor:
     runs-on: ubuntu-latest
     outputs:
