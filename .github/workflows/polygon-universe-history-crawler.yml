@@ -215,7 +215,7 @@ jobs:
           SLICE_BLOCKS: ${{ needs.resolve.outputs.slice_blocks }}
           CAMPAIGN_ID: ${{ needs.resolve.outputs.campaign_id }}
           COMMIT_SHA: ${{ needs.resolve.outputs.commit_sha }}
-          AUTO_CONTINUE: ${{ inputs.continue_automatically }}
+          AUTO_CONTINUE: ${{ inputs.continue_automatically || 'true' }}
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
