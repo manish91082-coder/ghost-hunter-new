@@ -13,7 +13,7 @@ from decimal import Decimal
 from pathlib import Path
 
 EXPECTED_FEES = (100, 500, 3000, 10000)
-EXPECTED_GROUPS = (0, 1)
+EXPECTED_PAIR_INDICES = tuple(range(9))
 COMPLETE_COVERAGE = {"COMPLETE", "COMPLETE_NO_COMMON_ROUTE"}
 
 
@@ -43,24 +43,28 @@ def main() -> int:
             continue
         fee = fees[0]
         try:
-            group = int(shard.get("pair_group"))
+            pair_index = int(shard.get("pair_index"))
         except (TypeError, ValueError):
-            rejected.append({"reason": "invalid_pair_group", "fee": fee})
+            rejected.append({"reason": "invalid_pair_index", "fee": fee})
             continue
-        if group not in EXPECTED_GROUPS:
-            rejected.append({"reason": "invalid_pair_group", "fee": fee, "pair_group": group})
+        if pair_index not in EXPECTED_PAIR_INDICES:
+            rejected.append({"reason": "invalid_pair_index", "fee": fee, "pair_index": pair_index})
             continue
-        key = (fee, group)
+        pairs = shard.get("successful_endpoints", [])
+        if len(pairs) != 1:
+            rejected.append({"reason": "missing_successful_endpoint", "fee": fee, "pair_index": pair_index})
+            continue
+        declared = shard.get("pairs", [])
+        if len(declared) != 1:
+            rejected.append({"reason": "non_atomic_pair_shard", "fee": fee, "pair_index": pair_index})
+            continue
+        key = (fee, pair_index)
         if key in by_shard:
-            rejected.append({"reason": "duplicate_fee_pair_group_shard", "fee": fee, "pair_group": group})
-            continue
-        results = shard.get("successful_endpoints", [])
-        if len(results) != 1:
-            rejected.append({"reason": "missing_successful_endpoint", "fee": fee})
+            rejected.append({"reason": "duplicate_fee_pair_shard", "fee": fee, "pair_index": pair_index})
             continue
         by_shard[key] = shard
 
-    expected_keys = [(fee, group) for fee in EXPECTED_FEES for group in EXPECTED_GROUPS]
+    expected_keys = [(fee, pair_index) for fee in EXPECTED_FEES for pair_index in EXPECTED_PAIR_INDICES]
     missing = [{"fee": fee, "pair_group": group} for fee, group in expected_keys if (fee, group) not in by_shard]
     incomplete = []
     observations: list[dict] = []
@@ -71,8 +75,8 @@ def main() -> int:
     shard_blocks: set[int] = set()
     shard_chains: set[int] = set()
 
-    for fee, group in expected_keys:
-        shard = by_shard.get((fee, group))
+    for fee, pair_index in expected_keys:
+        shard = by_shard.get((fee, pair_index))
         if shard is None:
             continue
         result = shard["successful_endpoints"][0]
@@ -166,7 +170,7 @@ def main() -> int:
         "profit_claim": "NONE",
         "notes": [
             "Each Uniswap V3 fee tier is independently bounded to nine declared pairs.",
-            "The aggregate is green only when all eight fee/pair-group shards and all 36 pair/fee tiles are complete.",
+            "The aggregate is green only when all 36 atomic fee/pair shards and all 36 pair/fee tiles are complete.",
             "Gross-positive observations are quote evidence only.",
             "Post-flash-positive observations are still not net-profit proof.",
             "Exact gas, valuation, relay cost, final requote and realized PnL remain outside this scan.",
