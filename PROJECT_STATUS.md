@@ -145,3 +145,11 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Current broad S0 hunt #52 was cancelled before completion. No current-head S0 profitability certificate exists. Latest completed broad evidence remains #45 on `810b190e...`: 1,216 observations, 0 gross-positive, 0 post-flash-positive, with 32/36 tiles complete.
 - S10 QSV3↔Ramses V3 produced gross-positive observations on an applicable older scanner head, but best post-flash result remained negative (`-$0.118598`), so no economic certificate exists.
 - S1 and S9 latest completed reads remain non-profitable on their applicable scanner heads. Production execution, signing, public broadcast and live capital remain blocked/locked.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-20 • POST-RESUME KICK
+
+- Current HEAD: `af4f6dc4ef007c503cef01c078e92e98a931ec3a` (`chore: trigger canonical history resume`).
+- Phase-19 run `#902` / `35513839907` is GREEN on this HEAD.
+- Historical Universe Crawler run `#27` / `35513839962` is active on this HEAD and has resolved the canonical campaign exactly as `polygon-genesis-94135487`, snapshot `94135487`, resume range `100000-199999`.
+- Six venue inventory jobs are currently running for that exact slice; no claim of completion is made until all six plus slice certification pass.
+- This confirms the history campaign is no longer starting from an accidental live-head snapshot. Legacy rogue campaign runs remain rejected/non-canonical.
