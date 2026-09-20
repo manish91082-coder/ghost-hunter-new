@@ -214,6 +214,8 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
         "blocks": sorted({x["block_number"] for x in observations}),
         "observation_count": len(observations),
         "gross_positive_count": sum(x["gross_delta_raw"] > 0 for x in observations),
+        "post_flash_positive_count": sum(x["post_flash_premium_delta_raw"] > 0 for x in observations),
+        "post_flash_max_usdc": str(Decimal(max((x["post_flash_premium_delta_raw"] for x in observations), default=0)) / Decimal(10**6)),
         "gross_max_usdc": str(Decimal(ranked[0]["gross_delta_raw"]) / Decimal(10**6)) if ranked else "0",
         "top_gross_observations": ranked[:20],
         "successful_tiles": sum(t["status"] == "SUCCESS" for t in tiles),
@@ -242,7 +244,10 @@ def main() -> int:
         results.append(result)
         print(
             f"SUCCESS failover-pool: observations={result['observation_count']} "
-            f"gross_positive={result['gross_positive_count']} gross_max_usdc={result['gross_max_usdc']}",
+            f"gross_positive={result['gross_positive_count']} "
+            f"post_flash_positive={result['post_flash_positive_count']} "
+            f"gross_max_usdc={result['gross_max_usdc']} "
+            f"post_flash_max_usdc={result['post_flash_max_usdc']}",
             flush=True,
         )
     except Exception as exc:
