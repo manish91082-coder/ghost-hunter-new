@@ -37,7 +37,7 @@ permissions:
   actions: write
 
 concurrency:
-  group: phantomx-polygon-history-crawler-${ inputs.campaign_id || 'default' }}
+  group: phantomx-polygon-history-crawler-${{ inputs.campaign_id || 'default' }}
   cancel-in-progress: false
 
 jobs:
@@ -45,13 +45,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      commit_sha: ${ steps.context.outputs.commit_sha }}
-      snapshot_to: ${ steps.context.outputs.snapshot_to }}
-      from_block: ${ steps.context.outputs.from_block }}
-      to_block: ${ steps.context.outputs.to_block }}
-      slice_blocks: ${ steps.context.outputs.slice_blocks }}
-      campaign_id: ${ steps.context.outputs.campaign_id }}
-      complete: ${ steps.context.outputs.complete }}
+      commit_sha: ${{ steps.context.outputs.commit_sha }}
+      snapshot_to: ${{ steps.context.outputs.snapshot_to }}
+      from_block: ${{ steps.context.outputs.from_block }}
+      to_block: ${{ steps.context.outputs.to_block }}
+      slice_blocks: ${{ steps.context.outputs.slice_blocks }}
+      campaign_id: ${{ steps.context.outputs.campaign_id }}
+      complete: ${{ steps.context.outputs.complete }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -63,7 +63,7 @@ jobs:
           set -euo pipefail
           test "${GITHUB_REPOSITORY}" = "manish91082-coder/ghost-hunter-new"
           test "${GITHUB_REF_NAME}" = "phase-19-e2e-harness"
-          test "$$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
           echo "EXACT_HEAD=${GITHUB_SHA}"
       - uses: actions/setup-python@v6
         with:
@@ -71,10 +71,10 @@ jobs:
       - name: Resolve immutable campaign context
         id: context
         env:
-          INPUT_FROM: ${ inputs.from_block }}
-          INPUT_SNAPSHOT_TO: ${ inputs.snapshot_to_block }}
-          INPUT_SLICE: ${ inputs.slice_blocks }}
-          INPUT_CAMPAIGN: ${ inputs.campaign_id }}
+          INPUT_FROM: ${{ inputs.from_block }}
+          INPUT_SNAPSHOT_TO: ${{ inputs.snapshot_to_block }}
+          INPUT_SLICE: ${{ inputs.slice_blocks }}
+          INPUT_CAMPAIGN: ${{ inputs.campaign_id }}
         shell: bash
         run: |
           set -euo pipefail
@@ -145,15 +145,15 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${ needs.resolve.outputs.commit_sha }}
+          ref: ${{ needs.resolve.outputs.commit_sha }}
           fetch-depth: 0
       - name: Verify immutable campaign checkout
         shell: bash
         run: |
           set -euo pipefail
           test "${GITHUB_REPOSITORY}" = "manish91082-coder/ghost-hunter-new"
-          test "$$(git rev-parse HEAD)" = "${ needs.resolve.outputs.commit_sha }}"
-          echo "CAMPAIGN_COMMIT=$$(git rev-parse HEAD)"
+          test "$(git rev-parse HEAD)" = "${{ needs.resolve.outputs.commit_sha }}"
+          echo "CAMPAIGN_COMMIT=$(git rev-parse HEAD)"
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
@@ -162,10 +162,10 @@ jobs:
       - name: Run generic venue inventory
         if: matrix.venue != 'balancer_v2'
         env:
-          PHANTOMX_INVENTORY_VENUE: ${ matrix.venue }}
-          PHANTOMX_INVENTORY_FROM_BLOCK: ${ needs.resolve.outputs.from_block }}
-          PHANTOMX_INVENTORY_TO_BLOCK: ${ needs.resolve.outputs.to_block }}
-          PHANTOMX_INVENTORY_PINNED_BLOCK: ${ needs.resolve.outputs.snapshot_to }}
+          PHANTOMX_INVENTORY_VENUE: ${{ matrix.venue }}
+          PHANTOMX_INVENTORY_FROM_BLOCK: ${{ needs.resolve.outputs.from_block }}
+          PHANTOMX_INVENTORY_TO_BLOCK: ${{ needs.resolve.outputs.to_block }}
+          PHANTOMX_INVENTORY_PINNED_BLOCK: ${{ needs.resolve.outputs.snapshot_to }}
           PHANTOMX_INVENTORY_CHUNK_SIZE: "50"
         shell: bash
         run: |
@@ -175,9 +175,9 @@ jobs:
       - name: Run Balancer V2 inventory
         if: matrix.venue == 'balancer_v2'
         env:
-          PHANTOMX_INVENTORY_FROM_BLOCK: ${ needs.resolve.outputs.from_block }}
-          PHANTOMX_INVENTORY_TO_BLOCK: ${ needs.resolve.outputs.to_block }}
-          PHANTOMX_INVENTORY_PINNED_BLOCK: ${ needs.resolve.outputs.snapshot_to }}
+          PHANTOMX_INVENTORY_FROM_BLOCK: ${{ needs.resolve.outputs.from_block }}
+          PHANTOMX_INVENTORY_TO_BLOCK: ${{ needs.resolve.outputs.to_block }}
+          PHANTOMX_INVENTORY_PINNED_BLOCK: ${{ needs.resolve.outputs.snapshot_to }}
           PHANTOMX_INVENTORY_CHUNK_SIZE: "50"
         shell: bash
         run: |
@@ -187,7 +187,7 @@ jobs:
       - name: Publish venue slice evidence
         uses: actions/upload-artifact@v4
         with:
-          name: phantomx-polygon-history-${ matrix.venue }}
+          name: phantomx-polygon-history-${{ matrix.venue }}
           path: artifacts/*.json
           if-no-files-found: error
 
@@ -199,7 +199,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${ needs.resolve.outputs.commit_sha }}
+          ref: ${{ needs.resolve.outputs.commit_sha }}
           fetch-depth: 0
       - name: Download venue evidence
         uses: actions/download-artifact@v4
@@ -209,14 +209,14 @@ jobs:
           path: artifacts
       - name: Certify contiguous slice and build campaign cursor
         env:
-          EXPECTED_FROM: ${ needs.resolve.outputs.from_block }}
-          EXPECTED_TO: ${ needs.resolve.outputs.to_block }}
-          SNAPSHOT_TO: ${ needs.resolve.outputs.snapshot_to }}
-          SLICE_BLOCKS: ${ needs.resolve.outputs.slice_blocks }}
-          CAMPAIGN_ID: ${ needs.resolve.outputs.campaign_id }}
-          COMMIT_SHA: ${ needs.resolve.outputs.commit_sha }}
-          AUTO_CONTINUE: ${ inputs.continue_automatically }}
-          GH_TOKEN: ${ github.token }}
+          EXPECTED_FROM: ${{ needs.resolve.outputs.from_block }}
+          EXPECTED_TO: ${{ needs.resolve.outputs.to_block }}
+          SNAPSHOT_TO: ${{ needs.resolve.outputs.snapshot_to }}
+          SLICE_BLOCKS: ${{ needs.resolve.outputs.slice_blocks }}
+          CAMPAIGN_ID: ${{ needs.resolve.outputs.campaign_id }}
+          COMMIT_SHA: ${{ needs.resolve.outputs.commit_sha }}
+          AUTO_CONTINUE: ${{ inputs.continue_automatically }}
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -337,6 +337,6 @@ jobs:
       - name: Publish certified campaign slice
         uses: actions/upload-artifact@v4
         with:
-          name: phantomx-polygon-campaign-slice-${ github.run_id }}
+          name: phantomx-polygon-campaign-slice-${{ github.run_id }}
           path: artifacts/campaign_slice_manifest.json
           if-no-files-found: error
