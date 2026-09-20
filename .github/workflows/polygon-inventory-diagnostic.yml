@@ -59,15 +59,15 @@ jobs:
           rm -rf artifacts && mkdir -p artifacts
           for venue in quickswap_v2 quickswap_v3 uniswap_v3 ramses_v3 uniswap_v4; do
             echo "=== INVENTORY ${venue} ==="
-            PHANTOMX_INVENTORY_VENUE="$venue" PHANTOMX_INVENTORY_WINDOW_BLOCKS=5000 PHANTOMX_INVENTORY_CHUNK_SIZE=2000 python scripts/polygon_venue_inventory_live.py
+            PHANTOMX_INVENTORY_VENUE="$venue" PHANTOMX_INVENTORY_WINDOW_BLOCKS=5000 PHANTOMX_INVENTORY_CHUNK_SIZE=50 python scripts/polygon_venue_inventory_live.py
           done
       - name: Run Balancer V2 inventory
-        env:
-          PHANTOMX_INVENTORY_FROM_BLOCK: "${PHANTOMX_INVENTORY_FROM_BLOCK}"
-          PHANTOMX_INVENTORY_TO_BLOCK: "${PHANTOMX_INVENTORY_TO_BLOCK}"
-          PHANTOMX_INVENTORY_PINNED_BLOCK: "${PHANTOMX_INVENTORY_PINNED_BLOCK}"
-          PHANTOMX_INVENTORY_CHUNK_SIZE: "50"
-        run: python scripts/balancer_v2_inventory_live.py
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$PHANTOMX_INVENTORY_PINNED_BLOCK"
+          test "$PHANTOMX_INVENTORY_TO_BLOCK" = "$PHANTOMX_INVENTORY_PINNED_BLOCK"
+          PHANTOMX_INVENTORY_CHUNK_SIZE=50 python scripts/balancer_v2_inventory_live.py
       - name: Upload inventory evidence
         uses: actions/upload-artifact@v4
         with:
