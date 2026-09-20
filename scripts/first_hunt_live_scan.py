@@ -409,7 +409,10 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
                 })
 
     if not observations:
-        raise RuntimeError("no complete pair/fee tier produced an exact route grid")
+        coverage_statuses = [item.get("coverage_status") for item in tile_results]
+        if not tile_results or any(status not in {"COMPLETE", "COMPLETE_NO_COMMON_ROUTE"} for status in coverage_statuses):
+            raise RuntimeError("no complete pair/fee tier produced an exact route grid")
+
 
     blocks = sorted({item["block_number"] for item in observations})
     chains = sorted({item["chain_id"] for item in observations})
