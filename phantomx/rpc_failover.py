@@ -208,41 +208,46 @@ class PolygonRPCFailoverPool:
             state.circuit_open_until = monotonic() + self.circuit_cooldown_seconds
 
     def call(self, method: str, params: Sequence[Any] = ()) -> Any:
-        """Call one read, rotating providers until success or true exhaustion."""
+        """Call one read, rotating providers with one bounded recovery pass."""
         if not isinstance(params, Sequence) or isinstance(params, (str, bytes, bytearray)):
             raise RPCPoolError("params must be a sequence")
-        eligible = self._ordered_eligible()
-        if not eligible:
-            raise RPCPoolError("no eligible Polygon RPC providers")
 
         attempts: list[str] = []
-        for state in eligible:
-            state.in_flight += 1
-            started = perf_counter()
-            try:
-                response = state.transport.call(method, params)
-                value = self._extract_result(response, method)
-                if method == "eth_chainId" and value != "0x89":
-                    raise RPCPoolError(f"eth_chainId: unexpected provider chain id {value}")
-                latency_ms = (perf_counter() - started) * 1000
-                self._record_success(state, latency_ms)
-                self._preferred_provider_id = state.record.provider_id
-                self._history.append(RPCAttempt(state.record.provider_id, True, False, latency_ms))
-                return value
-            except Exception as exc:
-                latency_ms = (perf_counter() - started) * 1000
-                recoverable = self._recoverable(exc)
-                self._record_failure(state, str(exc), recoverable)
-                self._history.append(
-                    RPCAttempt(state.record.provider_id, False, recoverable, latency_ms, str(exc))
-                )
-                if self._preferred_provider_id == state.record.provider_id:
-                    self._preferred_provider_id = None
-                attempts.append(f"{state.record.provider_id}: {type(exc).__name__}: {exc}")
-                if not recoverable:
-                    raise
-        raise RPCPoolError("all eligible Polygon RPC providers failed: " + " | ".join(attempts))
+        for round_index in range(2):
+            eligible = self._ordered_eligible()
+            if not eligible:
+                if round_index == 0:
+                    self.reset_circuits()
+                    eligible = self._ordered_eligible()
+                if not eligible:
+                    break
 
+            for state in eligible:
+                state.in_flight += 1
+                started = perf_counter()
+                try:
+                    response = state.transport.call(method, params)
+                    value = self._extract_result(response, method)
+                    if method == "eth_chainId" and value != "0x89":
+                        raise RPCPoolError(f"eth_chainId: unexpected provider chain id {value}")
+                    latency_ms = (perf_counter() - started) * 1000
+                    self._record_success(state, latency_ms)
+                    self._preferred_provider_id = state.record.provider_id
+                    self._history.append(RPCAttempt(state.record.provider_id, True, False, latency_ms))
+                    return value
+                except Exception as exc:
+                    latency_ms = (perf_counter() - started) * 1000
+                    recoverable = self._recoverable(exc)
+                    self._record_failure(state, str(exc), recoverable)
+                    self._history.append(RPCAttempt(state.record.provider_id, False, recoverable, latency_ms, str(exc)))
+                    if self._preferred_provider_id == state.record.provider_id:
+                        self._preferred_provider_id = None
+                    attempts.append(f"round={round_index + 1} {state.record.provider_id}: {type(exc).__name__}: {exc}")
+                    if not recoverable:
+                        raise
+            if round_index == 0:
+                self.reset_circuits()
+        raise RPCPoolError("all bounded Polygon RPC recovery passes failed: " + " | ".join(attempts))
     def failure_history(self) -> tuple[RPCAttempt, ...]:
         return tuple(item for item in self._history if not item.success)
 
