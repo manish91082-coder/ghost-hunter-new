@@ -121,3 +121,15 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - First-Hunt #45 on `810b190e...` is the first hunt after the fail-closed coverage correction. A non-COMPLETE tile now causes a non-zero exit while the artifact is still preserved.
 - Historical Polygon Universe Crawler #5 on `751024247...` completed GREEN for blocks `0-99999` against fixed snapshot `94129645`, across six declared venues. Its automatic continuation was disabled in that run, so the campaign has **not** reached historical exhaustion.
 - P0 remains blocked on a genuine currently executable opportunity, complete market coverage where claimed, external signer/provider/relay evidence, shadow/staging, controlled execution, and independent realized PnL > $0.20.
+
+
+## CURRENT VERIFIED SYNC • 2026-09-20 16:46 IST
+
+- Canonical branch HEAD: `7527ff10b2143aafe02cae4d55a0fb7f0f83d503` (`fix: propagate route failure evidence`).
+- Phase-19 run #885 on prior HEAD `79bda3c...`: GREEN. Current HEAD run #886 is the active deterministic verification.
+- First-Hunt #45 on `810b190e...` was correctly FAILED because coverage was only 32/36 tiles. Its best gross was `-$0.122175` and post-flash best was `-$0.172175` at block `94131367`.
+- First-Hunt #49 on `bdde95c...` was superseded/cancelled by a newer code change before completion; it is not market evidence.
+- Current First-Hunt #50 targets `7527ff10...`; current inventory #19 also targets the same HEAD.
+- The opportunity-discovery layer now retains per-loan-size failure evidence and classifies explicit RPC/infrastructure failures as retryable. Cross-venue discovery now propagates forward/reverse failure evidence instead of discarding it.
+- Historical Polygon Universe Crawler remains non-exhausted. The last certified historical slice reached only `0-99999` against a fixed snapshot and required explicit continuation.
+- Production execution remains BLOCKED; public broadcast is BLOCKED; live capital remains LOCKED. No profitability certificate has been accepted.
