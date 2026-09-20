@@ -16,6 +16,7 @@ on:
       - "phantomx/quickswap_v2.py"
       - "phantomx/uniswap_v3.py"
       - "scripts/first_hunt_live_scan.py"
+      - "scripts/aggregate_first_hunt_shards.py"
       - ".github/workflows/first-hunt-live-read.yml"
       - ".github/PHANTOMX_FIRST_HUNT_KICK"
   pull_request:
@@ -24,22 +25,30 @@ on:
     paths:
       - "phantomx/**"
       - "scripts/first_hunt_live_scan.py"
+      - "scripts/aggregate_first_hunt_shards.py"
       - ".github/workflows/first-hunt-live-read.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Only one live-hunt may query Polygon at a time per branch. A newer hunt
-# supersedes an older one to prevent stale-state scans and RPC bombardment.
 concurrency:
   group: phantomx-first-hunt-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  first-hunt-live-read:
+  first-hunt-shard:
+    name: First-Hunt fee ${{ matrix.fee_tier }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        fee_tier: [100, 500, 3000, 10000]
+    env:
+      PHANTOMX_HUNT_FEE_TIER: ${{ matrix.fee_tier }}
+
     steps:
       - name: Checkout exact branch
         uses: actions/checkout@v5
@@ -50,11 +59,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "${GITHUB_REPOSITORY}" = "manish91082-coder/ghost-hunter-new"
-          test "${GITHUB_REF_NAME}" = "phase-19-e2e-harness"
-          test -n "${GITHUB_SHA}"
-          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
-          echo "EXACT_HEAD=${GITHUB_SHA}"
+          test "$GITHUB_REPOSITORY" = "manish91082-coder/ghost-hunter-new"
+          test "$GITHUB_REF_NAME" = "phase-19-e2e-harness"
+          test -n "$GITHUB_SHA"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          echo "EXACT_HEAD=$GITHUB_SHA"
+          echo "FEE_TIER=$PHANTOMX_HUNT_FEE_TIER"
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -67,23 +77,80 @@ jobs:
       - name: Diagnose Polygon RPC reachability
         run: |
           set -u
-          for endpoint in             "https://polygon.drpc.org/"             "https://public.1rpc.io/matic"             "https://polygon-bor-rpc.publicnode.com"; do
+          for endpoint in \
+            "https://polygon.drpc.org/" \
+            "https://public.1rpc.io/matic" \
+            "https://polygon-bor-rpc.publicnode.com"; do
             printf "RPC %s -> " "$endpoint"
-            curl --silent --show-error --max-time 8               -H "Content-Type: application/json"               --data '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}'               "$endpoint" | head -c 200 || true
+            curl --silent --show-error --max-time 8 \
+              -H "Content-Type: application/json" \
+              --data '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}' \
+              "$endpoint" | head -c 200 || true
             printf "\n"
           done
 
-      - name: Initialize live scan evidence
+      - name: Initialize shard evidence
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p artifacts
-          printf '%s\n' '{"schema_version":1,"mission":"PHANTOMX FIRST HUNT READ-ONLY LIVE SCAN","status":"STARTED","read_only":true,"signing":false,"submission":false,"broadcast":false,"live_capital":false}' > artifacts/first_hunt_live_scan.json
+          printf '%s\n' "{\"schema_version\":1,\"mission\":\"PHANTOMX FIRST HUNT READ-ONLY LIVE SCAN\",\"status\":\"STARTED\",\"selected_fee_tier\":$PHANTOMX_HUNT_FEE_TIER,\"read_only\":true,\"signing\":false,\"submission\":false,\"broadcast\":false,\"live_capital\":false}" > artifacts/first_hunt_live_scan.json
 
-      - name: Run read-only First-Hunt scan
+      - name: Run bounded First-Hunt fee shard
         run: python scripts/first_hunt_live_scan.py
 
-      - name: Upload live scan evidence
+      - name: Upload fee-tier shard evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phantomx-first-hunt-shard-${{ matrix.fee_tier }}
+          path: artifacts/first_hunt_live_scan.json
+          if-no-files-found: error
+
+  aggregate:
+    name: Aggregate First-Hunt coverage
+    if: always()
+    needs: first-hunt-shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Verify aggregate checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "manish91082-coder/ghost-hunter-new"
+          test "$GITHUB_REF_NAME" = "phase-19-e2e-harness"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          echo "EXACT_HEAD=$GITHUB_SHA"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Download completed fee shards
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          pattern: phantomx-first-hunt-shard-*
+          path: downloaded-shards
+
+      - name: Initialize aggregate evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          printf '%s\n' '{"schema_version":2,"mission":"PHANTOMX FIRST HUNT READ-ONLY LIVE SCAN","status":"AGGREGATING","read_only":true,"signing":false,"submission":false,"broadcast":false,"live_capital":false}' > artifacts/first_hunt_live_scan.json
+
+      - name: Aggregate fail-closed First-Hunt shards
+        run: python scripts/aggregate_first_hunt_shards.py downloaded-shards artifacts/first_hunt_live_scan.json
+
+      - name: Upload aggregate hunt evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
