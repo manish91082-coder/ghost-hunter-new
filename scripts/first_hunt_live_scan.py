@@ -215,7 +215,7 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
                     reverse=reverse_observations,
                     max_degradation_bps=100,
                 )
-                eligible = {item.amount: item for item in ceiling.evaluated if item.safe}
+                safe_observation_count = sum(1 for item in ceiling.evaluated if item.safe)
                 for item in ceiling.evaluated:
                     if item.forward is None or item.reverse is None:
                         continue
@@ -246,6 +246,7 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
                     "uniswap_fee_tier": fee_tier,
                     "status": "SUCCESS",
                     "observation_count": len(ceiling.evaluated) * 2,
+                    "safe_observation_count": safe_observation_count,
                     "dynamic_route_ceiling_usdc": str(Decimal(ceiling.max_safe_amount) / Decimal(10**6)),
                     "reference_amount_usdc": str(Decimal(ceiling.reference_amount) / Decimal(10**6)),
                     "max_route_degradation_bps": ceiling.max_degradation_bps,
@@ -265,6 +266,7 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
     blocks = sorted({item["block_number"] for item in observations})
     chains = sorted({item["chain_id"] for item in observations})
     gross_positive = [item for item in observations if item["gross_delta_raw"] > 0]
+    post_flash_positive = [item for item in observations if item["post_flash_premium_delta_raw"] > 0]
     ranked = sorted(observations, key=lambda item: item["gross_delta_raw"], reverse=True)
     top_gross = ranked[:10]
     by_tile: dict[str, dict[str, Any]] = {}
@@ -280,6 +282,8 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
         "blocks": blocks,
         "observation_count": len(observations),
         "gross_positive_count": len(gross_positive),
+        "post_flash_positive_count": len(post_flash_positive),
+        "post_flash_max_usdc": str(Decimal(max((item["post_flash_premium_delta_raw"] for item in observations), default=0)) / Decimal(10**6)),
         "gross_max_usdc": str(Decimal(top_gross[0]["gross_delta_raw"]) / Decimal(10**6)) if top_gross else "0",
         "top_gross_observations": top_gross,
         "tile_maxima": sorted(
