@@ -39,7 +39,7 @@ concurrency:
 jobs:
   first-hunt-live-read:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
       - name: Checkout exact branch
         uses: actions/checkout@v5
@@ -72,6 +72,13 @@ jobs:
             curl --silent --show-error --max-time 8               -H "Content-Type: application/json"               --data '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}'               "$endpoint" | head -c 200 || true
             printf "\n"
           done
+
+      - name: Initialize live scan evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          printf '%s\n' '{"schema_version":1,"mission":"PHANTOMX FIRST HUNT READ-ONLY LIVE SCAN","status":"STARTED","read_only":true,"signing":false,"submission":false,"broadcast":false,"live_capital":false}' > artifacts/first_hunt_live_scan.json
 
       - name: Run read-only First-Hunt scan
         run: python scripts/first_hunt_live_scan.py
