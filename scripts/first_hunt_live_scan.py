@@ -28,7 +28,7 @@ from phantomx.cross_venue_discovery import discover_cross_venue_opportunities
 from phantomx.opportunity_discovery import OpportunityDiscoveryResult
 from phantomx.dynamic_route_guard import DynamicRouteGuardError, evaluate_simulation_domain
 from phantomx.dynamic_market_policy import compute_dynamic_loan_ceiling
-from phantomx.market_block import acquire_market_block
+from phantomx.market_block import acquire_market_block, acquire_market_block_at
 from phantomx.polygon_rpc_http import PolygonRPCHTTPConfig, PolygonRPCHTTPTransport
 from phantomx.rpc_failover import build_free_polygon_rpc_pool
 from phantomx.quickswap_v2 import QuickSwapV2ExactQuoter
@@ -195,7 +195,15 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
     quickswap = QuickSwapV2ExactQuoter(rpc, QUICKSWAP_V2_ROUTER)
     uniswap = UniswapV3ExactQuoter(rpc, UNISWAP_V3_FACTORY, UNISWAP_V3_QUOTER)
 
-    context = acquire_market_block(rpc)
+    pinned_block_raw = os.getenv("PHANTOMX_HUNT_BLOCK_NUMBER", "").strip()
+    if pinned_block_raw:
+        try:
+            pinned_block = int(pinned_block_raw)
+        except ValueError as exc:
+            raise ValueError("PHANTOMX_HUNT_BLOCK_NUMBER must be an integer") from exc
+        context = acquire_market_block_at(rpc, pinned_block)
+    else:
+        context = acquire_market_block(rpc)
     aave = AaveV3PolygonDynamicReader(rpc).snapshot(USDC, context)
     dynamic_ceiling_raw = compute_dynamic_loan_ceiling(
         __import__("phantomx.dynamic_market_policy", fromlist=["DynamicLoanInputs"]).DynamicLoanInputs(
@@ -431,6 +439,9 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
         "endpoint": provider_label,
         "chain_ids": chains,
         "blocks": blocks,
+        "market_block_number": context.block_number,
+        "market_block_timestamp": context.timestamp,
+        "market_block_source": "pinned_env" if pinned_block_raw else "self_acquired",
         "observation_count": len(observations),
         "gross_positive_count": len(gross_positive),
         "post_flash_positive_count": len(post_flash_positive),
@@ -509,7 +520,6 @@ def main() -> int:
         "pairs": [asdict(pair) for pair in PAIRS],
         "seed_loan_frontier_usdc": list(SEED_LOAN_USDC),
         "uniswap_v3_fee_tiers": list(UNISWAP_V3_FEE_TIERS),
-        "selected_fee_tiers": list(selected_fee_tiers()),
         "selected_fee_tiers": list(selected_fee_tiers()),
         "successful_endpoints": results,
         "failed_endpoints": failures,
