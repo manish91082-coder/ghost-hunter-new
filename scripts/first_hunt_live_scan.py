@@ -51,6 +51,18 @@ UNISWAP_V3_FACTORY = "0x1F98431c8aD98523631AE4a59f267346ea31F984"
 UNISWAP_V3_QUOTER = "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6"
 UNISWAP_V3_FEE_TIERS = (100, 500, 3000, 10000)
 
+def selected_fee_tiers() -> tuple[int, ...]:
+    raw = os.getenv("PHANTOMX_HUNT_FEE_TIER", "").strip()
+    if not raw:
+        return UNISWAP_V3_FEE_TIERS
+    try:
+        fee = int(raw)
+    except ValueError as exc:
+        raise ValueError("PHANTOMX_HUNT_FEE_TIER must be an integer") from exc
+    if fee not in UNISWAP_V3_FEE_TIERS:
+        raise ValueError(f"unsupported Uniswap V3 fee tier: {fee}")
+    return (fee,)
+
 DEFAULT_ENDPOINTS = (
     "https://polygon.drpc.org/",
     "https://public.1rpc.io/matic",
@@ -200,7 +212,8 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
 
     observations: list[dict[str, Any]] = []
     tile_results: list[dict[str, Any]] = []
-    for fee_tier in UNISWAP_V3_FEE_TIERS:
+    fee_tiers = selected_fee_tiers()
+    for fee_tier in fee_tiers:
         for pair in PAIRS:
             try:
                 discovered = discover_cross_venue_opportunities(
@@ -430,7 +443,7 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
         "observations": observations,
         "fee_tier_tile_results": tile_results,
         "coverage": {
-            "expected_tile_count": len(PAIRS) * len(UNISWAP_V3_FEE_TIERS),
+            "expected_tile_count": len(PAIRS) * len(selected_fee_tiers()),
             "completed_tile_count": sum(1 for item in tile_results if item["status"] == "SUCCESS"),
             "incomplete_tile_count": sum(1 for item in tile_results if item.get("coverage_status") not in {"COMPLETE", "COMPLETE_NO_COMMON_ROUTE"}),
             "status": classify_tile_coverage(tile_results),
@@ -493,6 +506,8 @@ def main() -> int:
         "pairs": [asdict(pair) for pair in PAIRS],
         "seed_loan_frontier_usdc": list(SEED_LOAN_USDC),
         "uniswap_v3_fee_tiers": list(UNISWAP_V3_FEE_TIERS),
+        "selected_fee_tiers": list(selected_fee_tiers()),
+        "selected_fee_tiers": list(selected_fee_tiers()),
         "successful_endpoints": results,
         "failed_endpoints": failures,
         "rpc_pool": {
