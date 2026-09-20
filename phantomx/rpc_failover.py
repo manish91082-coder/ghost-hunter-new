@@ -181,13 +181,19 @@ class PolygonRPCFailoverPool:
         message = str(exc).lower()
         if isinstance(exc, (TimeoutError, URLError, PolygonRPCHTTPError)):
             return True
+        # A provider returning an EVM execution revert is giving semantic route/call
+        # feedback, not a transport failure. Retrying the same call across the full
+        # fleet can turn one deterministic route rejection into an RPC storm and can
+        # exhaust the shard timeout. Semantic reverts therefore fail closed here.
+        if "execution reverted" in message:
+            return False
         markers = (
             "401", "402", "403", "408", "410", "429", "500", "502", "503", "504",
             "rate limit", "too many requests", "timeout",
             "temporarily unavailable", "service unavailable", "gateway",
             "overloaded", "header not found", "historical state",
             "missing trie", "pruned", "connection reset", "connection refused", "unexpected provider chain id",
-            "rpc error code=", "execution reverted",
+            "rpc error code=",
         )
         return any(marker in message for marker in markers)
 
