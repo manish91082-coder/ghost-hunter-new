@@ -128,28 +128,48 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
             try:
                 ramses_pool = ramses.resolve_pool(USDC_E, token_b, tick_spacing, context)
                 ramses_fee = ramses.pool_fee(ramses_pool, context)
-                forward = tuple(
-                    build_quickswap_v2_to_ramses_v3_route(
-                        rpc, quickswap, ramses,
-                        amount_in=amount,
-                        token_a=USDC_E,
-                        token_b=token_b,
-                        ramses_tick_spacing=tick_spacing,
-                        block=context,
-                    )
-                    for amount in amounts
-                )
-                reverse = tuple(
-                    build_ramses_v3_to_quickswap_v2_route(
-                        rpc, quickswap, ramses,
-                        amount_in=amount,
-                        token_a=USDC_E,
-                        token_b=token_b,
-                        ramses_tick_spacing=tick_spacing,
-                        block=context,
-                    )
-                    for amount in amounts
-                )
+                forward = []
+                reverse = []
+                failures = []
+                for amount in amounts:
+                    try:
+                        forward.append(
+                            build_quickswap_v2_to_ramses_v3_route(
+                                rpc, quickswap, ramses,
+                                amount_in=amount,
+                                token_a=USDC_E,
+                                token_b=token_b,
+                                ramses_tick_spacing=tick_spacing,
+                                block=context,
+                            )
+                        )
+                    except Exception as exc:
+                        failures.append({
+                            "direction": "quickswap_v2->ramses_v3",
+                            "loan_amount_raw": amount,
+                            "error_type": type(exc).__name__,
+                            "error": str(exc),
+                            "retryable": _retryable_failure(exc),
+                        })
+                    try:
+                        reverse.append(
+                            build_ramses_v3_to_quickswap_v2_route(
+                                rpc, quickswap, ramses,
+                                amount_in=amount,
+                                token_a=USDC_E,
+                                token_b=token_b,
+                                ramses_tick_spacing=tick_spacing,
+                                block=context,
+                            )
+                        )
+                    except Exception as exc:
+                        failures.append({
+                            "direction": "ramses_v3->quickswap_v2",
+                            "loan_amount_raw": amount,
+                            "error_type": type(exc).__name__,
+                            "error": str(exc),
+                            "retryable": _retryable_failure(exc),
+                        })
                 ceiling = evaluate_simulation_domain(
                     forward=forward,
                     reverse=reverse,
@@ -160,12 +180,21 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
                         observations.append(_record("quickswap_v2->ramses_v3", item.amount, tick_spacing, item.forward, aave.flash_loan_premium_bps))
                     if item.reverse is not None:
                         observations.append(_record("ramses_v3->quickswap_v2", item.amount, tick_spacing, item.reverse, aave.flash_loan_premium_bps))
+                expected = len(amounts) * 2
+                accounted = len(forward) + len(reverse) + len(failures)
                 tiles.append({
                     "pair": pair_name,
                     "ramses_tick_spacing": tick_spacing,
                     "ramses_pool": ramses_pool,
                     "ramses_fee_raw": ramses_fee,
                     "status": "SUCCESS",
+                    "coverage_status": "COMPLETE" if accounted == expected and not any(item["retryable"] for item in failures) else "PARTIAL_RETRYABLE" if any(item["retryable"] for item in failures) else "PARTIAL_INCOMPLETE",
+                    "expected_direction_evaluations": expected,
+                    "accounted_direction_evaluations": accounted,
+                    "success_direction_evaluations": len(forward) + len(reverse),
+                    "retryable_failure_count": sum(item["retryable"] for item in failures),
+                    "terminal_failure_count": sum(not item["retryable"] for item in failures),
+                    "failure_diagnostics": failures,
                     "observation_count": len(ceiling.evaluated) * 2,
                     "dynamic_route_ceiling_usdc": str(Decimal(ceiling.max_safe_amount) / Decimal(10**6)),
                 })
