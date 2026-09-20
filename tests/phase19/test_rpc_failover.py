@@ -86,8 +86,8 @@ class RPCFailoverTests(unittest.TestCase):
         pool._states["p2"].transport.call = Mock(side_effect=TimeoutError("timeout"))
         with self.assertRaises(RPCPoolError) as ctx:
             pool.call("eth_blockNumber", [])
-        self.assertIn("all bounded Polygon recovery passes", str(ctx.exception))
-        self.assertEqual(len(pool.history), 2)
+        self.assertIn("all bounded Polygon RPC recovery passes failed", str(ctx.exception))
+        self.assertEqual(len(pool.history), 4)
 
     def test_disabled_provider_is_never_used(self):
         records = (
