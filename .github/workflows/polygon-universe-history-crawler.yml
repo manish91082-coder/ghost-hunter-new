@@ -165,7 +165,7 @@ jobs:
           PHANTOMX_INVENTORY_VENUE: ${{ matrix.venue }}
           PHANTOMX_INVENTORY_FROM_BLOCK: ${{ needs.resolve.outputs.from_block }}
           PHANTOMX_INVENTORY_TO_BLOCK: ${{ needs.resolve.outputs.to_block }}
-          PHANTOMX_INVENTORY_PINNED_BLOCK: ${{ needs.resolve.outputs.snapshot_to }}
+          PHANTOMX_INVENTORY_PINNED_BLOCK: ${{ needs.resolve.outputs.to_block }}
           PHANTOMX_INVENTORY_CHUNK_SIZE: "50"
         shell: bash
         run: |
@@ -177,7 +177,7 @@ jobs:
         env:
           PHANTOMX_INVENTORY_FROM_BLOCK: ${{ needs.resolve.outputs.from_block }}
           PHANTOMX_INVENTORY_TO_BLOCK: ${{ needs.resolve.outputs.to_block }}
-          PHANTOMX_INVENTORY_PINNED_BLOCK: ${{ needs.resolve.outputs.snapshot_to }}
+          PHANTOMX_INVENTORY_PINNED_BLOCK: ${{ needs.resolve.outputs.to_block }}
           PHANTOMX_INVENTORY_CHUNK_SIZE: "50"
         shell: bash
         run: |
