@@ -61,25 +61,53 @@ jobs:
 
   first-hunt-shard:
     needs: resolve-market-block
-    name: First-Hunt fee ${{ matrix.fee_tier }} group ${{ matrix.pair_group }}
+    name: First-Hunt fee ${{ matrix.fee_tier }} pair ${{ matrix.pair_index }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 4
       matrix:
         include:
-          - { fee_tier: 100, pair_group: 0 }
-          - { fee_tier: 100, pair_group: 1 }
-          - { fee_tier: 500, pair_group: 0 }
-          - { fee_tier: 500, pair_group: 1 }
-          - { fee_tier: 3000, pair_group: 0 }
-          - { fee_tier: 3000, pair_group: 1 }
-          - { fee_tier: 10000, pair_group: 0 }
-          - { fee_tier: 10000, pair_group: 1 }
+          - { fee_tier: 100, pair_index: 0 }
+          - { fee_tier: 100, pair_index: 1 }
+          - { fee_tier: 100, pair_index: 2 }
+          - { fee_tier: 100, pair_index: 3 }
+          - { fee_tier: 100, pair_index: 4 }
+          - { fee_tier: 100, pair_index: 5 }
+          - { fee_tier: 100, pair_index: 6 }
+          - { fee_tier: 100, pair_index: 7 }
+          - { fee_tier: 100, pair_index: 8 }
+          - { fee_tier: 500, pair_index: 0 }
+          - { fee_tier: 500, pair_index: 1 }
+          - { fee_tier: 500, pair_index: 2 }
+          - { fee_tier: 500, pair_index: 3 }
+          - { fee_tier: 500, pair_index: 4 }
+          - { fee_tier: 500, pair_index: 5 }
+          - { fee_tier: 500, pair_index: 6 }
+          - { fee_tier: 500, pair_index: 7 }
+          - { fee_tier: 500, pair_index: 8 }
+          - { fee_tier: 3000, pair_index: 0 }
+          - { fee_tier: 3000, pair_index: 1 }
+          - { fee_tier: 3000, pair_index: 2 }
+          - { fee_tier: 3000, pair_index: 3 }
+          - { fee_tier: 3000, pair_index: 4 }
+          - { fee_tier: 3000, pair_index: 5 }
+          - { fee_tier: 3000, pair_index: 6 }
+          - { fee_tier: 3000, pair_index: 7 }
+          - { fee_tier: 3000, pair_index: 8 }
+          - { fee_tier: 10000, pair_index: 0 }
+          - { fee_tier: 10000, pair_index: 1 }
+          - { fee_tier: 10000, pair_index: 2 }
+          - { fee_tier: 10000, pair_index: 3 }
+          - { fee_tier: 10000, pair_index: 4 }
+          - { fee_tier: 10000, pair_index: 5 }
+          - { fee_tier: 10000, pair_index: 6 }
+          - { fee_tier: 10000, pair_index: 7 }
+          - { fee_tier: 10000, pair_index: 8 }
     env:
       PHANTOMX_HUNT_FEE_TIER: ${{ matrix.fee_tier }}
-      PHANTOMX_HUNT_PAIR_GROUP: ${{ matrix.pair_group }}
+      PHANTOMX_HUNT_PAIR_INDEX: ${{ matrix.pair_index }}
       PHANTOMX_HUNT_BLOCK_NUMBER: ${{ needs.resolve-market-block.outputs.block_number }}
 
     steps:
@@ -136,7 +164,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: phantomx-first-hunt-shard-fee-${{ matrix.fee_tier }}-group-${{ matrix.pair_group }}
+          name: phantomx-first-hunt-shard-fee-${{ matrix.fee_tier }}-pair-${{ matrix.pair_index }}
           path: artifacts/first_hunt_live_scan.json
           if-no-files-found: error
 
