@@ -13,6 +13,7 @@ from phantomx.cycle_route import simulate_cycle
 from phantomx.dynamic_market_policy import DynamicLoanInputs,compute_dynamic_loan_ceiling
 from phantomx.market_block import acquire_market_block
 from phantomx.rpc_failover import build_free_polygon_rpc_pool
+from phantomx.dynamic_pair_surface import discover_live_base_pairs
 from phantomx.uniswap_v3 import UniswapV3ExactQuoter
 from first_hunt_live_scan import PAIRS,UNISWAP_V3_FACTORY,UNISWAP_V3_QUOTER,UNISWAP_V3_FEE_TIERS,USDC,dynamic_loan_frontier_usdc
 POLYGON_CHAIN_ID=137
@@ -24,7 +25,22 @@ def _scan_rpc(rpc:Any,provider_label:str)->dict[str,Any]:
     ceiling=compute_dynamic_loan_ceiling(DynamicLoanInputs(aave_available_raw=aave.available_liquidity_raw,route_input_ceiling_raw=aave.available_liquidity_raw,price_impact_ceiling_raw=aave.available_liquidity_raw,system_hard_cap_raw=None,safety_headroom_bps=500))
     amounts=tuple(x*10**6 for x in dynamic_loan_frontier_usdc(ceiling//10**6))
     observations=[]; tiles=[]
-    for pair_name,token_b in PAIRS:
+    pair_surface_status = "SEED_ONLY"
+    active_pairs = PAIRS
+    try:
+        pair_surface = discover_live_base_pairs(
+            rpc, base_token=USDC,
+            seed_pairs=tuple(PAIRS),
+            required_venues=("uniswap_v3",),
+            lookback_blocks=25_000,
+            chunk_size=2_000,
+        )
+        active_pairs = tuple((p.name, p.token_b) for p in pair_surface.pairs)
+        pair_surface_status = pair_surface.status
+    except Exception as exc:
+        pair_surface_status = "PAIR_UNIVERSE_INCOMPLETE"
+        print(f"PAIR_DISCOVERY_FALLBACK: {type(exc).__name__}: {exc}", flush=True)
+    for pair_name,token_b in active_pairs:
         pools=[]
         for fee in UNISWAP_V3_FEE_TIERS:
             try: pools.append((fee,uv3.resolve_pool(USDC,token_b,fee,context)))
@@ -50,10 +66,30 @@ def _scan_rpc(rpc:Any,provider_label:str)->dict[str,Any]:
                             "chain_id":sim.chain_id,"block_number":sim.block_number,"route_hash":sim.route_hash,
                             "legs":[asdict(leg) for leg in sim.legs],
                         }); count+=1
-                    except Exception: pass
-                tiles.append({"pair":pair_name,"fee_in":fee_in,"fee_out":fee_out,"pool_in":pool_in,"pool_out":pool_out,"status":"SUCCESS" if count else "UNAVAILABLE_OR_FAILED","observation_count":count})
+                    except Exception as exc:
+                        tiles.append({
+                            "pair": pair_name,
+                            "fee_in": fee_in,
+                            "fee_out": fee_out,
+                            "pool_in": pool_in,
+                            "pool_out": pool_out,
+                            "status": "UNAVAILABLE_OR_FAILED",
+                            "error_type": type(exc).__name__,
+                            "error": str(exc),
+                            "observation_count": count,
+                        })
+                        break
+                else:
+                    pass
+                if not tiles or not (
+                    tiles[-1].get("pair") == pair_name and
+                    tiles[-1].get("fee_in") == fee_in and
+                    tiles[-1].get("fee_out") == fee_out
+                ):
+                    tiles.append({"pair":pair_name,"fee_in":fee_in,"fee_out":fee_out,"pool_in":pool_in,"pool_out":pool_out,"status":"SUCCESS" if count else "UNAVAILABLE_OR_FAILED","observation_count":count})
+
     ranked=sorted(observations,key=lambda x:x["gross_delta_raw"],reverse=True)
-    return {"endpoint":provider_label,"chain_id":POLYGON_CHAIN_ID,"block_number":context.block_number,"observation_count":len(observations),"gross_positive_count":sum(x["gross_delta_raw"]>0 for x in observations),"gross_max_usdc":str(Decimal(ranked[0]["gross_delta_raw"])/Decimal(10**6)) if ranked else "0","top_gross_observations":ranked[:20],"tiles":tiles,"status":"SUCCESS"}
+    return {"endpoint":provider_label,"chain_id":POLYGON_CHAIN_ID,"block_number":context.block_number,"pair_universe":{"status":pair_surface_status,"seed_count":len(PAIRS),"active_count":len(active_pairs)},"observation_count":len(observations),"gross_positive_count":sum(x["gross_delta_raw"]>0 for x in observations),"gross_max_usdc":str(Decimal(ranked[0]["gross_delta_raw"])/Decimal(10**6)) if ranked else "0","top_gross_observations":ranked[:20],"tiles":tiles,"status":"SUCCESS"}
 
 def main()->int:
     Path("artifacts").mkdir(exist_ok=True); started=time.time(); pool=build_free_polygon_rpc_pool(); results=[]; failures=[]
