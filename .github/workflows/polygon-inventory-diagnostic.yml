@@ -51,7 +51,7 @@ jobs:
       - name: Run Balancer V2 inventory
         env:
           PHANTOMX_INVENTORY_WINDOW_BLOCKS: "5000"
-          PHANTOMX_INVENTORY_CHUNK_SIZE: "2000"
+          PHANTOMX_INVENTORY_CHUNK_SIZE: "50"
         run: python scripts/balancer_v2_inventory_live.py
       - name: Upload inventory evidence
         uses: actions/upload-artifact@v4
