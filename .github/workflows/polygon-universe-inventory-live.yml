@@ -24,22 +24,45 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          api="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=phantomx-polygon-inventory-cursor&per_page=1"
-          archive=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" "$api" | python -c 'import json,sys; d=json.load(sys.stdin); print(d["artifacts"][0]["archive_download_url"] if d.get("artifacts") else "")')
-          if [ -n "$archive" ]; then
+          latest=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=phantomx-polygon-inventory-cursor&per_page=1" \
+            | python -c 'import json,sys; d=json.load(sys.stdin); print(d["artifacts"][0]["archive_download_url"] if d.get("artifacts") else "")')
+          found=0
+          if [ -n "$latest" ]; then
             rm -rf /tmp/cursor && mkdir -p /tmp/cursor
-            curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" "$archive" -o /tmp/cursor/cursor.zip
-            unzip -oq /tmp/cursor/cursor.zip -d /tmp/cursor
-            python - /tmp/cursor/cursor.json <<'PY' >> "$GITHUB_OUTPUT"
+            if curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" "$latest" -o /tmp/cursor.zip; then
+              unzip -oq /tmp/cursor.zip -d /tmp/cursor || true
+              cursor_json=$(find /tmp/cursor -name cursor.json -type f | head -1)
+              if [ -n "$cursor_json" ]; then
+                found=1
+                mode=$(python - "$cursor_json" <<'PY'
 import json,sys
-d=json.load(open(sys.argv[1],encoding="utf-8"))
-print("from_block="+str(d["next_from_block"]))
-print("to_block="+str(d["next_to_block"]))
+print(json.load(open(sys.argv[1],encoding="utf-8")).get("mode","scheduled-historical-backfill"))
 PY
-          else
-            echo 'from_block=0' >> "$GITHUB_OUTPUT"
-            echo 'to_block=' >> "$GITHUB_OUTPUT"
+)
+                next_from=$(python - "$cursor_json" <<'PY'
+import json,sys
+print(json.load(open(sys.argv[1],encoding="utf-8"))["next_from_block"])
+PY
+)
+                next_to=$(python - "$cursor_json" <<'PY'
+import json,sys
+print(json.load(open(sys.argv[1],encoding="utf-8"))["next_to_block"])
+PY
+)
+                if [ "$mode" = "scheduled-head-refresh" ]; then
+                  next_from=$(( latest > 5000 ? latest - 4999 : 0 ))
+                  next_to=""
+                fi
+                echo "from_block=$next_from" >> "$GITHUB_OUTPUT"
+                echo "to_block=$next_to" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            fi
           fi
+          echo 'from_block=0' >> "$GITHUB_OUTPUT"
+          echo 'to_block=' >> "$GITHUB_OUTPUT"
+          echo 'mode=scheduled-historical-backfill' >> "$GITHUB_OUTPUT"
   inventory:
     if: github.event_name != 'workflow_dispatch' || inputs.venue == ''
     runs-on: ubuntu-latest
