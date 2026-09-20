@@ -8,19 +8,13 @@ on:
       - ".github/workflows/polygon-universe-inventory-live.yml"
       - "scripts/polygon_venue_inventory_live.py"
       - "scripts/balancer_v2_inventory_live.py"
-      - "phantomx/polygon_universe_inventory.py"
-      - "phantomx/polygon_log_inventory.py"
-      - "phantomx/polygon_venue_inventory.py"
-      - "phantomx/balancer_v2.py"
-      - "phantomx/rpc_failover.py"
-  repository_dispatch:
-    types:
-      - polygon_inventory_continue
+      - "phantomx/**"
   schedule:
     - cron: "*/15 * * * *"
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   actions: read
 
 concurrency:
@@ -28,182 +22,107 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  resolve_cursor:
+  inventory:
     runs-on: ubuntu-latest
-    outputs:
-      from_block: ${{ steps.resolve.outputs.from_block }}
-      to_block: ${{ steps.resolve.outputs.to_block }}
-      latest_block: ${{ steps.resolve.outputs.latest_block }}
+    timeout-minutes: 25
     steps:
-      - name: Resolve persistent cursor
-        id: resolve
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Verify exact checkout
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          test "${GITHUB_REPOSITORY}" = "manish91082-coder/ghost-hunter-new"
+          test "${GITHUB_REF_NAME}" = "phase-19-e2e-harness"
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          echo "EXACT_HEAD=${GITHUB_SHA}"
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
+      - name: Resolve scan range
+        id: range
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          latest=""
           urls=(
             "https://polygon.drpc.org/"
             "https://polygon-bor-rpc.publicnode.com"
             "https://public.1rpc.io/matic"
-            "https://polygon-mainnet.public.blastapi.io"
-            "https://polygon.blockpi.network/v1/rpc/public"
-            "https://polygon.api.onfinality.io/public"
-            "https://endpoints.omniatech.io/v1/matic/mainnet/public"
-            "https://polygon.rpc.subquery.network/public"
             "https://polygon.llamarpc.com"
             "https://polygon-rpc.polkachu.com"
             "https://polygon-mainnet-public.unifra.io"
-            "https://polygon.croswap.com/rpc"
           )
-          latest=""
           for url in "${urls[@]}"; do
             response=$(curl -fsSL --max-time 8 -H "content-type: application/json" --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' "$url" 2>/dev/null || true)
             value=$(printf '%s' "$response" | python -c 'import json,sys; print(int(json.load(sys.stdin)["result"],16))' 2>/dev/null || true)
             if [ -n "$value" ]; then latest="$value"; break; fi
           done
-          [ -n "$latest" ] || { echo "No free Polygon RPC returned a head" >&2; exit 1; }
-          echo "latest_block=$latest" >> "$GITHUB_OUTPUT"
+          [ -n "$latest" ] || { echo "No free Polygon RPC returned a current head" >&2; exit 1; }
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          from=""
           api="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=phantomx-polygon-inventory-cursor&per_page=1"
           archive=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" "$api" | python -c 'import json,sys; d=json.load(sys.stdin); print(d["artifacts"][0]["archive_download_url"] if d.get("artifacts") else "")')
           if [ -n "$archive" ]; then
             rm -rf /tmp/cursor && mkdir -p /tmp/cursor
-            if curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" "$archive" -o /tmp/cursor.zip; then
-              unzip -oq /tmp/cursor.zip -d /tmp/cursor || true
-              cursor_json=$(find /tmp/cursor -name cursor.json -type f | head -1)
-              if [ -n "$cursor_json" ]; then
-                from=$(python - "$cursor_json" <<'PY'
+            curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" "$archive" -o /tmp/cursor.zip
+            unzip -oq /tmp/cursor.zip -d /tmp/cursor
+            cursor=$(find /tmp/cursor -name cursor.json -type f | head -1 || true)
+            if [ -n "$cursor" ]; then
+              from=$(python - "$cursor" <<'PY'
 import json,sys
-print(int(json.load(open(sys.argv[1],encoding="utf-8"))["next_from_block"]))
+print(json.load(open(sys.argv[1],encoding='utf-8'))['next_from_block'])
 PY
 )
-                to=$(python - "$cursor_json" <<'PY'
-import json,sys
-print(json.load(open(sys.argv[1],encoding="utf-8")).get("next_to_block", ""))
-PY
-)
-                echo "from_block=$from" >> "$GITHUB_OUTPUT"
-                echo "to_block=$to" >> "$GITHUB_OUTPUT"
-                exit 0
-              fi
             fi
           fi
-          from=0
-          to=$(( latest < 100000 ? latest : 99999 ))
-          echo "from_block=$from" >> "$GITHUB_OUTPUT"
-          echo "to_block=$to" >> "$GITHUB_OUTPUT"
-
-  inventory:
-    needs: resolve_cursor
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        venue: [quickswap_v2, quickswap_v3, uniswap_v3, ramses_v3, uniswap_v4]
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: phase-19-e2e-harness
-          fetch-depth: 0
-      - name: Verify exact checkout
+          if [ -z "$from" ]; then from=0; fi
+          to=$(( from + 100000 - 1 ))
+          if [ "$to" -gt "$latest" ]; then to="$latest"; fi
+          echo "from=$from" >> "$GITHUB_OUTPUT"
+          echo "to=$to" >> "$GITHUB_OUTPUT"
+          echo "INVENTORY_RANGE=${from}-${to} LATEST=${latest}"
+      - name: Run all six venue inventories
+        env:
+          FROM_BLOCK: ${{ steps.range.outputs.from }}
+          TO_BLOCK: ${{ steps.range.outputs.to }}
         shell: bash
         run: |
           set -euo pipefail
-          test "${GITHUB_REPOSITORY}" = "manish91082-coder/ghost-hunter-new"
-          test "${GITHUB_REF_NAME}" = "phase-19-e2e-harness"
-          test -n "${GITHUB_SHA}"
-          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
-          echo "EXACT_HEAD=${GITHUB_SHA}"
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
-      - name: Install dependencies
-        run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
-      - name: Run venue inventory
-        env:
-          PHANTOMX_INVENTORY_VENUE: ${{ matrix.venue }}
-          PHANTOMX_INVENTORY_FROM_BLOCK: ${{ needs.resolve_cursor.outputs.from_block }}
-          PHANTOMX_INVENTORY_TO_BLOCK: ${{ needs.resolve_cursor.outputs.to_block }}
-          PHANTOMX_INVENTORY_CHUNK_SIZE: "2000"
-        run: python scripts/polygon_venue_inventory_live.py
-      - name: Upload venue evidence
+          venues=(quickswap_v2 quickswap_v3 uniswap_v3 ramses_v3 uniswap_v4)
+          rm -rf artifacts && mkdir -p artifacts
+          for venue in "${venues[@]}"; do
+            echo "=== INVENTORY ${venue} ==="
+            PHANTOMX_INVENTORY_VENUE="$venue" PHANTOMX_INVENTORY_FROM_BLOCK="$FROM_BLOCK" PHANTOMX_INVENTORY_TO_BLOCK="$TO_BLOCK" PHANTOMX_INVENTORY_CHUNK_SIZE=2000 python scripts/polygon_venue_inventory_live.py
+          done
+          PHANTOMX_INVENTORY_FROM_BLOCK="$FROM_BLOCK" PHANTOMX_INVENTORY_TO_BLOCK="$TO_BLOCK" PHANTOMX_INVENTORY_CHUNK_SIZE=2000 python scripts/balancer_v2_inventory_live.py
+      - name: Upload complete inventory slice
         uses: actions/upload-artifact@v4
         with:
-          name: phantomx-polygon-inventory-${{ matrix.venue }}-${{ github.run_id }}
-          path: artifacts/polygon_inventory_${{ matrix.venue }}_*.json
+          name: phantomx-polygon-inventory-slice-${{ github.run_id }}
+          path: artifacts/*.json
           if-no-files-found: error
-
-  balancer_inventory:
-    needs: resolve_cursor
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: phase-19-e2e-harness
-          fetch-depth: 0
-      - name: Verify exact checkout
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "${GITHUB_REPOSITORY}" = "manish91082-coder/ghost-hunter-new"
-          test "${GITHUB_REF_NAME}" = "phase-19-e2e-harness"
-          test -n "${GITHUB_SHA}"
-          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
-          echo "EXACT_HEAD=${GITHUB_SHA}"
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
-      - name: Install dependencies
-        run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
-      - name: Run Balancer inventory
+      - name: Publish next cursor
         env:
-          PHANTOMX_INVENTORY_FROM_BLOCK: ${{ needs.resolve_cursor.outputs.from_block }}
-          PHANTOMX_INVENTORY_TO_BLOCK: ${{ needs.resolve_cursor.outputs.to_block }}
-          PHANTOMX_INVENTORY_CHUNK_SIZE: "2000"
-        run: python scripts/balancer_v2_inventory_live.py
-      - name: Upload Balancer evidence
-        uses: actions/upload-artifact@v4
-        with:
-          name: phantomx-polygon-inventory-balancer-v2-${{ github.run_id }}
-          path: artifacts/balancer_v2_inventory_*.json
-          if-no-files-found: error
-
-  publish_cursor:
-    needs: [resolve_cursor, inventory, balancer_inventory]
-    if: needs.inventory.result == 'success' && needs.balancer_inventory.result == 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Build next cursor
-        env:
-          TO_BLOCK: ${{ needs.resolve_cursor.outputs.to_block }}
-          LATEST_BLOCK: ${{ needs.resolve_cursor.outputs.latest_block }}
+          FROM_BLOCK: ${{ steps.range.outputs.from }}
+          TO_BLOCK: ${{ steps.range.outputs.to }}
+          LATEST_BLOCK: ${{ steps.range.outputs.latest }}
         shell: bash
         run: |
           set -euo pipefail
           next=$(( TO_BLOCK + 1 ))
-          if [ "$TO_BLOCK" -ge "$LATEST_BLOCK" ]; then
-            next_from=$(( LATEST_BLOCK > 4999 ? LATEST_BLOCK - 4999 : 0 ))
-            next_to="$LATEST_BLOCK"
-          else
-            next_from="$next"
-            next_to=$(( next_from + 100000 - 1 ))
-            if [ "$next_to" -gt "$LATEST_BLOCK" ]; then next_to="$LATEST_BLOCK"; fi
-          fi
+          if [ "$TO_BLOCK" -ge "$LATEST_BLOCK" ]; then next=$(( LATEST_BLOCK > 4999 ? LATEST_BLOCK - 4999 : 0 )); fi
           mkdir -p cursor-out
-          python - "$next_from" "$next_to" > cursor-out/cursor.json <<'PY'
+          python - "$next" "$TO_BLOCK" > cursor-out/cursor.json <<'PY'
 import json,sys
-print(json.dumps({"schema_version":1,"next_from_block":int(sys.argv[1]),"next_to_block":int(sys.argv[2])}))
+print(json.dumps({'schema_version':1,'next_from_block':int(sys.argv[1]),'next_to_block':int(sys.argv[2])}))
 PY
-      - name: Dispatch next inventory slice
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -fsSL -X POST             -H "Authorization: Bearer ${GH_TOKEN}"             -H "Accept: application/vnd.github+json"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/${GITHUB_REPOSITORY}/dispatches"             -d '{"event_type":"polygon_inventory_continue"}'
-      - name: Publish successful cursor
+      - name: Upload cursor
         uses: actions/upload-artifact@v4
         with:
           name: phantomx-polygon-inventory-cursor
