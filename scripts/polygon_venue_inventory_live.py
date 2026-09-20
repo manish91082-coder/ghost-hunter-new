@@ -11,6 +11,7 @@ if str(ROOT) not in sys.path:
 
 from phantomx.polygon_universe_inventory import InventoryTask, run_inventory_task
 from phantomx.polygon_venue_inventory import VENUE_SPECS
+from phantomx.market_block import acquire_market_block_at
 from phantomx.rpc_failover import build_free_polygon_rpc_pool
 
 def _int_env(name: str, default: int | None = None) -> int | None:
@@ -69,6 +70,8 @@ def main() -> int:
     spec = _spec()
     rpc_pool = build_free_polygon_rpc_pool()
     from_block, to_block, mode = _resolve_range(rpc_pool)
+    pinned_block_env = _int_env("PHANTOMX_INVENTORY_PINNED_BLOCK")
+    pinned_block = pinned_block_env if pinned_block_env is not None else to_block
     chunk_size = _int_env("PHANTOMX_INVENTORY_CHUNK_SIZE", 2000) or 2000
     task = InventoryTask(spec.venue_id, from_block, to_block, chunk_size)
     print(f"INVENTORY venue={spec.venue_id} mode={mode} range={from_block}-{to_block} providers={len(rpc_pool.records)}", flush=True)
@@ -86,6 +89,7 @@ def main() -> int:
         "from_block": from_block,
         "to_block": to_block,
         "chunk_size": chunk_size,
+        "pinned_block": pinned_block,
         "read_only": True,
         "signing": False,
         "submission": False,
