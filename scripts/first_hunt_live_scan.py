@@ -64,7 +64,8 @@ def classify_tile_coverage(tile_results: Sequence[Mapping[str, Any]]) -> str:
     items = tuple(tile_results)
     if not items:
         return "EMPTY"
-    return "COMPLETE" if all(item.get("status") == "SUCCESS" for item in items) else "PARTIAL_INCOMPLETE"
+    complete_states = {"COMPLETE", "COMPLETE_NO_COMMON_ROUTE"}
+    return "COMPLETE" if all(item.get("coverage_status") in complete_states for item in items) else "PARTIAL_INCOMPLETE"
 
 
 def dynamic_loan_frontier_usdc(dynamic_ceiling_usdc: int) -> tuple[int, ...]:
@@ -209,6 +210,7 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
                     loan_amounts=loan_amounts_raw,
                     uniswap_fee=fee_tier,
                     block=context,
+                    continue_on_error=True,
                 )
                 forward_observations = tuple(
                     item.simulation for item in discovered.evaluated
@@ -249,10 +251,35 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
                         flash_premium_bps=aave.flash_loan_premium_bps,
                         route_degradation_bps=rd,
                     ))
+                retryable_failures = discovered.retryable_failures
+                accounted_evaluations = len(discovered.evaluated) + len(discovered.failures)
+                expected_evaluations = len(loan_amounts_raw) * 2
+                coverage_status = (
+                    "COMPLETE"
+                    if accounted_evaluations == expected_evaluations and not retryable_failures
+                    else "PARTIAL_RETRYABLE"
+                    if retryable_failures
+                    else "PARTIAL_INCOMPLETE"
+                )
                 tile_results.append({
                     "pair": pair.name,
                     "uniswap_fee_tier": fee_tier,
                     "status": "SUCCESS",
+                    "coverage_status": coverage_status,
+                    "expected_direction_evaluations": expected_evaluations,
+                    "accounted_direction_evaluations": accounted_evaluations,
+                    "retryable_failure_count": len(discovered.retryable_failures),
+                    "terminal_failure_count": len(discovered.terminal_failures),
+                    "failure_diagnostics": [
+                        {
+                            "loan_amount_raw": item.loan_amount,
+                            "venue_path": item.venue_path,
+                            "error_type": item.error_type,
+                            "error": item.error_message,
+                            "retryable": item.retryable,
+                        }
+                        for item in discovered.failures
+                    ],
                     "observation_count": len(ceiling.evaluated) * 2,
                     "safe_observation_count": safe_observation_count,
                     "dynamic_route_ceiling_usdc": str(Decimal(ceiling.max_safe_amount) / Decimal(10**6)),
@@ -322,7 +349,7 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
         "coverage": {
             "expected_tile_count": len(PAIRS) * len(UNISWAP_V3_FEE_TIERS),
             "completed_tile_count": sum(1 for item in tile_results if item["status"] == "SUCCESS"),
-            "incomplete_tile_count": sum(1 for item in tile_results if item["status"] != "SUCCESS"),
+            "incomplete_tile_count": sum(1 for item in tile_results if item.get("coverage_status") not in {"COMPLETE", "COMPLETE_NO_COMMON_ROUTE"}),
             "status": classify_tile_coverage(tile_results),
         },
         "aave_dynamic": {
