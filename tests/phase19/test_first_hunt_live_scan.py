@@ -1,7 +1,7 @@
 import json
 import unittest
 
-from scripts.first_hunt_live_scan import PAIRS, POLYGON_CHAIN_ID, SEED_LOAN_USDC, UNISWAP_V3_FEE_TIERS, dynamic_loan_frontier_usdc
+from scripts.first_hunt_live_scan import PAIRS, POLYGON_CHAIN_ID, SEED_LOAN_USDC, UNISWAP_V3_FEE_TIERS, classify_tile_coverage, dynamic_loan_frontier_usdc
 
 
 class FirstHuntLiveScanContractTests(unittest.TestCase):
@@ -35,6 +35,15 @@ class FirstHuntLiveScanContractTests(unittest.TestCase):
     def test_uniswap_fee_tier_frontier_is_complete_and_unique(self):
         self.assertEqual(UNISWAP_V3_FEE_TIERS, (100, 500, 3000, 10000))
         self.assertEqual(len(set(UNISWAP_V3_FEE_TIERS)), len(UNISWAP_V3_FEE_TIERS))
+
+    def test_tile_coverage_requires_every_declared_tile(self):
+        complete = [{"status": "SUCCESS"} for _ in range(len(PAIRS) * len(UNISWAP_V3_FEE_TIERS))]
+        self.assertEqual(classify_tile_coverage(complete), "COMPLETE")
+
+    def test_tile_coverage_marks_missing_tile_as_incomplete(self):
+        partial = [{"status": "SUCCESS"} for _ in range(2)] + [{"status": "UNAVAILABLE_OR_FAILED"}]
+        self.assertEqual(classify_tile_coverage(partial), "PARTIAL_INCOMPLETE")
+        self.assertNotEqual(classify_tile_coverage(partial), "COMPLETE")
 
     def test_artifact_profit_policy_is_non_claiming(self):
         payload = {

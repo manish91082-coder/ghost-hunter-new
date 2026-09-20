@@ -59,6 +59,14 @@ DEFAULT_ENDPOINTS = (
 # Explicit frontier. Exact over this domain, not a continuous optimum claim.
 SEED_LOAN_USDC = (100, 250, 500, 750, 1000, 1500, 2500, 5000, 7500, 10000, 15000, 25000, 50000, 75000, 100000, 150000, 250000)
 
+def classify_tile_coverage(tile_results: Sequence[Mapping[str, Any]]) -> str:
+    """Return COMPLETE only when every declared pair/fee tile finished."""
+    items = tuple(tile_results)
+    if not items:
+        return "EMPTY"
+    return "COMPLETE" if all(item.get("status") == "SUCCESS" for item in items) else "PARTIAL_INCOMPLETE"
+
+
 def dynamic_loan_frontier_usdc(dynamic_ceiling_usdc: int) -> tuple[int, ...]:
     """Build an explicit, live-bounded loan domain; never exceeds the live cap."""
     if not isinstance(dynamic_ceiling_usdc, int) or isinstance(dynamic_ceiling_usdc, bool):
@@ -294,6 +302,12 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
         "gross_positive_observations": gross_positive,
         "observations": observations,
         "fee_tier_tile_results": tile_results,
+        "coverage": {
+            "expected_tile_count": len(PAIRS) * len(UNISWAP_V3_FEE_TIERS),
+            "completed_tile_count": sum(1 for item in tile_results if item["status"] == "SUCCESS"),
+            "incomplete_tile_count": sum(1 for item in tile_results if item["status"] != "SUCCESS"),
+            "status": classify_tile_coverage(tile_results),
+        },
         "aave_dynamic": {
             "pool": aave.pool,
             "a_token": aave.a_token,
@@ -305,7 +319,7 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
             "loan_frontier_usdc": list(loan_frontier_usdc),
             "safety_headroom_bps": 500,
         },
-        "status": "SUCCESS",
+        "status": classify_tile_coverage(tile_results),
     }
 
 
@@ -324,9 +338,12 @@ def main() -> int:
         result = _scan_rpc(rpc_pool, "failover-pool")
         results.append(result)
         print(
-            f"SUCCESS failover-pool: observations={result['observation_count']} "
+            f"{result['status']} failover-pool: observations={result['observation_count']} "
             f"gross_positive={result['gross_positive_count']} "
+            f"post_flash_positive={result['post_flash_positive_count']} "
             f"gross_max_usdc={result['gross_max_usdc']} "
+            f"post_flash_max_usdc={result['post_flash_max_usdc']} "
+            f"coverage={result['coverage']['completed_tile_count']}/{result['coverage']['expected_tile_count']} "
             f"dynamic_ceiling_usdc={result['aave_dynamic']['dynamic_ceiling_usdc']} "
             f"blocks={result['blocks']}",
             flush=True,
@@ -379,6 +396,9 @@ def main() -> int:
     if not results:
         print("No read-only Polygon provider in the failover pool produced a complete scan.", file=sys.stderr)
         return 1
+    if any(result["status"] != "COMPLETE" for result in results):
+        print("Incomplete hunt coverage: unresolved pair/fee tiles remain; refusing a green hunt result.", file=sys.stderr)
+        return 2
     return 0
 
 
