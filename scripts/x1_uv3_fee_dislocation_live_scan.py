@@ -42,15 +42,25 @@ def _scan_rpc(rpc:Any,provider_label:str)->dict[str,Any]:
         print(f"PAIR_DISCOVERY_FALLBACK: {type(exc).__name__}: {exc}", flush=True)
     for pair_name,token_b in active_pairs:
         pools=[]
+        pool_errors = []
         for fee in UNISWAP_V3_FEE_TIERS:
-            try: pools.append((fee,uv3.resolve_pool(USDC,token_b,fee,context)))
-            except Exception: pass
+            try:
+                pools.append((fee,uv3.resolve_pool(USDC,token_b,fee,context)))
+            except Exception as exc:
+                pool_errors.append({"fee": fee, "error_type": type(exc).__name__, "error": str(exc)})
         if len(pools)<2:
-            tiles.append({"pair":pair_name,"status":"INSUFFICIENT_POOL_VARIANTS","pool_variants":len(pools)}); continue
+            tiles.append({
+                "pair": pair_name,
+                "status": "INSUFFICIENT_POOL_VARIANTS",
+                "pool_variants": len(pools),
+                "pool_errors": pool_errors,
+            })
+            continue
         for fee_in,pool_in in pools:
             for fee_out,pool_out in pools:
                 if fee_in==fee_out: continue
                 count=0
+                route_errors=[]
                 for amount in amounts:
                     try:
                         first=uv3.quote_snapshot(amount,USDC,token_b,fee_in,context)
@@ -65,28 +75,28 @@ def _scan_rpc(rpc:Any,provider_label:str)->dict[str,Any]:
                             "gross_delta_usdc":str(Decimal(sim.final_amount-sim.initial_amount)/Decimal(10**6)),
                             "chain_id":sim.chain_id,"block_number":sim.block_number,"route_hash":sim.route_hash,
                             "legs":[asdict(leg) for leg in sim.legs],
-                        }); count+=1
+                        })
+                        count+=1
                     except Exception as exc:
-                        tiles.append({
-                            "pair": pair_name,
-                            "fee_in": fee_in,
-                            "fee_out": fee_out,
-                            "pool_in": pool_in,
-                            "pool_out": pool_out,
-                            "status": "UNAVAILABLE_OR_FAILED",
+                        route_errors.append({
+                            "loan_amount_usdc": str(Decimal(amount) / Decimal(10**6)),
                             "error_type": type(exc).__name__,
                             "error": str(exc),
-                            "observation_count": count,
                         })
-                        break
-                else:
-                    pass
-                if not tiles or not (
-                    tiles[-1].get("pair") == pair_name and
-                    tiles[-1].get("fee_in") == fee_in and
-                    tiles[-1].get("fee_out") == fee_out
-                ):
-                    tiles.append({"pair":pair_name,"fee_in":fee_in,"fee_out":fee_out,"pool_in":pool_in,"pool_out":pool_out,"status":"SUCCESS" if count else "UNAVAILABLE_OR_FAILED","observation_count":count})
+                        # Do not abandon this fee-tier route because one amount
+                        # failed. Continue with the remaining frontier.
+                        continue
+                tiles.append({
+                    "pair":pair_name,
+                    "fee_in":fee_in,
+                    "fee_out":fee_out,
+                    "pool_in":pool_in,
+                    "pool_out":pool_out,
+                    "status":"SUCCESS" if count else "UNAVAILABLE_OR_FAILED",
+                    "observation_count":count,
+                    "route_error_count":len(route_errors),
+                    "route_errors":route_errors[-5:],
+                })
 
     ranked=sorted(observations,key=lambda x:x["gross_delta_raw"],reverse=True)
     return {"endpoint":provider_label,"chain_id":POLYGON_CHAIN_ID,"block_number":context.block_number,"pair_universe":{"status":pair_surface_status,"seed_count":len(PAIRS),"active_count":len(active_pairs)},"observation_count":len(observations),"gross_positive_count":sum(x["gross_delta_raw"]>0 for x in observations),"gross_max_usdc":str(Decimal(ranked[0]["gross_delta_raw"])/Decimal(10**6)) if ranked else "0","top_gross_observations":ranked[:20],"tiles":tiles,"status":"SUCCESS"}
