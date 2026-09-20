@@ -63,7 +63,7 @@ def _range_error(exc: BaseException) -> bool:
 @dataclass
 class PolygonLogInventory:
     rpc: Any
-    initial_chunk_size: int = 2000
+    initial_chunk_size: int = 50
     minimum_chunk_size: int = 1
 
     def __post_init__(self) -> None:

@@ -40,7 +40,7 @@ def discover_live_base_pairs(
     seed_pairs: Sequence[tuple[str, str]],
     required_venues: Iterable[str],
     lookback_blocks: int = 25_000,
-    chunk_size: int = 2_000,
+    chunk_size: int = 50,
 ) -> DynamicPairDiscovery:
     if lookback_blocks < 1 or chunk_size < 1:
         raise ValueError("lookback_blocks and chunk_size must be positive")
