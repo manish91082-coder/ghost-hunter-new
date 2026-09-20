@@ -37,10 +37,32 @@ class OpportunityCandidate:
 
 
 @dataclass(frozen=True)
+@dataclass(frozen=True)
+class OpportunityFailure:
+    """One exact route-evaluation failure retained as evidence."""
+
+    token_a: str
+    token_b: str
+    venue_path: str
+    loan_amount: int
+    error_type: str
+    error_message: str
+    retryable: bool
+
+
 class OpportunityDiscoveryResult:
     """Complete evaluated frontier plus exact gross-positive candidates."""
 
     evaluated: tuple[OpportunityCandidate, ...]
+    failures: tuple[OpportunityFailure, ...] = ()
+
+    @property
+    def retryable_failures(self) -> tuple[OpportunityFailure, ...]:
+        return tuple(item for item in self.failures if item.retryable)
+
+    @property
+    def terminal_failures(self) -> tuple[OpportunityFailure, ...]:
+        return tuple(item for item in self.failures if not item.retryable)
 
     @property
     def gross_positive(self) -> tuple[OpportunityCandidate, ...]:
