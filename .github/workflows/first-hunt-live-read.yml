@@ -7,6 +7,8 @@ on:
     paths:
       - "phantomx/aave_v3_dynamic.py"
       - "phantomx/cross_venue_discovery.py"
+      - "phantomx/opportunity_discovery.py"
+      - "phantomx/cross_venue_route.py"
       - "phantomx/dynamic_market_policy.py"
       - "phantomx/dynamic_route_guard.py"
       - "phantomx/market_block.py"
@@ -36,7 +38,7 @@ concurrency:
 jobs:
   first-hunt-live-read:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout exact branch
         uses: actions/checkout@v5
