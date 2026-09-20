@@ -244,3 +244,14 @@ Missing lane = BLOCKED.
 - QuickSwap V3 fee is quote-derived in the scanner; observed route legs recorded dynamic fee data (example: QuickSwap V3 fee `10` raw units and Uniswap V3 tier `100`).
 - S1 artifact explicitly reports `economic_certification=NOT_PERFORMED` and `profit_claim=NONE`. Therefore S1 is live-discovery VERIFIED, but EconomicProof / exact gas / native valuation / final state-lock certification is NOT achieved.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+
+## CURRENT VERIFIED SYNC • 2026-09-20
+
+- Canonical HEAD: `810b190e3660394bc3be2923d3dc01f958457e57`.
+- Latest completed Phase-19 certification: run `#871` / `35505502629`, GREEN, **878 tests** on parent `9b3fd466...`. Current post-gate verification run #872 is active on HEAD `810b190e...`.
+- Latest completed First-Hunt: #44 / `35505502646`, GREEN as a read-only scan with **1,216 observations**, 0 gross-positive and 0 post-flash-positive; best gross `-$0.122095`; best post-flash `-$0.172095`; block `94130318`.
+- The #44 scan covered 32/36 pair/fee tiles. Four tiles were unresolved, so this is **not** exhaustion proof.
+- Current First-Hunt #45 is running on `810b190e...` with fail-closed coverage semantics.
+- Historical Universe Crawler #5 completed only the first `0-99999` slice to fixed snapshot `94129645`; automatic continuation was disabled. Historical universe exhaustion remains open.
+- Live signing, public broadcast and live capital remain blocked/locked.

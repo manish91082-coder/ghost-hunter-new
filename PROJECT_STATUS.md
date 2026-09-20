@@ -26,10 +26,10 @@ The project goal is not Phase-19. The goal is a working, evidence-backed Polygon
 
 ## CURRENT STATE
 - Branch: `phase-19-e2e-harness`
-- Current HEAD at this sync: `b19c8c08c3741a51068f6e043521452f1ece8ab4` (`fix(P0): forward scheduler circuit settings from factory`).
-- Latest verified engineering commit at this sync: `b19c8c08c3741a51068f6e043521452f1ece8ab4` (`fix(P0): forward scheduler circuit settings from factory`).
-- Latest verified Phase-19 CI certification: workflow run `630` / run ID `35364653977` **GREEN** on `617e203e0033e5a1589b6fa1c71bf29fecbf0053`; Solidity compilation, EVM integration (**14 tests**), Polygon fork protocol smoke (**3 tests**), Polygon fork execution probe (**1 test**), and the full Phase-19 unittest suite (**717 tests, 0 failures, 0 errors**) all completed successfully. The workflow checked out the exact branch HEAD with `fetch-depth: 0`.
-- The latest First-Hunt runs are read-only evidence only. First-Hunt #18 uses the bounded RPC scheduler head `b19c8c08...`; verify its final outcome from Actions before treating it as current market evidence.
+- Current HEAD at this sync: `810b190e3660394bc3be2923d3dc01f958457e57` (`fix: fail closed on incomplete first-hunt coverage`).
+- Latest verified engineering commit at this sync: `810b190e3660394bc3be2923d3dc01f958457e57` (`fix: fail closed on incomplete first-hunt coverage`).
+- Latest verified Phase-19 CI certification: workflow run `#871` / run ID `35505502629` **GREEN** on `9b3fd4660f23d730d45076d5d7368ce3180486ba`; Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Phase-19 unittest suite (**878 tests, 0 failures, 0 errors**) all completed successfully. Workflow run `#872` is the current post-gate verification on HEAD `810b190e3660394bc3be2923d3dc01f958457e57`.
+- First-Hunt run `#44` / run ID `35505502646` is the latest completed read-only hunt before the fail-closed coverage gate: **GREEN**, `1,216` observations, `0` gross-positive, `0` post-flash-positive, best gross `-$0.122095`, best post-flash `-$0.172095`, pinned block `94130318`. However, only **32/36 pair/fee tiles** completed, so it is **not universe-exhaustion evidence**. First-Hunt `#45` is the current HEAD `810b190e...` verification run.
 - The verified cleanup removes the duplicate Governor test module `tests/phase19/test_execution_governor.py`; canonical Governor coverage remains in `tests/phase19/test_governor.py` and the existing canonical pipeline tests. The canonical Governor implementation remains `phantomx/governor.py`.
 - `phantomx/live_opportunity_pipeline.py` provides concrete cross-venue discovery → complete economic evaluation → deterministic execution assembly → EVM preflight. It performs no signing, submission, broadcast, or live-capital operation.
 - `phantomx/live_canonical_governor.py` composes concrete discovery, economics, assembly, preflight, and the repository's canonical Governor before the signer boundary. It performs no signing, submission, broadcast, or live-capital operation.
@@ -39,8 +39,8 @@ The project goal is not Phase-19. The goal is a working, evidence-backed Polygon
 - `phantomx/opportunity_economics.py` remains the economic binding layer: discovered candidates are joined to explicit valuation/cost evidence to create hash-bound `EconomicProof`; below-floor proofs remain evidence-only and cannot reach execution.
 - `phantomx/loan_optimizer.py` remains exact-domain and complete: all supplied integer amounts are evaluated, mixed block/chain candidates are rejected, and ties resolve to the smaller loan.
 - The economic invariant is unchanged: realized net profit must be **strictly greater than $0.20 after all applicable costs**.
-- Current First-Hunt loan frontier at this sync is expanded to 17 explicit USDC sizes from $100 through $250,000; the frontier is complete only over these supplied amounts.
-- First-Hunt #16 / run ID `35341127352` is **GREEN** on `55614a3d...`; the corrected DYN-2 path reuses exact route observations rather than duplicating RPC calls. First-Hunt #18 is the current scheduler-head verification run; use only its final result for current market evidence.
+- Current First-Hunt loan frontier uses the 17 seed USDC sizes plus a live dynamic extension. The latest completed hunt reached **19 sizes**, ending at live Aave-derived ceiling `539762` USDC.
+- Historical First-Hunt evidence remains read-only. #44 on `9b3fd466...` is the last completed scan, but its 4 unresolved tiles prevent treating it as complete. #45 on `810b190e...` is the active current-head recheck with fail-closed coverage semantics.
 - Frozen external evidence artifact remains `e117b6550686cf5e0ff787d9bd7d85e83996db07`; engineering commits after that artifact do not retroactively alter its identity. The latest verified engineering commit is **112 commits ahead** of the frozen artifact with no commits behind it, based on GitHub commit comparison. The current HEAD adds only status documentation on top of that verified engineering commit.
 - Consolidated external-evidence validation remains hard-bound to the frozen external artifact and requires independent lane evidence for signer, Polygon authority, private relay, shadow/staging, and realized PnL.
 - Operator preflight still requires current HEAD to descend from the frozen artifact and rejects missing or contradictory evidence.
@@ -95,7 +95,7 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Chat memory is supportive only; Git is the durable project memory.
 
 - One-click operator interface is now present at `.github/workflows/phantomx-one-click.yml` with AUDIT, TEST, LIVE-HUNT, PREPARE-STAGING, STAGING, PRODUCTION-READY-CHECK and LIVE-EXECUTION modes. The LIVE-EXECUTION path is intentionally fail-closed until external evidence is accepted.
-- Current GitHub head includes only operator-workflow/control-plane changes after the latest verified scanner head; the latest applicable market evidence remains First-Hunt #18 on `b19c8c08...` unless a newer exact-head run is explicitly verified.
+- Current HEAD `810b190e...` contains the fail-closed First-Hunt coverage gate and post-flash triage metrics. Latest exact-head market evidence is First-Hunt #45, pending final conclusion at this sync.
 
 - DYN-3 implementation is now present at `phantomx/gas_observation.py` with a read-only `eth_estimateGas` boundary at a specified block plus observed EIP-1559 fee inputs. `phantomx/polygon_rpc_http.py` allowlists only the required read methods and still blocks transaction-send methods.
 
@@ -110,3 +110,14 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 
 - S1 QuickSwap V3 live-hunt automation is now isolated at `.github/workflows/s1-qsv3-live-read.yml` with manual dispatch, push-triggering for S1/common route code, artifact publication, and shared market-hunt concurrency to prevent cross-strategy RPC overlap. First successful S1 automated run has not yet been completed on the current `617e203...` trigger-cleanup head.
 - S0 optimized First-Hunt run #29 / ID `35364241078` is GREEN on `b6f291f6...`: 920 observations on DRPC and 960 on PublicNode, zero gross-positive, best gross `-$0.166871` and `-$0.262327` respectively; live Aave USDC dynamic ceiling was `580980.874662` USDC. 1RPC failed route completeness and is not counted as successful observation evidence.
+
+
+## CURRENT VERIFIED SYNC • 2026-09-20
+
+- Canonical HEAD: `810b190e3660394bc3be2923d3dc01f958457e57`.
+- Phase-19 run `#871` on `9b3fd466...`: GREEN, **878 tests**. Post-gate run `#872` is running on the current HEAD.
+- First-Hunt #44 on `9b3fd466...`: **1,216 observations**, no gross-positive and no post-flash-positive observation; best gross `-$0.122095`; best post-flash `-$0.172095`; block `94130318`.
+- First-Hunt #44 had **4/36 unresolved pair/fee tiles**. Therefore it is market evidence only, not complete search/exhaustion evidence.
+- First-Hunt #45 on `810b190e...` is the first hunt after the fail-closed coverage correction. A non-COMPLETE tile now causes a non-zero exit while the artifact is still preserved.
+- Historical Polygon Universe Crawler #5 on `751024247...` completed GREEN for blocks `0-99999` against fixed snapshot `94129645`, across six declared venues. Its automatic continuation was disabled in that run, so the campaign has **not** reached historical exhaustion.
+- P0 remains blocked on a genuine currently executable opportunity, complete market coverage where claimed, external signer/provider/relay evidence, shadow/staging, controlled execution, and independent realized PnL > $0.20.
