@@ -3,11 +3,6 @@ name: PHANTOMX Polygon Historical Universe Crawler
 # P0: fixed-snapshot, contiguous, read-only inventory coverage. A successful slice is the only event that advances the campaign.
 
 on:
-  push:
-    branches:
-      - phase-19-e2e-harness
-    paths:
-      - ".github/workflows/polygon-universe-history-crawler.yml"
   workflow_dispatch:
     inputs:
       from_block:
@@ -92,6 +87,10 @@ jobs:
           import zipfile
           from io import BytesIO
           sys.path.insert(0, ".")
+
+          CANONICAL_CAMPAIGN_ID = "polygon-genesis-94135487"
+          CANONICAL_SNAPSHOT_TO = 94135487
+          CANONICAL_COMMIT_SHA = "68b35b09441d9d7f3b64530096114fb66eb78938"
           from phantomx.rpc_failover import build_free_polygon_rpc_pool
 
           def positive(name: str, default: int) -> int:
@@ -140,7 +139,12 @@ jobs:
                       with zipfile.ZipFile(archive_bytes) as archive:
                           with archive.open("campaign_slice_manifest.json") as manifest:
                               payload = json.loads(manifest.read().decode("utf-8"))
-                      if payload.get("schema_version") == 1:
+                      if (
+                          payload.get("schema_version") == 1
+                          and payload.get("campaign_id") == CANONICAL_CAMPAIGN_ID
+                          and int(payload.get("campaign_snapshot_to_block", -1)) == CANONICAL_SNAPSHOT_TO
+                          and str(payload.get("commit_sha", "")) == CANONICAL_COMMIT_SHA
+                      ):
                           return payload
                   except Exception:
                       continue
@@ -153,7 +157,22 @@ jobs:
                   raw_from = str(cursor["next_from_block"]) if cursor.get("next_from_block") is not None else str(int(cursor["campaign_snapshot_to_block"]) + 1)
                   raw_campaign = str(cursor["campaign_id"])
                   raw_commit = str(cursor["commit_sha"])
-          campaign_commit = raw_commit or os.environ["GITHUB_SHA"]
+          if raw_campaign and raw_campaign != CANONICAL_CAMPAIGN_ID:
+              raise SystemExit(
+                  f"non-canonical campaign_id rejected: {raw_campaign} != {CANONICAL_CAMPAIGN_ID}"
+              )
+          if raw_snapshot and int(raw_snapshot) != CANONICAL_SNAPSHOT_TO:
+              raise SystemExit(
+                  f"non-canonical snapshot_to_block rejected: {raw_snapshot} != {CANONICAL_SNAPSHOT_TO}"
+              )
+          if raw_commit and raw_commit != CANONICAL_COMMIT_SHA:
+              raise SystemExit(
+                  f"non-canonical campaign_commit rejected: {raw_commit} != {CANONICAL_COMMIT_SHA}"
+              )
+
+          campaign_commit = raw_commit or (
+              CANONICAL_COMMIT_SHA if raw_campaign == CANONICAL_CAMPAIGN_ID else os.environ["GITHUB_SHA"]
+          )
           slice_blocks = positive("INPUT_SLICE", 100_000)
 
           if raw_snapshot:
@@ -166,6 +185,9 @@ jobs:
                   raise SystemExit(f"unexpected Polygon chain id: {chain_id}")
               snapshot_to = latest
 
+          if raw_campaign or raw_snapshot or raw_commit:
+              snapshot_to = CANONICAL_SNAPSHOT_TO
+
           if snapshot_to < 0:
               raise SystemExit("snapshot_to_block must be >= 0")
 
@@ -174,7 +196,9 @@ jobs:
               raise SystemExit("from_block must be within the campaign snapshot")
 
           to_block = min(snapshot_to, from_block + slice_blocks - 1)
-          campaign = raw_campaign or f"polygon-genesis-{snapshot_to}"
+          campaign = raw_campaign or CANONICAL_CAMPAIGN_ID
+          if campaign != CANONICAL_CAMPAIGN_ID:
+              raise SystemExit(f"resolved non-canonical campaign: {campaign}")
           complete = "true" if from_block > snapshot_to else "false"
 
           print(f"commit_sha={campaign_commit}")
