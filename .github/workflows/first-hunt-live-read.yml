@@ -17,6 +17,7 @@ on:
       - "phantomx/uniswap_v3.py"
       - "scripts/first_hunt_live_scan.py"
       - ".github/workflows/first-hunt-live-read.yml"
+      - ".github/PHANTOMX_FIRST_HUNT_KICK"
   pull_request:
     branches:
       - master

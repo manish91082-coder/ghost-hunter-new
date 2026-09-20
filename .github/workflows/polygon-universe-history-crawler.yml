@@ -67,8 +67,13 @@ jobs:
           set -euo pipefail
           test "${GITHUB_REPOSITORY}" = "manish91082-coder/ghost-hunter-new"
           test "${GITHUB_REF_NAME}" = "phase-19-e2e-harness"
-          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
-          echo "EXACT_HEAD=${GITHUB_SHA}"
+          if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+            test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+            echo "EXACT_HEAD=${GITHUB_SHA}"
+          else
+            echo "DISPATCH_BRANCH_HEAD=$(git rev-parse HEAD)"
+            echo "DISPATCH_EVENT_SHA=${GITHUB_SHA}"
+          fi
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
