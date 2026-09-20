@@ -37,7 +37,68 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  resolve-market-block:
+    name: Resolve shared Polygon market block
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      block_number: ${{ steps.market.outputs.block_number }}
+    steps:
+      - name: Resolve one chain-verified block
+        id: market
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY' > /tmp/market
+          import json
+          import time
+          import urllib.request
+
+          endpoints = (
+              "https://polygon.drpc.org/",
+              "https://public.1rpc.io/matic",
+              "https://polygon-bor-rpc.publicnode.com",
+          )
+
+          def call(url, method):
+              request = urllib.request.Request(
+                  url,
+                  data=json.dumps({
+                      "jsonrpc": "2.0",
+                      "id": 1,
+                      "method": method,
+                      "params": [],
+                  }).encode(),
+                  headers={"Content-Type": "application/json"},
+              )
+              with urllib.request.urlopen(request, timeout=8) as response:
+                  payload = json.loads(response.read().decode())
+              if payload.get("error") is not None:
+                  raise RuntimeError(str(payload["error"]))
+              return payload["result"]
+
+          last_error = None
+          for endpoint in endpoints:
+              try:
+                  chain_id = int(call(endpoint, "eth_chainId"), 16)
+                  if chain_id != 137:
+                      raise RuntimeError(f"unexpected chain id: {chain_id}")
+                  block_number = int(call(endpoint, "eth_blockNumber"), 16)
+                  if block_number <= 0:
+                      raise RuntimeError("resolved block must be positive")
+                  print(f"block_number={block_number}")
+                  print(f"resolved_at_unix={int(time.time())}")
+                  break
+              except Exception as exc:
+                  last_error = exc
+          else:
+              raise SystemExit(f"unable to resolve shared Polygon block: {last_error}")
+          PY
+          cat /tmp/market >> "$GITHUB_OUTPUT"
+          cat /tmp/market
+
   first-hunt-shard:
+    needs: resolve-market-block
     name: First-Hunt fee ${{ matrix.fee_tier }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -48,6 +109,7 @@ jobs:
         fee_tier: [100, 500, 3000, 10000]
     env:
       PHANTOMX_HUNT_FEE_TIER: ${{ matrix.fee_tier }}
+      PHANTOMX_HUNT_BLOCK_NUMBER: ${{ needs.resolve-market-block.outputs.block_number }}
 
     steps:
       - name: Checkout exact branch
