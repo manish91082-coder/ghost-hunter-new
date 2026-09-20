@@ -137,6 +137,24 @@ PAIRS = (
     PairSpec("USDC/MIMATIC", MIMATIC),
 )
 
+PAIR_GROUPS = {
+    0: PAIRS[:5],
+    1: PAIRS[5:],
+}
+
+
+def selected_pairs() -> tuple[PairSpec, ...]:
+    raw = os.getenv("PHANTOMX_HUNT_PAIR_GROUP", "").strip()
+    if not raw:
+        return PAIRS
+    try:
+        group = int(raw)
+    except ValueError as exc:
+        raise ValueError("PHANTOMX_HUNT_PAIR_GROUP must be an integer") from exc
+    if group not in PAIR_GROUPS:
+        raise ValueError(f"unsupported First-Hunt pair group: {group}")
+    return PAIR_GROUPS[group]
+
 
 def _endpoints() -> tuple[str, ...]:
     raw = os.getenv("PHANTOMX_LIVE_RPC_ENDPOINTS", "")
@@ -221,8 +239,9 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
     observations: list[dict[str, Any]] = []
     tile_results: list[dict[str, Any]] = []
     fee_tiers = selected_fee_tiers()
+    pairs = selected_pairs()
     for fee_tier in fee_tiers:
-        for pair in PAIRS:
+        for pair in pairs:
             try:
                 discovered = discover_cross_venue_opportunities(
                     rpc,
@@ -457,7 +476,7 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
         "observations": observations,
         "fee_tier_tile_results": tile_results,
         "coverage": {
-            "expected_tile_count": len(PAIRS) * len(selected_fee_tiers()),
+            "expected_tile_count": len(selected_pairs()) * len(selected_fee_tiers()),
             "completed_tile_count": sum(1 for item in tile_results if item["status"] == "SUCCESS"),
             "incomplete_tile_count": sum(1 for item in tile_results if item.get("coverage_status") not in {"COMPLETE", "COMPLETE_NO_COMMON_ROUTE"}),
             "status": classify_tile_coverage(tile_results),
@@ -517,7 +536,9 @@ def main() -> int:
         "generated_at_unix": int(time.time()),
         "duration_seconds": round(time.time() - started, 3),
         "chain_id_expected": POLYGON_CHAIN_ID,
-        "pairs": [asdict(pair) for pair in PAIRS],
+        "pairs": [asdict(pair) for pair in selected_pairs()],
+        "all_declared_pairs": [asdict(pair) for pair in PAIRS],
+        "pair_group": os.getenv("PHANTOMX_HUNT_PAIR_GROUP") or "all",
         "seed_loan_frontier_usdc": list(SEED_LOAN_USDC),
         "uniswap_v3_fee_tiers": list(UNISWAP_V3_FEE_TIERS),
         "selected_fee_tiers": list(selected_fee_tiers()),
