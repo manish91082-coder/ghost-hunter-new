@@ -267,3 +267,12 @@ Missing lane = BLOCKED.
 - Broad current-head S0 proof is still missing. No strict `net > $0.20` EconomicProof or realized PnL exists.
 - S10 gross-positive observations remain below flash-premium economics; do not promote them.
 - Next deterministic priority: let canonical historical crawler resume from block `100000`, while keeping the discovery/economic gates fail-closed. Then reconcile fresh current-head S0 evidence before any execution-bound promotion.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-20 • POST-RESUME KICK
+
+- Current HEAD after documentation sync will be the commit immediately following `af4f6dc4ef007c503cef01c078e92e98a931ec3a`.
+- Phase-19 run `#902` / `35513839907` is GREEN on `af4f6dc4...`.
+- Historical crawler #27 is the active canonical campaign run: snapshot `94135487`, resume `100000-199999`, campaign commit `68b35b09441d9d7f3b64530096114fb66eb78938`.
+- Six venue inventory lanes are active for the canonical slice. Certification is pending until all declared venue evidence passes.
+- The canonical history workflow is single-flight, canonical-locked, and only kickable through the dedicated sentinel or explicit manual dispatch. Ordinary code changes do not start a new campaign.
+- No current-head broad S0 profitability certificate exists. Live signing, public broadcast and live capital remain blocked/locked.
