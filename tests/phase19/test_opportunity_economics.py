@@ -143,5 +143,15 @@ class OpportunityEconomicsTests(unittest.TestCase):
             evaluate_discovered_opportunities((self.candidate,), lambda candidate: "not-a-proof")
 
 
+    def test_frontier_below_floor_proof_is_retained_then_filtered(self):
+        builder = make_economic_proof_builder(
+            valuation_for=lambda candidate: ("0x" + "44" * 32, "100.00", "100.00"),
+            costs_for=lambda candidate: self._costs(),
+            max_gas_usd="0.10",
+            max_relay_usd="0.05",
+        )
+        with self.assertRaises(OpportunityEconomicsError):
+            evaluate_discovered_opportunities((self.candidate,), builder)
+
 if __name__ == "__main__":
     unittest.main()
