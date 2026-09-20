@@ -75,7 +75,7 @@ class RPCFailoverTests(unittest.TestCase):
         )
         with self.assertRaises(RPCPoolError):
             pool.call("eth_call", [{"to": "0x" + "11" * 20, "data": "0x"}, "latest"])
-        self.assertEqual(len(pool.history), 2)
+        self.assertEqual(len(pool.history), 4)
     def test_all_transport_failures_are_reported_after_exhaustion(self):
         records = (
             PublicRPCRecord("p1", "https://p1.example", "f1"),
@@ -86,7 +86,7 @@ class RPCFailoverTests(unittest.TestCase):
         pool._states["p2"].transport.call = Mock(side_effect=TimeoutError("timeout"))
         with self.assertRaises(RPCPoolError) as ctx:
             pool.call("eth_blockNumber", [])
-        self.assertIn("all eligible", str(ctx.exception))
+        self.assertIn("all bounded Polygon recovery passes", str(ctx.exception))
         self.assertEqual(len(pool.history), 2)
 
     def test_disabled_provider_is_never_used(self):
