@@ -65,7 +65,7 @@ def main() -> int:
         by_shard[key] = shard
 
     expected_keys = [(fee, pair_index) for fee in EXPECTED_FEES for pair_index in EXPECTED_PAIR_INDICES]
-    missing = [{"fee": fee, "pair_group": group} for fee, group in expected_keys if (fee, group) not in by_shard]
+    missing = [{"fee": fee, "pair_index": pair_index} for fee, pair_index in expected_keys if (fee, pair_index) not in by_shard]
     incomplete = []
     observations: list[dict] = []
     gross_positive: list[dict] = []
