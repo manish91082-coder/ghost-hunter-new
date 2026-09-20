@@ -3,6 +3,11 @@ name: PHANTOMX Polygon Historical Universe Crawler
 # P0: fixed-snapshot, contiguous, read-only inventory coverage. A successful slice is the only event that advances the campaign.
 
 on:
+  push:
+    branches:
+      - phase-19-e2e-harness
+    paths:
+      - ".github/PHANTOMX_HISTORY_KICK"
   workflow_dispatch:
     inputs:
       from_block:
