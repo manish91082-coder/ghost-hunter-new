@@ -14,7 +14,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from phantomx.balancer_v2 import BALANCER_V2_VAULT, POOL_REGISTERED_TOPIC, BalancerInventoryError, BalancerV2Inventory
-from phantomx.market_block import acquire_market_block
+from phantomx.market_block import acquire_market_block, acquire_market_block_at
 from phantomx.polygon_log_inventory import PolygonLogInventory, PolygonLogInventoryError
 from phantomx.rpc_failover import build_free_polygon_rpc_pool
 
@@ -60,6 +60,11 @@ def main() -> int:
     pool = build_free_polygon_rpc_pool()
     context = acquire_market_block(pool)
     from_block, to_block, mode = _resolve_range(context.block_number)
+    pinned_block = _int_env("PHANTOMX_INVENTORY_PINNED_BLOCK")
+    if pinned_block is not None:
+        if pinned_block > to_block:
+            raise ValueError("pinned inventory block cannot exceed inventory end block")
+        context = acquire_market_block_at(pool, pinned_block)
     chunk_size = _int_env("PHANTOMX_INVENTORY_CHUNK_SIZE", 2_000) or 2_000
     reader = PolygonLogInventory(pool, initial_chunk_size=chunk_size)
     inventory = BalancerV2Inventory(pool)
