@@ -37,7 +37,7 @@ permissions:
   actions: write
 
 concurrency:
-  group: phantomx-polygon-history-crawler-${{ inputs.campaign_id || 'default' }}
+  group: phantomx-polygon-history-crawler-${{ inputs.campaign_id || github.sha }}
   cancel-in-progress: false
 
 jobs:
