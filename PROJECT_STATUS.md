@@ -172,15 +172,15 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 ## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • POST-FIRST-HUNT-V4-RPC-FIX
 
 - Canonical branch: `phase-19-e2e-harness`.
-- Current HEAD: `1caccaaeaa30bb300afb4b3461098fb0669ac13c` (`chore: kick First-Hunt after RPC semantic-revert fix`).
-- The previous First-Hunt v4 run `#66` is CLOSED as **INCOMPLETE**, not as a market-negative certificate. Its aggregate recorded **33/36 shards, 33/36 tiles, 1,280 observations, 0 gross-positive, 0 post-flash-positive**, with best gross `-$0.153253` and best post-flash `-$0.203253`. Three shard lanes failed/incomplete because semantic EVM reverts were incorrectly retried through the RPC pool and two lanes reached timeout/cancellation.
-- Forensic root cause is now recorded in `PHANTOMX_FIRST_HUNT_V4_RPC_FORENSIC.md`.
-- `phantomx/rpc_failover.py` now treats contract-level `execution reverted` as **non-retryable semantic evidence**. Genuine transport, rate-limit, timeout, gateway and historical-state failures remain retryable.
-- `tests/phase19/test_rpc_failover.py` was hardened to prove semantic reverts are not blindly retried across the provider fleet.
+- Latest code/evidence lineage entering this status checkpoint: `62622c169258d0d506402777b4d959fc75a98a44` (cycle-record documentation commit). This status update is itself the canonical documentation checkpoint on top of that lineage.
+- First-Hunt #66 is CLOSED as **INCOMPLETE**, not a market-negative certificate: 33/36 valid shards, 33/36 tiles, 1,280 observations, 0 gross-positive, 0 post-flash-positive; best gross `-$0.153253`, best post-flash `-$0.203253`.
+- Root cause from #66: contract-level `execution reverted` responses were incorrectly treated as retryable by the RPC failover layer, causing semantic route failures to rotate through the provider fleet and contributing to timeout/incomplete cells.
+- Correction recorded in `PHANTOMX_FIRST_HUNT_V4_RPC_FORENSIC.md`: semantic EVM execution reverts are now non-retryable; transport, rate-limit, timeout, gateway and historical-state failures remain retryable.
+- `tests/phase19/test_rpc_failover.py` now explicitly verifies that semantic reverts are not blindly retried across providers.
 - `scripts/aggregate_first_hunt_shards.py` now reports the correct 36-shard denominator.
-- Phase-19 verification runs `#939`, `#940`, `#941`, and `#942` are **GREEN** on the post-fix lineage; run `#942` is the exact-kick verification on current HEAD.
-- New First-Hunt run `#67` is the current clean re-hunt on HEAD `1caccaae...`. It has a successful shared Polygon market-block resolution. At the latest sync, 37 jobs exist in the run: 35 completed, 1 still running, 1 still queued; shard-level outcomes include 31 successful, 4 failed, with the campaign aggregate not yet final.
-- Historical Polygon Universe Crawler remains active under the canonical fixed campaign `polygon-genesis-94135487`; current continuation run `#84` has 5 of 6 venue inventory jobs completed and the Ramses V3 lane still running. Historical exhaustion is not yet achieved.
-- No current First-Hunt result is being promoted to economic proof merely from gross or post-flash deltas. Exact gas, complete transaction-attributable costs, final requote/state lock, EVM preflight, external production authority and realized-PnL proof remain separate gates.
+- Phase-19 verification runs `#939`, `#940`, `#941`, and `#942` are GREEN on the post-fix lineage.
+- First-Hunt #67 is the clean rerun launched from the verified post-fix HEAD. Shared Polygon block resolution succeeded. Latest observed run state during this cycle: 37 jobs total, 35 completed, 31 successful, 4 failed, 1 running, 1 queued; final aggregate was not yet available at the last observation.
+- Historical Polygon Universe Crawler remains active under `polygon-genesis-94135487`; continuation run `#84` had 5/6 venue inventory jobs completed and Ramses V3 still running at the last observation. Historical exhaustion is not achieved.
+- No gross-positive or post-flash-positive observation is promoted to EconomicProof automatically. Exact gas, complete costs, final requote/state lock, EVM preflight, external signer/provider/private-relay evidence, staging, controlled execution and realized-PnL proof remain separate gates.
 - **LIVE SIGNING = BLOCKED. PUBLIC BROADCAST = BLOCKED. LIVE CAPITAL = LOCKED.**
-- **Rule enforcement:** every substantive execution cycle must create/update the relevant evidence/status file in the same cycle before reporting the cycle as complete.
+- **Process rule:** every substantive execution cycle must create/update the relevant evidence/status file before the cycle is reported complete.
