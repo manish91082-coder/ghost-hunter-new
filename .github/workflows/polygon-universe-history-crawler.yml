@@ -100,8 +100,8 @@ jobs:
 
           CANONICAL_CAMPAIGN_ID = "polygon-genesis-94135487"
           CANONICAL_SNAPSHOT_TO = 94135487
-          CANONICAL_COMMIT_SHA = "af4f6dc4ef007c503cef01c078e92e98a931ec3a"
-          CANONICAL_FIRST_RESUME_FROM = 200000
+          CANONICAL_COMMIT_SHA = "00547b3c22d49dd21b0cb5c48c0c2b7b99b84cfb"
+          CANONICAL_FIRST_RESUME_FROM = 300000
           from phantomx.rpc_failover import build_free_polygon_rpc_pool
 
           def positive(name: str, default: int) -> int:
@@ -181,9 +181,11 @@ jobs:
                   f"non-canonical campaign_commit rejected: {raw_commit} != {CANONICAL_COMMIT_SHA}"
               )
 
-          campaign_commit = raw_commit or (
-              CANONICAL_COMMIT_SHA if raw_campaign == CANONICAL_CAMPAIGN_ID else os.environ["GITHUB_SHA"]
-          )
+          campaign_commit = CANONICAL_COMMIT_SHA
+          if raw_campaign == CANONICAL_CAMPAIGN_ID and raw_commit and raw_commit != CANONICAL_COMMIT_SHA:
+              raise SystemExit(
+                  f"canonical campaign commit mismatch: {raw_commit} != {CANONICAL_COMMIT_SHA}"
+              )
           slice_blocks = positive("INPUT_SLICE", 100_000)
 
           if raw_snapshot:
