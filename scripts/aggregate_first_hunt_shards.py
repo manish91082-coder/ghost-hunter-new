@@ -57,6 +57,8 @@ def main() -> int:
     post_flash_positive: list[dict] = []
     tile_results: list[dict] = []
     attempts = 0
+    shard_blocks: set[int] = set()
+    shard_chains: set[int] = set()
 
     for fee in EXPECTED_FEES:
         shard = by_fee.get(fee)
@@ -64,6 +66,15 @@ def main() -> int:
             continue
         result = shard["successful_endpoints"][0]
         coverage = result.get("coverage", {})
+        if result.get("market_block_number") is None:
+            incomplete.append({
+                "fee": fee,
+                "coverage_status": "MISSING_MARKET_BLOCK",
+            })
+        else:
+            shard_blocks.add(int(result["market_block_number"]))
+        for chain_id in result.get("chain_ids", []):
+            shard_chains.add(int(chain_id))
         if coverage.get("status") != "COMPLETE":
             incomplete.append({
                 "fee": fee,
@@ -81,6 +92,8 @@ def main() -> int:
         attempts += int(shard.get("rpc_pool", {}).get("attempt_count", 0))
 
     ranked = sorted(observations, key=lambda item: int(item["gross_delta_raw"]), reverse=True)
+    shared_block_valid = len(shard_blocks) == 1
+    shared_chain_valid = shard_chains == {137}
 
     aggregate = {
         "schema_version": 2,
@@ -96,6 +109,9 @@ def main() -> int:
         "missing_fee_tiers": missing,
         "rejected_shards": rejected,
         "incomplete_shards": incomplete,
+        "market_block_numbers": sorted(shard_blocks),
+        "market_block_number": next(iter(shard_blocks)) if shared_block_valid else None,
+        "market_chain_ids": sorted(shard_chains),
         "coverage": {
             "expected_tile_count": 9 * len(EXPECTED_FEES),
             "completed_tile_count": sum(
@@ -109,6 +125,8 @@ def main() -> int:
             "status": (
                 "COMPLETE"
                 if not missing and not rejected and not incomplete
+                and shared_block_valid
+                and shared_chain_valid
                 and len(tile_results) == 9 * len(EXPECTED_FEES)
                 else "PARTIAL_INCOMPLETE"
             ),
