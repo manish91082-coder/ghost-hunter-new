@@ -16,7 +16,7 @@ class RPCFailoverTests(unittest.TestCase):
         self.assertEqual(pool.call("eth_chainId", []), "0x89")
         self.assertEqual([item.provider_id for item in pool.history], ["p1", "p2"])
 
-    def test_rpc_execution_revert_is_retried_on_next_provider(self):
+    def test_rpc_execution_revert_is_not_retried_on_next_provider(self):
         records = (
             PublicRPCRecord("p1", "https://p1.example", "f1"),
             PublicRPCRecord("p2", "https://p2.example", "f2"),
@@ -26,8 +26,11 @@ class RPCFailoverTests(unittest.TestCase):
             return_value={"error": {"code": -32000, "message": "execution reverted"}}
         )
         pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
-        self.assertEqual(pool.call("eth_chainId", []), "0x89")
-        self.assertEqual([item.provider_id for item in pool.history], ["p1", "p2"])
+        with self.assertRaises(RPCPoolError):
+            pool.call("eth_call", [])
+        self.assertEqual([item.provider_id for item in pool.history], ["p1"])
+        self.assertFalse(pool.history[0].recoverable)
+        pool._states["p2"].transport.call.assert_not_called()
 
     def test_provider_access_error_403_switches_to_next_provider(self):
         records = (
@@ -75,7 +78,9 @@ class RPCFailoverTests(unittest.TestCase):
         )
         with self.assertRaises(RPCPoolError):
             pool.call("eth_call", [{"to": "0x" + "11" * 20, "data": "0x"}, "latest"])
-        self.assertEqual(len(pool.history), 4)
+        self.assertEqual(len(pool.history), 1)
+        self.assertFalse(pool.history[0].recoverable)
+        pool._states["p2"].transport.call.assert_not_called()
     def test_all_transport_failures_are_reported_after_exhaustion(self):
         records = (
             PublicRPCRecord("p1", "https://p1.example", "f1"),
