@@ -25,6 +25,7 @@ if str(ROOT) not in sys.path:
 
 from phantomx.aave_v3_dynamic import AaveV3PolygonDynamicReader
 from phantomx.cross_venue_discovery import discover_cross_venue_opportunities
+from phantomx.opportunity_discovery import OpportunityDiscoveryResult
 from phantomx.dynamic_route_guard import DynamicRouteGuardError, evaluate_simulation_domain
 from phantomx.dynamic_market_policy import compute_dynamic_loan_ceiling
 from phantomx.market_block import acquire_market_block
@@ -212,6 +213,40 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
                     block=context,
                     continue_on_error=True,
                 )
+                retryable_amounts = tuple(sorted({
+                    item.loan_amount
+                    for item in discovered.retryable_failures
+                }))
+                if retryable_amounts:
+                    rpc.reset_circuits()
+                    retry = discover_cross_venue_opportunities(
+                        rpc,
+                        quickswap,
+                        uniswap,
+                        token_pairs=((USDC, pair.token_b),),
+                        loan_amounts=retryable_amounts,
+                        uniswap_fee=fee_tier,
+                        block=context,
+                        continue_on_error=True,
+                    )
+                    successful = {
+                        (item.venue_path, item.loan_amount): item
+                        for item in discovered.evaluated
+                    }
+                    failures = {
+                        (item.venue_path, item.loan_amount): item
+                        for item in discovered.failures
+                    }
+                    for item in retry.evaluated:
+                        successful[(item.venue_path, item.loan_amount)] = item
+                        failures.pop((item.venue_path, item.loan_amount), None)
+                    for item in retry.failures:
+                        failures[(item.venue_path, item.loan_amount)] = item
+                    discovered = OpportunityDiscoveryResult(
+                        evaluated=tuple(successful.values()),
+                        failures=tuple(failures.values()),
+                    )
+
                 forward_observations = tuple(
                     item.simulation for item in discovered.evaluated
                     if item.venue_path == "quickswap_v2->uniswap_v3"
