@@ -38,6 +38,7 @@ def discover_cross_venue_opportunities(
     quickswap_gas_estimate: int | None = None,
     uniswap_gas_estimate: int | None = None,
     block: MarketBlockSnapshot | None = None,
+    continue_on_error: bool = False,
 ) -> OpportunityDiscoveryResult:
     """Evaluate the complete two-direction frontier at one pinned block.
 
@@ -56,6 +57,7 @@ def discover_cross_venue_opportunities(
         token_pairs=pairs,
         loan_amounts=amounts,
         venue_path=QUICKSWAP_TO_UNISWAP_PATH,
+        continue_on_error=continue_on_error,
         evaluate_route=lambda token_a, token_b, amount: build_quickswap_to_uniswap_route(
             rpc,
             quickswap,
@@ -74,6 +76,7 @@ def discover_cross_venue_opportunities(
         token_pairs=pairs,
         loan_amounts=amounts,
         venue_path=UNISWAP_TO_QUICKSWAP_PATH,
+        continue_on_error=continue_on_error,
         evaluate_route=lambda token_a, token_b, amount: build_uniswap_to_quickswap_route(
             rpc,
             quickswap,
