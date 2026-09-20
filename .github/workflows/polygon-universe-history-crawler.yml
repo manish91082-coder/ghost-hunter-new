@@ -99,6 +99,9 @@ jobs:
 
           raw_snapshot = os.environ.get("INPUT_SNAPSHOT_TO", "").strip()
           raw_from = os.environ.get("INPUT_FROM", "").strip()
+          raw_campaign = os.environ.get("INPUT_CAMPAIGN", "").strip()
+          raw_commit = os.environ.get("INPUT_COMMIT", "").strip()
+          campaign_commit = raw_commit or os.environ["GITHUB_SHA"]
           slice_blocks = positive("INPUT_SLICE", 100_000)
 
           if raw_snapshot:
@@ -119,7 +122,7 @@ jobs:
               raise SystemExit("from_block must be within the campaign snapshot")
 
           to_block = min(snapshot_to, from_block + slice_blocks - 1)
-          campaign = os.environ.get("INPUT_CAMPAIGN", "").strip() or f"polygon-genesis-{snapshot_to}"
+          campaign = raw_campaign or f"polygon-genesis-{snapshot_to}"
           complete = "true" if from_block > snapshot_to else "false"
 
           print(f"commit_sha={campaign_commit}")
