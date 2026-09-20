@@ -144,11 +144,21 @@ PAIR_GROUPS = {
 
 
 def selected_pairs() -> tuple[PairSpec, ...]:
-    raw = os.getenv("PHANTOMX_HUNT_PAIR_GROUP", "").strip()
-    if not raw:
+    raw_index = os.getenv("PHANTOMX_HUNT_PAIR_INDEX", "").strip()
+    if raw_index:
+        try:
+            index = int(raw_index)
+        except ValueError as exc:
+            raise ValueError("PHANTOMX_HUNT_PAIR_INDEX must be an integer") from exc
+        if index < 0 or index >= len(PAIRS):
+            raise ValueError(f"unsupported First-Hunt pair index: {index}")
+        return (PAIRS[index],)
+
+    raw_group = os.getenv("PHANTOMX_HUNT_PAIR_GROUP", "").strip()
+    if not raw_group:
         return PAIRS
     try:
-        group = int(raw)
+        group = int(raw_group)
     except ValueError as exc:
         raise ValueError("PHANTOMX_HUNT_PAIR_GROUP must be an integer") from exc
     if group not in PAIR_GROUPS:
@@ -538,7 +548,12 @@ def main() -> int:
         "chain_id_expected": POLYGON_CHAIN_ID,
         "pairs": [asdict(pair) for pair in selected_pairs()],
         "all_declared_pairs": [asdict(pair) for pair in PAIRS],
-        "pair_group": os.getenv("PHANTOMX_HUNT_PAIR_GROUP") or "all",
+        "pair_index": (
+            int(os.getenv("PHANTOMX_HUNT_PAIR_INDEX"))
+            if os.getenv("PHANTOMX_HUNT_PAIR_INDEX", "").strip()
+            else None
+        ),
+        "pair_group": os.getenv("PHANTOMX_HUNT_PAIR_GROUP") or None,
         "seed_loan_frontier_usdc": list(SEED_LOAN_USDC),
         "uniswap_v3_fee_tiers": list(UNISWAP_V3_FEE_TIERS),
         "selected_fee_tiers": list(selected_fee_tiers()),
