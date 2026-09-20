@@ -1,4 +1,5 @@
 PHANTOMX first-hunt controlled read-only trigger
-campaign=atomic-36-v3
+campaign=atomic-36-v4
 pairs=9
 fee_tiers=4
+no_common_route_semantics=enabled
