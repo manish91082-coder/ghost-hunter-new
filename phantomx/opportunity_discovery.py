@@ -69,12 +69,28 @@ class OpportunityDiscoveryResult:
         return tuple(item for item in self.evaluated if item.gross_positive)
 
 
+def _is_retryable_failure(exc: BaseException) -> bool:
+    """Only explicit RPC/infrastructure failures are retryable."""
+    current: BaseException | None = exc
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if type(current).__name__ in {"RPCPoolError", "PolygonRPCHTTPError", "URLError", "TimeoutError"}:
+            return True
+        cause_type = getattr(current, "cause_type", None)
+        if cause_type in {"RPCPoolError", "PolygonRPCHTTPError", "URLError", "TimeoutError"}:
+            return True
+        current = current.__cause__
+    return False
+
+
 def discover_exact_opportunities(
     *,
     token_pairs: Iterable[tuple[str, str]],
     loan_amounts: Iterable[int],
     evaluate_route: Callable[[str, str, int], RouteSimulation],
     venue_path: str,
+    continue_on_error: bool = False,
 ) -> OpportunityDiscoveryResult:
     """Evaluate the complete explicit search domain without skipping errors.
 
@@ -103,6 +119,7 @@ def discover_exact_opportunities(
         normalized_amounts.append(amount)
 
     evaluated: list[OpportunityCandidate] = []
+    failures: list[OpportunityFailure] = []
     for token_a, token_b in pairs:
         if not isinstance(token_a, str) or not token_a.strip() or not isinstance(token_b, str) or not token_b.strip():
             raise OpportunityDiscoveryError("token pair identities must be non-empty")
@@ -112,10 +129,21 @@ def discover_exact_opportunities(
             try:
                 simulation = evaluate_route(token_a, token_b, amount)
             except Exception as exc:
-                raise OpportunityDiscoveryError(
-                    f"route evaluation failed for {token_a}->{token_b} amount={amount}: "
-                    f"{type(exc).__name__}: {exc}"
-                ) from exc
+                if not continue_on_error:
+                    raise OpportunityDiscoveryError(
+                        f"route evaluation failed for {token_a}->{token_b} amount={amount}: "
+                        f"{type(exc).__name__}: {exc}"
+                    ) from exc
+                failures.append(OpportunityFailure(
+                    token_a=token_a,
+                    token_b=token_b,
+                    venue_path=venue_path,
+                    loan_amount=amount,
+                    error_type=type(exc).__name__,
+                    error_message=str(exc),
+                    retryable=_is_retryable_failure(exc),
+                ))
+                continue
             if not isinstance(simulation, RouteSimulation):
                 raise OpportunityDiscoveryError("route evaluator returned an invalid simulation")
             if simulation.initial_amount != amount:
@@ -138,4 +166,7 @@ def discover_exact_opportunities(
     if len(blocks) != 1:
         raise OpportunityDiscoveryError("all discovered candidates must share one chain and pinned block")
 
-    return OpportunityDiscoveryResult(evaluated=tuple(evaluated))
+    return OpportunityDiscoveryResult(
+        evaluated=tuple(evaluated),
+        failures=tuple(failures),
+    )
