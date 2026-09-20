@@ -1,45 +1,45 @@
 name: PHANTOMX Polygon Universe Inventory
 
 on:
-  workflow_dispatch:
-    inputs:
-      venue:
-        description: "Venue id; blank runs registered venue matrix"
-        required: false
-        type: string
-        default: ""
-      from_block:
-        description: "Explicit start block for backfill"
-        required: false
-        type: string
-        default: ""
-      to_block:
-        description: "Explicit end block"
-        required: false
-        type: string
-        default: ""
-      window_blocks:
-        description: "Rolling window when from_block is blank"
-        required: false
-        type: string
-        default: "5000"
-      chunk_size:
-        description: "eth_getLogs chunk size"
-        required: false
-        type: string
-        default: "2000"
   schedule:
     - cron: "*/15 * * * *"
-  push:
-    paths:
-      - ".github/workflows/polygon-universe-inventory-live.yml"
-      - "scripts/polygon_venue_inventory_live.py"
-      - "phantomx/polygon_universe_inventory.py"
-      - "phantomx/polygon_log_inventory.py"
-      - "phantomx/polygon_venue_inventory.py"
-      - "phantomx/rpc_failover.py"
 
+permissions:
+  contents: read
+
+concurrency:
+  group: phantomx-polygon-universe-inventory
+  cancel-in-progress: false
 jobs:
+  resolve_cursor:
+    runs-on: ubuntu-latest
+    outputs:
+      from_block: ${{ steps.resolve.outputs.from_block }}
+      to_block: ${{ steps.resolve.outputs.to_block }}
+    steps:
+      - name: Resolve historical cursor
+        id: resolve
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=phantomx-polygon-inventory-cursor&per_page=1"
+          archive=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" "$api" | python -c 'import json,sys; d=json.load(sys.stdin); print(d["artifacts"][0]["archive_download_url"] if d.get("artifacts") else "")')
+          if [ -n "$archive" ]; then
+            rm -rf /tmp/cursor && mkdir -p /tmp/cursor
+            curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" "$archive" -o /tmp/cursor/cursor.zip
+            unzip -oq /tmp/cursor/cursor.zip -d /tmp/cursor
+            python - /tmp/cursor/cursor.json <<'PY' >> "$GITHUB_OUTPUT"
+import json,sys
+d=json.load(open(sys.argv[1],encoding="utf-8"))
+print("from_block="+str(d["next_from_block"]))
+print("to_block="+str(d["next_to_block"]))
+PY
+          else
+            echo 'from_block=0' >> "$GITHUB_OUTPUT"
+            echo 'to_block=' >> "$GITHUB_OUTPUT"
+          fi
   inventory:
     if: github.event_name != 'workflow_dispatch' || inputs.venue == ''
     runs-on: ubuntu-latest
@@ -70,10 +70,10 @@ jobs:
       - name: Run read-only inventory task
         env:
           PHANTOMX_INVENTORY_VENUE: ${{ matrix.venue }}
-          PHANTOMX_INVENTORY_FROM_BLOCK: ${{ inputs.from_block }}
-          PHANTOMX_INVENTORY_TO_BLOCK: ${{ inputs.to_block }}
-          PHANTOMX_INVENTORY_WINDOW_BLOCKS: ${{ inputs.window_blocks || '5000' }}
-          PHANTOMX_INVENTORY_CHUNK_SIZE: ${{ inputs.chunk_size || '2000' }}
+          PHANTOMX_INVENTORY_FROM_BLOCK: ${{ needs.resolve_cursor.outputs.from_block }}
+          PHANTOMX_INVENTORY_TO_BLOCK: ${{ needs.resolve_cursor.outputs.to_block }}
+          PHANTOMX_INVENTORY_WINDOW_BLOCKS: '5000'
+          PHANTOMX_INVENTORY_CHUNK_SIZE: '2000'
           PHANTOMX_INVENTORY_SCHEDULE_SLICE_BLOCKS: "100000"
         run: python scripts/polygon_venue_inventory_live.py
       - name: Upload inventory evidence
@@ -83,6 +83,42 @@ jobs:
           path: artifacts/polygon_inventory_${{ matrix.venue }}_*.json
           if-no-files-found: error
 
+  publish_cursor:
+    needs: [resolve_cursor, inventory, balancer-inventory]
+    if: needs.inventory.result == 'success' && needs.balancer-inventory.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compute next cursor
+        shell: bash
+        env:
+          FROM_BLOCK: ${{ needs.resolve_cursor.outputs.from_block }}
+          TO_BLOCK: ${{ needs.resolve_cursor.outputs.to_block }}
+        run: |
+          set -euo pipefail
+          latest=$(curl -fsSL "https://polygon-rpc.com" -H "content-type: application/json" --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' | python -c 'import json,sys; print(int(json.load(sys.stdin)["result"],16))') || true
+          [ -n "$latest" ] || latest="$TO_BLOCK"
+          next=$((TO_BLOCK + 1))
+          if [ "$next" -gt "$latest" ]; then
+            next_from=$(( latest > 5000 ? latest - 4999 : 0 ))
+            next_to="$latest"
+            mode="scheduled-head-refresh"
+          else
+            next_from="$next"
+            next_to=$(( next_from + 100000 - 1 ))
+            if [ "$next_to" -gt "$latest" ]; then next_to="$latest"; fi
+            mode="scheduled-historical-backfill"
+          fi
+          mkdir -p cursor-out
+          python - "$next_from" "$next_to" "$mode" > cursor-out/cursor.json <<'PY'
+import json,sys
+print(json.dumps({"schema_version":1,"next_from_block":int(sys.argv[1]),"next_to_block":int(sys.argv[2]),"mode":sys.argv[3]}))
+PY
+      - name: Publish successful cursor
+        uses: actions/upload-artifact@v4
+        with:
+          name: phantomx-polygon-inventory-cursor
+          path: cursor-out/cursor.json
+          if-no-files-found: error
   single_venue_dispatch:
     if: github.event_name == 'workflow_dispatch' && inputs.venue != ''
     runs-on: ubuntu-latest
@@ -109,8 +145,8 @@ jobs:
       - name: Run selected read-only inventory task
         env:
           PHANTOMX_INVENTORY_VENUE: ${{ inputs.venue }}
-          PHANTOMX_INVENTORY_FROM_BLOCK: ${{ inputs.from_block }}
-          PHANTOMX_INVENTORY_TO_BLOCK: ${{ inputs.to_block }}
+          PHANTOMX_INVENTORY_FROM_BLOCK: ${{ needs.resolve_cursor.outputs.from_block }}
+          PHANTOMX_INVENTORY_TO_BLOCK: ${{ needs.resolve_cursor.outputs.to_block }}
           PHANTOMX_INVENTORY_WINDOW_BLOCKS: ${{ inputs.window_blocks }}
           PHANTOMX_INVENTORY_CHUNK_SIZE: ${{ inputs.chunk_size }}
         run: python scripts/polygon_venue_inventory_live.py
@@ -147,10 +183,10 @@ jobs:
         run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
       - name: Run Balancer read-only inventory
         env:
-          PHANTOMX_INVENTORY_FROM_BLOCK: ${{ inputs.from_block }}
-          PHANTOMX_INVENTORY_TO_BLOCK: ${{ inputs.to_block }}
-          PHANTOMX_INVENTORY_WINDOW_BLOCKS: ${{ inputs.window_blocks || '5000' }}
-          PHANTOMX_INVENTORY_CHUNK_SIZE: ${{ inputs.chunk_size || '2000' }}
+          PHANTOMX_INVENTORY_FROM_BLOCK: ${{ needs.resolve_cursor.outputs.from_block }}
+          PHANTOMX_INVENTORY_TO_BLOCK: ${{ needs.resolve_cursor.outputs.to_block }}
+          PHANTOMX_INVENTORY_WINDOW_BLOCKS: '5000'
+          PHANTOMX_INVENTORY_CHUNK_SIZE: '2000'
           PHANTOMX_INVENTORY_SCHEDULE_SLICE_BLOCKS: "100000"
         run: python scripts/balancer_v2_inventory_live.py
       - name: Upload Balancer inventory evidence
