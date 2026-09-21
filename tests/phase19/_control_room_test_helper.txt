@@ -1,1 +1,0 @@
-Control-room validator tests must exercise both live repository success and isolated artifact-drift failure. Secrets and production credentials are never fixtures.
