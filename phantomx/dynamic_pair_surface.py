@@ -10,6 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterable, Sequence
 
+from .curve import CurveRegistryExactQuoter
+from .market_block import acquire_market_block, acquire_market_block_at
 from .polygon_pair_universe import PairUniverseRecord, build_pair_universe, base_pairs
 from .polygon_universe_inventory import InventoryTask, InventoryTaskResult
 from .polygon_venue_inventory import VENUE_SPECS
@@ -52,8 +54,9 @@ def discover_live_base_pairs(
     if missing:
         raise ValueError(f"unknown venue ids: {missing}")
 
+    inventory_venues = tuple(venue for venue in required if venue != "curve")
     results: list[InventoryTaskResult] = []
-    for venue_id in required:
+    for venue_id in inventory_venues:
         spec = specs[venue_id]
         results.append(
             __import__("phantomx.polygon_universe_inventory", fromlist=["run_inventory_task"]).run_inventory_task(
@@ -64,26 +67,70 @@ def discover_live_base_pairs(
         )
 
     universe = build_pair_universe(results)
-    discovered = base_pairs(universe, base_token=base_token, required_venues=required)
-    seed_by_token = {token.lower(): name for name, token in seed_pairs}
+    discovered = base_pairs(
+        universe,
+        base_token=base_token,
+        required_venues=inventory_venues,
+    )
     pair_map: dict[str, DynamicPairSpec] = {}
 
     for name, token in seed_pairs:
         pair_map[token.lower()] = DynamicPairSpec(name, token, "SEED", tuple())
 
+    curve_lookup_complete = True
+    if "curve" in required:
+        curve = CurveRegistryExactQuoter(rpc)
+        market_block = acquire_market_block_at(rpc, latest)
+        candidate_tokens = {record.token1 if record.token0 == base_token.lower() else record.token0 for record in discovered}
+        candidate_tokens.update(token for _name, token in seed_pairs)
+        for token in sorted(candidate_tokens):
+            try:
+                refs = curve.find_pools_for_pair(
+                    base_token,
+                    token,
+                    market_block,
+                    max_pools_per_registry=4,
+                )
+            except Exception as exc:
+                curve_lookup_complete = False
+                raise RuntimeError(
+                    f"Curve pair-surface lookup failed for {base_token}/{token}: "
+                    f"{type(exc).__name__}: {exc}"
+                ) from exc
+            if refs:
+                name = next(
+                    (seed_name for seed_name, seed_token in seed_pairs if seed_token.lower() == token.lower()),
+                    f"{base_token}/{token}",
+                )
+                pair_map[token.lower()] = DynamicPairSpec(
+                    name,
+                    token,
+                    "LIVE_CURVE_REGISTRY",
+                    tuple(sorted({"curve", *next((record.venues for record in discovered if (record.token0 == base_token.lower() and record.token1 == token.lower()) or (record.token1 == base_token.lower() and record.token0 == token.lower())), tuple())})),
+                )
+
     for record in discovered:
         token = record.token1 if record.token0 == base_token.lower() else record.token0
-        pair_map[token.lower()] = DynamicPairSpec(
-            f"{base_token}/{token}",
-            token,
-            "LIVE_INVENTORY",
-            record.venues,
-        )
+        if "curve" not in required:
+            pair_map[token.lower()] = DynamicPairSpec(
+                f"{base_token}/{token}",
+                token,
+                "LIVE_INVENTORY",
+                record.venues,
+            )
+        elif token.lower() in {item.lower() for item in candidate_tokens}:
+            if token.lower() not in pair_map:
+                continue
 
-    pairs = tuple(sorted(pair_map.values(), key=lambda item: item.name.lower()))
-    status = "COMPLETE_RECENT_WINDOW" if all(r.status in {"QUOTED", "ONCHAIN_UNAVAILABLE"} for r in results) else "PAIR_UNIVERSE_INCOMPLETE"
+    status = (
+        "COMPLETE_RECENT_WINDOW"
+        if results
+        and all(r.status in {"QUOTED", "ONCHAIN_UNAVAILABLE"} for r in results)
+        and curve_lookup_complete
+        else "PAIR_UNIVERSE_INCOMPLETE"
+    )
     return DynamicPairDiscovery(
-        pairs=pairs,
+        pairs=tuple(sorted(pair_map.values(), key=lambda item: item.name.lower())),
         status=status,
         from_block=from_block,
         to_block=latest,
