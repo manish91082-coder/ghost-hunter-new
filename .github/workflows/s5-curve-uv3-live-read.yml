@@ -23,7 +23,7 @@ jobs:
   s5-live-read:
     name: S5 Curve <-> Uniswap V3
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - name: Checkout exact branch head
         uses: actions/checkout@v5

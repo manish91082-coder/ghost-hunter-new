@@ -1,6 +1,0 @@
-PHANTOMX first-hunt controlled read-only trigger
-campaign=atomic-36-v4
-pairs=9
-fee_tiers=4
-no_common_route_semantics=enabled
-# kick-2026-09-21-semantic-revert-lineage-verified
