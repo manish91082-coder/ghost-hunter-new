@@ -328,3 +328,15 @@ Missing lane = BLOCKED.
 - The artifact explicitly states `economic_certification=NOT_PERFORMED` and `profit_claim=NONE`. This is complete coverage for the declared First-Hunt domain, not a profitability or Polygon-wide exhaustion certificate.
 - Current branch HEAD is `e646c1d57bf4d52f78a36c98fd7b68469a129892`. Comparison from hunt commit `a9cb6aca...` shows only the continuity/status documents changed after the hunt trigger.
 - Production gates remain blocked/locked.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • FIRST-HUNT #68 TERMINAL
+- First-Hunt #68 / `35566476146` completed successfully on exact hunt HEAD `a9cb6aca4fd3be5ca4d2c424d89f388cecbe46e4`.
+- Coverage certificate: **36/36 cells complete**, 36/36 shards accounted, 0 incomplete, 0 missing, 0 rejected.
+- Tile outcomes: 32 `COMPLETE`, 4 `COMPLETE_NO_COMMON_ROUTE`.
+- Exact route observations: **1,246**.
+- Gross-positive: **0**. Post-flash-positive: **0**.
+- Pinned Polygon block: **94,176,798**.
+- Best gross observation: **-$0.115879 USDC**. Best post-flash observation: **-$0.165879 USDC**.
+- The hunt artifact explicitly records `economic_certification=NOT_PERFORMED` and `profit_claim=NONE`. Therefore this is bounded complete-discovery coverage evidence, not profitability proof and not Polygon-wide exhaustion proof.
+- Exact execution gas, native/USD valuation, relay/MEV cost, final requote/state lock, EVM preflight, Governor, external production authority, signer, private relay, shadow/staging, controlled execution, receipt reconciliation and realized PnL remain separate gates.
+- **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
