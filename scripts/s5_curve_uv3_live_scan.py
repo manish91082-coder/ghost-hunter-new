@@ -27,6 +27,7 @@ from phantomx.market_block import acquire_market_block
 from phantomx.uniswap_v3 import UniswapV3ExactQuoter
 from phantomx.rpc_failover import build_free_polygon_rpc_pool
 from phantomx.dynamic_pair_surface import discover_live_base_pairs
+from phantomx.opportunity_discovery import OpportunityDiscoveryResult, discover_exact_opportunities
 try:
     from first_hunt_live_scan import (
         UNISWAP_V3_FACTORY,
