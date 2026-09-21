@@ -272,3 +272,18 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Surgical cleanup remains **2 proven temporary-file deletions**; the older 282-file/zero-deletion wording in historical cleanup documentation is corrected in this cycle.
 - **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
 - Next deterministic action: classify the complete #68 domain as bounded current-block evidence and use the result to choose the next search-space/economic action. Do not label the 36-cell declared matrix as Polygon-wide exhaustion.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • FIRST-HUNT #68 TERMINAL
+- First-Hunt #68 / `35566476146` completed successfully on exact hunt HEAD `a9cb6aca4fd3be5ca4d2c424d89f388cecbe46e4`.
+- Coverage certificate: **36/36 cells complete**, 36/36 shards accounted, 0 incomplete, 0 missing, 0 rejected.
+- Tile outcomes: 32 `COMPLETE`, 4 `COMPLETE_NO_COMMON_ROUTE`.
+- Exact route observations: **1,246**.
+- Gross-positive: **0**. Post-flash-positive: **0**.
+- Pinned Polygon block: **94,176,798**.
+- Best gross observation: **-$0.115879 USDC**. Best post-flash observation: **-$0.165879 USDC**.
+- The hunt artifact explicitly records `economic_certification=NOT_PERFORMED` and `profit_claim=NONE`. Therefore this is bounded complete-discovery coverage evidence, not profitability proof and not Polygon-wide exhaustion proof.
+- Exact execution gas, native/USD valuation, relay/MEV cost, final requote/state lock, EVM preflight, Governor, external production authority, signer, private relay, shadow/staging, controlled execution, receipt reconciliation and realized PnL remain separate gates.
+- **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
+
+- Dedicated evidence record: `PHANTOMX_FIRST_HUNT_68_EVIDENCE_2026-09-21.md`.
+- Next deterministic step: evaluate whether the complete S0 bounded domain should feed the existing EconomicProof/economic-candidate path, while preserving fail-closed semantics and avoiding unsupported exhaustion claims.
