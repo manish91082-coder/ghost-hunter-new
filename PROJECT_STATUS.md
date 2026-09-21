@@ -338,3 +338,16 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - S1 #45 remains the repaired current-head bounded S1 evidence and is not a profitability certificate.
 - **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
 - Next deterministic gate: terminalize exact repair-run #18, inspect its coverage certificate and economic evidence, then either record admissible S3 bounded evidence or perform the next surgical repair. No production authorization changes on this lane.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • S3 RUN #19 FAIL-CLOSED EVIDENCE
+
+- Canonical HEAD entering the next live verification change: `ba4d347c9d5fe9471aab06cdbe8797ac358f7146`.
+- Phase-19 #986 / ID `35581593367` is **GREEN** on `ba4d347c9d5fe9471aab06cdbe8797ac358f7146`: Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full unittest suite all passed; **901 tests, 0 failures/errors**.
+- S3 run #19 / ID `35580891032` on `139e156ec7bf693652ffac92bfae50f2b2e960bb` completed **FAILURE as designed by fail-closed coverage**, and the artifact was preserved after changing the upload step to `if: always()`.
+- S3 #19 artifact ID `10629758616`, digest `sha256:3e80e75de9aa6b1d3c9774ff6d23da6bc90efa917267f5cc24e076123a617fd8`; coverage = **164/168 completed, 4 incomplete, 168 observed**, aggregate `PARTIAL_INCOMPLETE`.
+- The 164 completed cells are `COMPLETE_NO_COMMON_ROUTE`; the 4 incomplete cells are exactly **USDC.e/DAI × Ramses tickSpacing 1 × Uniswap fees 100/500/3000/10000**, each returning `execution reverted: Unexpected error` from the current preferred DRPC provider.
+- No route observations were admitted, and `economic_certification=NOT_PERFORMED`, `profit_claim=NONE`.
+- The RPC-layer repair now treats an uninformative `execution reverted: Unexpected error` as recoverable, while reasoned execution reverts remain terminal. This is bounded provider failover, not semantic-profit acceptance.
+- A new S3 current-head refresh is being triggered after this RPC-layer repair. No S3 positive/negative market conclusion is claimed until that run's artifact is parsed.
+- Safety unchanged: **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**

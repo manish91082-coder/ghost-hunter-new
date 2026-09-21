@@ -56,3 +56,5 @@ jobs:
           path: artifacts/s3_ramses_uv3_live_scan.json
           if-no-files-found: error
 # current-head refresh trigger: 2026-09-21 after S1 coverage repair
+
+# current-head refresh trigger: 2026-09-21 after ambiguous RPC revert repair

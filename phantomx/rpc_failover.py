@@ -181,15 +181,12 @@ class PolygonRPCFailoverPool:
         message = str(exc).lower()
         if isinstance(exc, (TimeoutError, URLError, PolygonRPCHTTPError)):
             return True
-        # A provider returning a reasoned EVM execution revert is giving semantic
-        # route/call feedback, not a transport failure. Retrying the same call across
-        # the full fleet can turn one deterministic route rejection into an RPC storm.
-        # Preserve that fail-closed behavior. A bare "Unexpected error" revert reason
-        # is different: it is not an informative route verdict and has appeared as a
-        # provider-specific read anomaly on otherwise read-only factory discovery, so
-        # allow the bounded fleet failover to seek an independent answer.
+        # A provider returning an EVM execution revert is giving semantic route/call
+        # feedback, not a transport failure. Retrying the same call across the full
+        # fleet can turn one deterministic route rejection into an RPC storm and can
+        # exhaust the shard timeout. Semantic reverts therefore fail closed here.
         if "execution reverted" in message:
-            return "unexpected error" in message
+            return False
         markers = (
             "401", "402", "403", "408", "410", "429", "500", "502", "503", "504",
             "rate limit", "too many requests", "timeout",

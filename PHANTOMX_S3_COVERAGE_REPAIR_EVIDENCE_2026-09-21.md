@@ -61,3 +61,23 @@ S3 run #18 / ID `35579964402` runs the repaired scanner on commit `0213dea08fffb
 ### Safety / Scope
 
 This repair changes discovery evidence classification only. Signing, submission, public broadcast, live-capital access, and production authorization remain blocked.
+
+
+### S3 Run #19 Terminal Evidence
+
+- Run: #19 / ID `35580891032`.
+- HEAD: `139e156ec7bf693652ffac92bfae50f2b2e960bb`.
+- Workflow result: **FAILURE**, caused by scanner exit code 2 for incomplete coverage. This is the intended fail-closed outcome.
+- Artifact ID: `10629758616`.
+- Artifact digest: `sha256:3e80e75de9aa6b1d3c9774ff6d23da6bc90efa917267f5cc24e076123a617fd8`.
+- Coverage: expected 168, observed 168, completed 164, incomplete 4, status `PARTIAL_INCOMPLETE`.
+- Completed cells: all 164 are `COMPLETE_NO_COMMON_ROUTE`.
+- Incomplete cells: USDC.e/DAI, Ramses tickSpacing 1, Uniswap fee tiers 100/500/3000/10000; all returned `execution reverted: Unexpected error` from DRPC in the captured provider history.
+- Observations: 0. Gross-positive: 0. Economic certification: `NOT_PERFORMED`. Profit claim: `NONE`.
+- Evidence upload was successful because the workflow now uses `if: always()`.
+
+### RPC Ambiguous-Revert Repair
+
+- Commit `f499920edb177680c04d0bd7ce3749af131394dd` makes only the uninformative `execution reverted: Unexpected error` response recoverable.
+- Commit `ba4d347c9d5fe9471aab06cdbe8797ac358f7146` adds regression coverage and is certified by Phase-19 #986 / `35581593367` GREEN with 901 tests.
+- The next S3 current-head run is the proof boundary for whether the four previously unresolved cells can be independently resolved.

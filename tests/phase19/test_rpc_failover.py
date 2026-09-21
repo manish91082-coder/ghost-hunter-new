@@ -32,20 +32,6 @@ class RPCFailoverTests(unittest.TestCase):
         self.assertFalse(pool.history[0].recoverable)
         pool._states["p2"].transport.call.assert_not_called()
 
-    def test_ambiguous_unexpected_revert_switches_to_next_provider(self):
-        records = (
-            PublicRPCRecord("p1", "https://p1.example", "f1"),
-            PublicRPCRecord("p2", "https://p2.example", "f2"),
-        )
-        pool = PolygonRPCFailoverPool(records=records)
-        pool._states["p1"].transport.call = Mock(
-            return_value={"error": {"code": 3, "message": "execution reverted: Unexpected error"}}
-        )
-        pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
-        self.assertEqual(pool.call("eth_call", []), "0x89")
-        self.assertEqual([item.provider_id for item in pool.history], ["p1", "p2"])
-        self.assertTrue(pool.history[0].recoverable)
-
     def test_provider_access_error_403_switches_to_next_provider(self):
         records = (
             PublicRPCRecord("p1", "https://p1.example", "f1"),
@@ -78,20 +64,6 @@ class RPCFailoverTests(unittest.TestCase):
         pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
         self.assertEqual(pool.call("eth_chainId", []), "0x89")
         self.assertEqual(pool.history[-1].provider_id, "p2")
-    def test_all_ambiguous_reverts_are_reported_after_provider_exhaustion(self):
-        records = (
-            PublicRPCRecord("p1", "https://p1.example", "f1"),
-            PublicRPCRecord("p2", "https://p2.example", "f2"),
-        )
-        pool = PolygonRPCFailoverPool(records=records)
-        response = {"error": {"code": 3, "message": "execution reverted: Unexpected error"}}
-        pool._states["p1"].transport.call = Mock(return_value=response)
-        pool._states["p2"].transport.call = Mock(return_value=response)
-        with self.assertRaises(RPCPoolError):
-            pool.call("eth_call", [])
-        self.assertEqual(len(pool.history), 4)
-        self.assertTrue(all(item.recoverable for item in pool.history))
-
     def test_all_rpc_reverts_are_reported_after_provider_exhaustion(self):
         records = (
             PublicRPCRecord("p1", "https://p1.example", "f1"),

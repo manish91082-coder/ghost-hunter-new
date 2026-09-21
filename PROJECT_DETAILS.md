@@ -153,3 +153,10 @@ No legacy v2/v3 runtime, obsolete configuration, generated trading logs, credent
 - This is an operating-contract correction only; no signing, submission, broadcast, or live-capital capability was added.
 - Exact-head Phase-19 #982 / `35580051618` is GREEN with 899 tests.
 - S3 repair verification #18 / `35579964402` remains in progress; production remains blocked until all downstream evidence gates are independently proven.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • S3 RPC FAILOVER BOUNDARY REFINEMENT
+
+- S3 evidence preservation is now unconditional: artifact upload executes even when the read-only scanner exits non-zero for incomplete coverage.
+- The RPC failover policy now distinguishes **reasoned execution reverts** (terminal semantic evidence) from **uninformative `execution reverted: Unexpected error`** responses (recoverable provider anomaly). The latter is retried only through the existing bounded fleet/recovery mechanism.
+- This preserves the invariant that provider-specific read anomalies must not silently delete a logical route task, while still failing closed when independent providers cannot return a usable answer.

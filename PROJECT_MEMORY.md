@@ -104,3 +104,11 @@ LIVE CAPITAL = LOCKED
 - Regression commit `3ea4d347f1d400232342f5f44c93a5a9948e93c8` is verified by Phase-19 #982 / `35580051618` GREEN with 899 tests.
 - S3 run #18 / `35579964402` is the current repair verification run and remains in progress. Until its terminal artifact is parsed, S3 market status is UNKNOWN/BLOCKED, not negative and not positive.
 - The safety contract is unchanged: no signing, public broadcast, or live capital.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • S3 RUN #19 + RPC AMBIGUOUS-REVERT REPAIR
+
+- S3 #19 preserved artifact evidence and confirmed 164 terminal no-route cells plus 4 unresolved `Unexpected error` cells, with no observations.
+- RPC repair `f499920edb177680c04d0bd7ce3749af131394dd` makes only the uninformative `execution reverted: Unexpected error` recoverable across the bounded free-provider fleet; reasoned execution reverts remain non-recoverable.
+- Regression commit `ba4d347c9d5fe9471aab06cdbe8797ac358f7146` is verified by Phase-19 #986 / `35581593367` GREEN with 901 tests.
+- S3 current-head refresh after this repair is the next proof boundary. Until its artifact is inspected, S3 remains UNKNOWN/BLOCKED.

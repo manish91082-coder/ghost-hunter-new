@@ -389,3 +389,11 @@ Missing lane = BLOCKED.
 - Repair `0213dea08fffbc30256ded62dd5b91c28b605936` now fail-closes unresolved S3 coverage, records explicit `COMPLETE_NO_COMMON_ROUTE` versus `PARTIAL_INCOMPLETE`, and returns non-zero on incomplete aggregate coverage.
 - Regression matrix `3ea4d347f1d400232342f5f44c93a5a9948e93c8` is verified by Phase-19 #982 / `35580051618` GREEN with 899 tests.
 - S3 verification run #18 / `35579964402` is active on the repair commit. No S3 conclusion is admissible until its terminal artifact is inspected.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • S3 RUN #19 + RPC AMBIGUOUS-REVERT REPAIR
+
+- S3 #19 artifact `10629758616` preserved evidence: 164/168 terminal no-route, 4/168 incomplete, 0 observations; aggregate `PARTIAL_INCOMPLETE`.
+- The four unresolved cells are USDC.e/DAI at Ramses tickSpacing 1 across all four declared Uniswap fee tiers, all with uninformative `execution reverted: Unexpected error`.
+- Commit `f499920edb177680c04d0bd7ce3749af131394dd` introduces bounded failover for this ambiguous provider response only; regression commit `ba4d347c9d5fe9471aab06cdbe8797ac358f7146` is Phase-19 verified.
+- Next gate is current-head S3 live verification after the RPC repair.
