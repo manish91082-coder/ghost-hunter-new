@@ -349,3 +349,18 @@ Missing lane = BLOCKED.
 - Exact-head Phase-19 run #960 / ID `35574659415` is active on the same HEAD; neither is yet terminal.
 - No S1 market conclusion is admissible until the exact-head CI result and S1 evidence artifact are both available.
 - Safety remains unchanged: LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • S1 COVERAGE REPAIR
+- S1 live-read run #40 / `35574659400` on scanner HEAD `af93d56...` completed successfully at workflow level, but its artifact exposed **28/36 successful tiles and 8 UNAVAILABLE_OR_FAILED tiles**. Therefore it is explicitly classified as incomplete evidence, not a market-negative certificate.
+- The S1 scanner previously returned exit code 0 whenever the RPC pool produced any result, even when tile-level evidence was unresolved. This violated fail-closed coverage discipline.
+- Surgical repair commits:
+  - `3612cade...`: import/discovery boundary preparation.
+  - `a55827ff...`: explicit S1 tile coverage classification and retry-boundary helpers.
+  - `faf746cb...`: preserve per-tile terminal/incomplete evidence in the S1 artifact.
+  - `ff922485...`: make S1 return non-zero when any declared tile remains incomplete.
+  - `39ea509...`: regression tests for incomplete, terminal-no-route and complete-common-route classification.
+  - `2269aaab...`: fix unittest import-path compatibility.
+- Exact-head Phase-19 run #969 / ID `35576798169` is GREEN on `2269aaab...`, including compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe and the full unittest suite.
+- Corrected S1 run #45 / ID `35576798186` is pending because an older S1 run #41 on an earlier lineage still occupies the shared S1 concurrency group. Run #41 is not admissible current-head evidence.
+- No new profitability claim is made. S1 #40 had 1,120 route observations, 0 gross-positive observations, and dynamic Aave ceiling 596,890 USDC, but its 8 unresolved tiles prevent a complete S1 market certificate.
+- Production remains blocked: LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
