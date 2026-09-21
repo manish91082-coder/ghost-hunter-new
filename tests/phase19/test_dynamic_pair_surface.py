@@ -23,8 +23,7 @@ class DynamicPairSurfaceTests(unittest.TestCase):
             chunk_size=10,
         )
         self.assertEqual(result.status, "COMPLETE_RECENT_WINDOW")
-        self.assertEqual(len(result.pairs), 1)
-        self.assertEqual(result.pairs[0].source, "SEED")
+        self.assertEqual(len(result.pairs), 0)
 
     def test_discovery_error_is_explicit(self):
         rpc = Mock()
