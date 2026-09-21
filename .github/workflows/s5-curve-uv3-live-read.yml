@@ -48,6 +48,7 @@ jobs:
         env:
           PYTHONUNBUFFERED: "1"
       - name: Publish S5 evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: phantomx-s5-curve-uv3-live-scan
