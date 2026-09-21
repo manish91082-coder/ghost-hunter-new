@@ -429,3 +429,14 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Control-plane tree incident remains fully repaired and audited in `PHANTOMX_CONTROL_PLANE_TREE_REPAIR_EVIDENCE_2026-09-21.md`.
 - **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
 - Next admissible gate remains S5 #29 terminal artifact inspection. Preserve exact code-bearing HEAD provenance; do not relabel documentation-only HEAD movement as scanner-code change.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • LIVE RECONCILIATION AFTER S5 GATE POLL
+
+- Live branch HEAD is `6b5629bbfa95225610d95aa3a98e0fb021e8722b`. The five commits above the S5 code-bearing HEAD `dc2deb28cbffce2d48c41f5c124d347d84f649ca` are documentation/evidence only: `PHANTOMX_CONTROL_PLANE_TREE_REPAIR_EVIDENCE_2026-09-21.md`, `PHANTOMX_PROJECT_RESUME_MANIFEST.md`, `PROJECT_MEMORY.md`, and `PROJECT_STATUS.md` changes. No scanner/route/economics implementation changed across that interval.
+- Direct tree verification at the live HEAD returns **339 entries, untruncated**, with all critical S5/runtime files present, including `requirements-phase19.txt`, the S5 workflow, `scripts/s5_curve_uv3_live_scan.py`, `phantomx/dynamic_pair_surface.py`, and `phantomx/rpc_failover.py`.
+- S5 run #29 / ID `35635495324` remains **IN_PROGRESS** on exact code-bearing HEAD `dc2deb28...`. Steps 1-5 are GREEN, step 6 (`Run S5 read-only live hunt`) is still running, no artifact has been published yet, and the workflow timeout is 60 minutes. Therefore no S5 market conclusion is admissible yet.
+- Static inspection of the S5 scanner confirms it remains read-only, uses the bounded Polygon RPC failover pool, pins a live market block, reads live Aave liquidity/premium, derives a dynamic loan frontier, records terminal/retryable failures, and publishes `artifacts/s5_curve_uv3_live_scan.json` only after the scan step completes. Economic certification remains explicitly `NOT_PERFORMED` in the artifact schema.
+- Historical crawler #119 / ID `35638160349` is independently **IN_PROGRESS** for canonical campaign `polygon-genesis-94135487`. Resolver completed successfully and all six venue inventory jobs are active on the immutable campaign slice. This lane remains historical availability evidence only and must not be interpreted as Polygon-wide no-pool proof.
+- Latest completed bounded current-block discovery remains First-Hunt #70: **36/36 tiles, 1,280 observations, 0 gross-positive, 0 post-flash-positive**, pinned block `94204969`; economic certification `NOT_PERFORMED`, profit claim `NONE`.
+- **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
+- Next admissible market gate remains **S5 #29 terminalization and artifact forensic inspection**. No new S5 run should be launched while #29 is active, because the workflow concurrency policy deliberately prevents overlapping market-hunt work.
