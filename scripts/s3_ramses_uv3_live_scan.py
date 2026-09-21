@@ -28,12 +28,20 @@ from phantomx.uniswap_v3 import UniswapV3ExactQuoter
 from phantomx.rpc_failover import build_free_polygon_rpc_pool
 from phantomx.dynamic_pair_surface import discover_live_base_pairs
 
-from first_hunt_live_scan import (
-    UNISWAP_V3_FACTORY,
-    UNISWAP_V3_FEE_TIERS,
-    UNISWAP_V3_QUOTER,
-    dynamic_loan_frontier_usdc,
-)
+try:
+    from first_hunt_live_scan import (
+        UNISWAP_V3_FACTORY,
+        UNISWAP_V3_FEE_TIERS,
+        UNISWAP_V3_QUOTER,
+        dynamic_loan_frontier_usdc,
+    )
+except ModuleNotFoundError:
+    from scripts.first_hunt_live_scan import (
+        UNISWAP_V3_FACTORY,
+        UNISWAP_V3_FEE_TIERS,
+        UNISWAP_V3_QUOTER,
+        dynamic_loan_frontier_usdc,
+    )
 
 USDC_E = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 WETH = "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619"
@@ -93,6 +101,45 @@ def _record(token_b: str, venue_path: str, amount: int, tick_spacing: int, sim: 
             }
             for leg in sim.legs
         ],
+    }
+
+
+def classify_s3_tile_failure(exc: BaseException) -> str:
+    """Classify a tile failure as terminal route absence or incomplete evidence."""
+    message = str(exc).lower()
+    terminal_markers = (
+        "ramses v3 pool does not exist for requested tick spacing",
+        "uniswap v3 pool does not exist for requested fee tier",
+        "required route pool is unavailable",
+    )
+    return "COMPLETE_NO_COMMON_ROUTE" if any(marker in message for marker in terminal_markers) else "PARTIAL_INCOMPLETE"
+
+
+def summarize_s3_coverage(
+    tiles: Sequence[dict[str, Any]],
+    expected_tile_count: int,
+) -> dict[str, Any]:
+    completed = sum(
+        1 for item in tiles
+        if item.get("coverage_status") in {"COMPLETE", "COMPLETE_NO_COMMON_ROUTE"}
+    )
+    incomplete = sum(
+        1 for item in tiles
+        if item.get("coverage_status") not in {"COMPLETE", "COMPLETE_NO_COMMON_ROUTE"}
+    )
+    status = (
+        "COMPLETE"
+        if tiles
+        and len(tiles) == expected_tile_count
+        and incomplete == 0
+        else "PARTIAL_INCOMPLETE"
+    )
+    return {
+        "expected_tile_count": expected_tile_count,
+        "observed_tile_count": len(tiles),
+        "completed_tile_count": completed,
+        "incomplete_tile_count": incomplete,
+        "status": status,
     }
 
 
@@ -193,13 +240,15 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
                             "max_route_degradation_bps": ceiling.max_degradation_bps,
                         }
                     )
-                except (DynamicRouteGuardError, Exception) as exc:
+                except Exception as exc:
+                    coverage_status = classify_s3_tile_failure(exc)
                     tiles.append(
                         {
                             "pair": pair[0],
                             "ramses_tick_spacing": tick_spacing,
                             "uniswap_fee_tier": fee,
-                            "status": "UNAVAILABLE_OR_FAILED",
+                            "status": "SUCCESS" if coverage_status == "COMPLETE_NO_COMMON_ROUTE" else "UNAVAILABLE_OR_FAILED",
+                            "coverage_status": coverage_status,
                             "error_type": type(exc).__name__,
                             "error": str(exc),
                         }
@@ -222,7 +271,14 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
             "dynamic_ceiling_usdc": str(Decimal(dynamic_ceiling_raw) / Decimal(10**6)),
             "loan_frontier_usdc": list(frontier),
         },
-        "status": "SUCCESS",
+        "coverage": summarize_s3_coverage(
+            tiles,
+            expected_tile_count=len(UNISWAP_V3_FEE_TIERS) * len(active_pairs) * len(DEFAULT_TICK_SPACINGS),
+        ),
+        "status": summarize_s3_coverage(
+            tiles,
+            expected_tile_count=len(UNISWAP_V3_FEE_TIERS) * len(active_pairs) * len(DEFAULT_TICK_SPACINGS),
+        )["status"],
         "pair_universe": {"status": pair_surface_status, "active_count": len(active_pairs)},
     }
 
@@ -290,7 +346,12 @@ def main() -> int:
     Path("artifacts/s3_ramses_uv3_live_scan.json").write_text(
         json.dumps(artifact, indent=2, sort_keys=True), encoding="utf-8"
     )
-    return 0 if results else 1
+    complete = bool(results) and all(
+        item.get("status") == "COMPLETE"
+        and item.get("coverage", {}).get("status") == "COMPLETE"
+        for item in results
+    )
+    return 0 if complete else 2 if results else 1
 
 
 if __name__ == "__main__":
