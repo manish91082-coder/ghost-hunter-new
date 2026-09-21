@@ -16,7 +16,7 @@ Canonical repository:
 - Canonical Phase-19 workflows and First-Hunt/history kick controls
 
 ## Inventory
-The canonical branch contains 282 tracked files across the project tree, with top-level directories:
+The canonical branch contained **320 tracked files before the two surgical deletions** and contains **318 tracked files in the verified post-cleanup tree**. The top-level project directories are:
 - `.github/`
 - `contracts/`
 - `phantomx/`
@@ -59,9 +59,13 @@ The following small control-room documents look repetitive:
 They were not deleted because their content is explicitly about the Phase-19 control-room gate and safety/coordination invariants. The present instruction is to remove unrelated files, not to collapse related audit documentation. They may be candidates for a separate consolidation pass later, but they are not proven irrelevant.
 
 ## Deletion result
-**DELETE = 0 files**
+**DELETE = 2 files**
 
-No deletion was made without evidence of irrelevance.
+The two deletions were both provably temporary/non-canonical artifacts:
+1. `scripts/README.tmp` — commit `7859fd2a6e4e5170f68c9568583b83b6efca088e`; body was exactly `temporary`.
+2. `tests/phase19/test_control_room_validator.tmp` — commit `7b352e5c870f6560afe4011c94e8984da9fc5a5`; body was only a pointer to the canonical `test_control_room_validator.py` suite.
+
+The current tree contains neither deleted path. No additional deletion is justified by the current evidence.
 
 ## Drift finding
 Architecture drift was not found in the canonical branch: the live code tree, strategy catalog, wide-hunt plan, project details and safety rules all continue to point to the same Polygon/Aave V3/QuickSwap V2/Uniswap V3 evidence-first MVP spine.
@@ -75,4 +79,4 @@ A **documentation drift** was found: `PHANTOMX_PROJECT_RESUME_MANIFEST.md` lagge
 - `master` was left untouched.
 
 ## Verdict
-The canonical branch is already structurally focused on the PHANTOMX MVP. The correct surgical action is **zero unsafe deletions + continuity cleanup**, not bulk deletion.
+The canonical branch remains structurally focused on the PHANTOMX MVP. The correct surgical outcome is **two evidence-backed temporary deletions, zero deletion of project-bearing artifacts, and documentation correction**, not bulk deletion.

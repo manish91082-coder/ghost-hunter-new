@@ -254,3 +254,21 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - No partial First-Hunt result is promoted to market-negative, market-positive, exhaustion, or profitability evidence. The aggregate certificate is the only admissible terminal coverage result.
 - Production safety remains unchanged: **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
 - Next deterministic action is to capture the terminal aggregate artifact from First-Hunt #68, then classify all 36 tiles and proceed from the actual evidence.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • FIRST-HUNT #68 TERMINAL AGGREGATE
+
+- First-Hunt `#68` / run ID `35566476146` completed successfully on exact hunt commit `a9cb6aca4fd3be5ca4d2c424d89f388cecbe46e4`.
+- Direct GitHub Actions job enumeration returned **38 jobs**: 1 market-block resolver + **36/36 fee/pair shards** + 1 aggregate job. The earlier 30-job observation was only the connector's first-page result and was not the complete job set.
+- Aggregate artifact: `phantomx-first-hunt-live-scan`, artifact ID `10623829992`, SHA-256 `eb835ba941814ae3ad360cf228837c6e34f2dafe2e8a1dc1de546a17c30c7a9c`.
+- Coverage is **COMPLETE: 36/36 tiles**, with **0 incomplete shards** and **0 missing shards**. Of the 36 tiles, 32 completed with executable common-route observations and 4 completed as `COMPLETE_NO_COMMON_ROUTE`: fee 100 USDC/WBTC, fee 100 USDC/LINK, fee 100 USDC/UNI, fee 500 USDC/AAVE.
+- Aggregate market block: **94176798**, chain ID **137**. All shard market-block evidence converged to this single block.
+- The scan recorded **1,246 successful route observations**, with **0 gross-positive** and **0 post-flash-positive** observations. Aggregate best gross was **-$0.115879 USDC**; best post-flash delta was **-$0.165879 USDC**.
+- The observed Aave flash premium in the top observations was **5 bps**. Exact transaction-level gas, native/USD valuation, relay cost and final-settlement reconciliation were deliberately outside this First-Hunt certificate.
+- Aggregate status `success` means coverage aggregation succeeded. It does **not** mean economic certification, profitability, exhaustion of the Polygon universe, or production readiness.
+- The artifact explicitly reports `economic_certification=NOT_PERFORMED` and `profit_claim=NONE`.
+- Current branch HEAD is `e646c1d57bf4d52f78a36c98fd7b68469a129892`, which remains documentation/control-plane lineage after the hunt trigger; GitHub comparison from `a9cb6aca...` shows only `PHANTOMX_PROJECT_RESUME_MANIFEST.md` and `PROJECT_STATUS.md` changed afterward, so scanner/quote/route/economic implementation remained unchanged.
+- Latest exact engineering verification remains Phase-19 run `#954` / ID `35566623730` on code-bearing commit `3643648df2642498a26f20eecc1a82bdca5ec161`, successful.
+- Surgical cleanup remains **2 proven temporary-file deletions**; the older 282-file/zero-deletion wording in historical cleanup documentation is corrected in this cycle.
+- **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
+- Next deterministic action: classify the complete #68 domain as bounded current-block evidence and use the result to choose the next search-space/economic action. Do not label the 36-cell declared matrix as Polygon-wide exhaustion.

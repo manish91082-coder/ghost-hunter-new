@@ -315,3 +315,16 @@ Missing lane = BLOCKED.
 - No architecture drift was found. Legacy `master` material remains outside the canonical branch and was not modified.
 - Market profitability remains unproven. No strict `net > $0.20` EconomicProof, realized PnL certificate, or production authorization exists.
 - **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • FIRST-HUNT #68 TERMINAL AGGREGATE
+
+- First-Hunt `#68` / run `35566476146` completed successfully on `a9cb6aca4fd3be5ca4d2c424d89f388cecbe46e4`.
+- Complete GitHub Actions enumeration returned **38 jobs** = 1 resolver + **36/36 shards** + 1 aggregate. The earlier 30-job view was a first-page result, not incomplete coverage.
+- Aggregate artifact `phantomx-first-hunt-live-scan` / ID `10623829992` has SHA-256 `eb835ba941814ae3ad360cf228837c6e34f2dafe2e8a1dc1de546a17c30c7a9c`.
+- Coverage certificate: **36/36 complete**, 0 incomplete, 0 missing. Four tiles are `COMPLETE_NO_COMMON_ROUTE`: USDC/WBTC at fee 100, USDC/LINK at fee 100, USDC/UNI at fee 100, and USDC/AAVE at fee 500. The other 32 tiles completed with route observations.
+- Market block = **94176798**, chain ID = **137**, with one pinned block across the aggregate.
+- Aggregate observations = **1,246**; gross-positive = **0**; post-flash-positive = **0**; best gross = **-$0.115879**; best post-flash = **-$0.165879**.
+- The artifact explicitly states `economic_certification=NOT_PERFORMED` and `profit_claim=NONE`. This is complete coverage for the declared First-Hunt domain, not a profitability or Polygon-wide exhaustion certificate.
+- Current branch HEAD is `e646c1d57bf4d52f78a36c98fd7b68469a129892`. Comparison from hunt commit `a9cb6aca...` shows only the continuity/status documents changed after the hunt trigger.
+- Production gates remain blocked/locked.
