@@ -56,3 +56,4 @@ jobs:
           path: artifacts/s5_curve_uv3_live_scan.json
           if-no-files-found: error
 # current-head refresh trigger: 2026-09-21 after S3 completion
+# current-head clean rerun trigger: 2026-09-21 after Curve pair-surface repair
