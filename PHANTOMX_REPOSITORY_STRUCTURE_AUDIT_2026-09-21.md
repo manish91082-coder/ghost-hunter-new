@@ -11,9 +11,13 @@ Verify canonical project scope, detect drift/clutter, and remove only files that
 - This confirms ancestry continuity; it does not imply production readiness.
 
 ## Structure inventory
-Full recursive Contents API inventory of the canonical branch found:
-- 284 tracked files
-- 4 directories
+Full recursive Contents API inventory of the canonical branch found before cleanup:
+- 320 tracked files
+- 4 nested directories (plus their parent directories)
+
+Independent post-cleanup recount after the two deletions:
+- 318 tracked files
+- same canonical directory topology
 - `.github/`: repository automation and isolated kick sentinels
 - `contracts/`: Phase-19 executor and EVM test mocks
 - `phantomx/`: canonical Python execution-integrity/core modules
@@ -52,3 +56,7 @@ After deletion:
 2. Verify the two deleted paths are absent.
 3. Verify `PROJECT_STATUS.md` records this cleanup and current blockers.
 4. Do not declare CI GREEN until GitHub Actions publishes a successful verification for the resulting lineage.
+
+
+## Inventory correction
+An initial intermediate recount in the execution notes reported 284 files. A later independent directory-by-directory recount established the exact totals above: 320 before cleanup and 318 after. The lower intermediate figure is not used as evidence.
