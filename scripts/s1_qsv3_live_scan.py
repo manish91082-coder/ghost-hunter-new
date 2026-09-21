@@ -82,6 +82,78 @@ def _record(token_b: str, venue_path: str, amount: int, sim: Any) -> dict[str, A
     }
 
 
+def _merge_retry_results(initial: OpportunityDiscoveryResult, retry: OpportunityDiscoveryResult) -> OpportunityDiscoveryResult:
+    evaluated = {(item.venue_path, item.loan_amount): item for item in initial.evaluated}
+    failures = {(item.venue_path, item.loan_amount): item for item in initial.failures}
+    for item in retry.evaluated:
+        evaluated[(item.venue_path, item.loan_amount)] = item
+        failures.pop((item.venue_path, item.loan_amount), None)
+    for item in retry.failures:
+        failures[(item.venue_path, item.loan_amount)] = item
+    return OpportunityDiscoveryResult(evaluated=tuple(evaluated.values()), failures=tuple(failures.values()))
+
+
+def _discover_direction(
+    rpc: Any,
+    qsv3: QuickSwapV3ExactQuoter,
+    u3: UniswapV3ExactQuoter,
+    *,
+    token_b: str,
+    amounts: tuple[int, ...],
+    fee: int,
+    venue_path: str,
+    block: Any,
+) -> OpportunityDiscoveryResult:
+    if venue_path == "quickswap_v3->uniswap_v3":
+        evaluator = lambda token_a, token_b, amount: build_quickswap_v3_to_uniswap_v3_route(
+            rpc, qsv3, u3, amount_in=amount, token_a=token_a, token_b=token_b,
+            uniswap_fee=fee, block=block,
+        )
+    else:
+        evaluator = lambda token_a, token_b, amount: build_uniswap_v3_to_quickswap_v3_route(
+            rpc, qsv3, u3, amount_in=amount, token_a=token_a, token_b=token_b,
+            uniswap_fee=fee, block=block,
+        )
+    result = discover_exact_opportunities(
+        token_pairs=((USDC, token_b),),
+        loan_amounts=amounts,
+        evaluate_route=evaluator,
+        venue_path=venue_path,
+        continue_on_error=True,
+    )
+    retryable_amounts = tuple(sorted({item.loan_amount for item in result.retryable_failures}))
+    if not retryable_amounts:
+        return result
+    rpc.reset_circuits()
+    retry = discover_exact_opportunities(
+        token_pairs=((USDC, token_b),),
+        loan_amounts=retryable_amounts,
+        evaluate_route=evaluator,
+        venue_path=venue_path,
+        continue_on_error=True,
+    )
+    return _merge_retry_results(result, retry)
+
+
+def _tile_failure_diagnostics(result: OpportunityDiscoveryResult) -> list[dict[str, Any]]:
+    return [{
+        "loan_amount_raw": item.loan_amount,
+        "venue_path": item.venue_path,
+        "error_type": item.error_type,
+        "error": item.error_message,
+        "retryable": item.retryable,
+    } for item in result.failures]
+
+
+def classify_s1_tile(*, result: OpportunityDiscoveryResult, expected_evaluations: int) -> str:
+    accounted = len(result.evaluated) + len(result.failures)
+    if result.retryable_failures or accounted != expected_evaluations:
+        return "PARTIAL_INCOMPLETE"
+    forward_amounts = {item.loan_amount for item in result.evaluated if item.venue_path == "quickswap_v3->uniswap_v3"}
+    reverse_amounts = {item.loan_amount for item in result.evaluated if item.venue_path == "uniswap_v3->quickswap_v3"}
+    return "COMPLETE_NO_COMMON_ROUTE" if not (forward_amounts & reverse_amounts) else "COMPLETE"
+
+
 def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
     qsv3 = QuickSwapV3ExactQuoter(rpc, QUICKSWAP_V3_FACTORY, QUICKSWAP_V3_QUOTER)
     u3 = UniswapV3ExactQuoter(rpc, UNISWAP_V3_FACTORY, UNISWAP_V3_QUOTER)
