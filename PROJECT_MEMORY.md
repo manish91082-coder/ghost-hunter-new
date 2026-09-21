@@ -54,3 +54,12 @@ LIVE CAPITAL = LOCKED
 2. Synchronize PROJECT_DETAILS, manifest, PROJECT_STATUS and this memory against the actual current HEAD.
 3. Reconcile whether complete S0 coverage is sufficient for the next economic/execution-path integration step.
 4. Do not promote any observation to profitability without complete EconomicProof and subsequent gates.[object Object]
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • S1 CURRENT-HEAD REFRESH
+- S0 First-Hunt #68 is terminal and complete for its declared 36-cell domain: 36/36 coverage, 1,246 observations, 0 gross-positive, 0 post-flash-positive at Polygon block 94,176,798; no profitability certificate.
+- To refresh the next existing discovery lane on the repaired lineage, the S1 workflow received a comment-only control-plane trigger. No S1 scanner/route/economic implementation was changed.
+- Current S1 trigger HEAD: `af93d56fd7c1cf7b6cb2dd494abb8cffc542752f`.
+- S1 QuickSwap V3 ↔ Uniswap V3 live read run #40 / ID `35574659400` is active on that exact HEAD.
+- Exact-head Phase-19 run #960 / ID `35574659415` is active on the same HEAD; neither is yet terminal.
+- No S1 market conclusion is admissible until the exact-head CI result and S1 evidence artifact are both available.
+- Safety remains unchanged: LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
