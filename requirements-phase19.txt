@@ -1,0 +1,7 @@
+# Ethereum canonical hashing dependency used by Phase-19 execution proofs.
+# Keccak-256 is required; SHA-3 is not an interchangeable substitute.
+pycryptodome>=3.20,<4
+# Canonical secp256k1 key/signature handling for signer identity recovery.
+eth-keys>=0.7,<1
+# Canonical Ethereum RLP encoding for EIP-1559 transaction serialization.
+rlp>=4,<5
