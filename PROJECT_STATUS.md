@@ -204,13 +204,14 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 ## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • SURGICAL REPOSITORY CLEANUP
 
 - Repository structure audit recorded in `PHANTOMX_REPOSITORY_STRUCTURE_AUDIT_2026-09-21.md`.
-- Canonical branch inventory before cleanup: **284 files across 4 directories**. The canonical branch contains the expected `.github / contracts / phantomx / scripts / tests` architecture; legacy `v2 / v3 / common / agents` runtime trees are absent.
+- Canonical branch inventory before cleanup: **320 files** across the canonical `.github / contracts / phantomx / scripts / tests` structure; post-cleanup recount is **318 files**. The canonical branch contains the expected architecture; legacy `v2 / v3 / common / agents` runtime trees are absent.
 - Scope/drift review against `PROJECT_DETAILS.md`, `PHANTOMX_PROJECT_RESUME_MANIFEST.md`, `PHANTOMX_POLYGON_ARBITRAGE_STRATEGY_CATALOG.md`, and `PHANTOMX_DYNAMIC_MARKET_AUTONOMY_POLICY.md` found no unambiguous architectural drift in the canonical tree. Historical continuity sections are retained as historical evidence and do not override the latest status section.
 - Surgical deletion #1: `scripts/README.tmp` removed because its complete content was only `temporary`.
 - Surgical deletion #2: `tests/phase19/test_control_room_validator.tmp` removed because it was an obsolete `.tmp` pointer to the canonical `test_control_room_validator.py` suite.
 - Related control-room governance notes and changelog files were intentionally **preserved** because they have an identifiable audit/coordination role.
 - No core `phantomx/` runtime module, contract, workflow, certification test, strategy adapter, policy, evidence record, or continuity manifest was deleted in this cleanup.
 - Cleanup deletion commit: `7b352e5c870f6560afe4011c94e8984da9fc5a5a`. The status checkpoint is the documentation commit immediately following the cleanup.
+- Inventory correction: an intermediate execution note reported 284 files; an independent directory-by-directory recount established 320 before cleanup and 318 after cleanup. The corrected figures are the authoritative audit values.
 - CI GREEN is not claimed for the post-cleanup lineage until GitHub Actions publishes successful verification.
 - Production state remains unchanged: profitability not proven; external signer/provider/private-relay/shadow evidence not accepted; live signing blocked; public broadcast blocked; live capital locked.
 
