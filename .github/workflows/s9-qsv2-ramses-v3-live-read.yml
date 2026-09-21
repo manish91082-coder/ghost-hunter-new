@@ -1,15 +1,16 @@
-name: PHANTOMX S5 Curve Uniswap V3 Live Hunt
+name: PHANTOMX S9 QuickSwap V2 Ramses V3 Live Hunt
 
 on:
   push:
     branches:
       - phase-19-e2e-harness
     paths:
-      - "phantomx/curve.py"
-      - "phantomx/dynamic_pair_surface.py"
-      - "phantomx/cross_venue_curve_uv3_route.py"
-      - "scripts/s5_curve_uv3_live_scan.py"
-      - ".github/workflows/s5-curve-uv3-live-read.yml"
+      - "phantomx/quickswap_v2.py"
+      - "phantomx/ramses_v3.py"
+      - "phantomx/cross_venue_qsv2_ramses_v3_route.py"
+      - "scripts/s9_qsv2_ramses_v3_live_scan.py"
+      - ".github/workflows/s9-qsv2-ramses-v3-live-read.yml"
+      - "phantomx/dynamic_*.py"
   workflow_dispatch:
 
 permissions:
@@ -20,10 +21,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  s5-live-read:
-    name: S5 Curve <-> Uniswap V3
+  s9-live-read:
+    name: S9 QuickSwap V2 <-> Ramses V3
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 20
     steps:
       - name: Checkout exact branch head
         uses: actions/checkout@v5
@@ -38,24 +39,21 @@ jobs:
           test -n "${GITHUB_SHA}"
           test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
           echo "EXACT_HEAD=${GITHUB_SHA}"
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Install Phase-19 dependencies
         run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
-      - name: Run S5 read-only live hunt
-        run: python scripts/s5_curve_uv3_live_scan.py
+      - name: Run S9 read-only live hunt
+        run: python scripts/s9_qsv2_ramses_v3_live_scan.py
         env:
           PYTHONUNBUFFERED: "1"
-      - name: Publish S5 evidence
+      - name: Publish S9 evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: phantomx-s5-curve-uv3-live-scan
-          path: artifacts/s5_curve_uv3_live_scan.json
+          name: phantomx-s9-qsv2-ramses-v3-live-scan
+          path: artifacts/s9_qsv2_ramses_v3_live_scan.json
           if-no-files-found: error
-# current-head refresh trigger: 2026-09-21 after S3 completion
-# current-head clean rerun trigger: 2026-09-21 after Curve pair-surface repair
-# current-head bounded proof rerun: 2026-09-21 after S9/S10 evidence sync
-# current-head tree-integrity correction rerun: 2026-09-21 after atomic tree repair

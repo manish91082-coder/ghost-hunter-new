@@ -1,15 +1,18 @@
-name: PHANTOMX S5 Curve Uniswap V3 Live Hunt
+name: PHANTOMX S1 QuickSwap V3 Live Hunt
 
 on:
   push:
     branches:
       - phase-19-e2e-harness
     paths:
-      - "phantomx/curve.py"
-      - "phantomx/dynamic_pair_surface.py"
-      - "phantomx/cross_venue_curve_uv3_route.py"
-      - "scripts/s5_curve_uv3_live_scan.py"
-      - ".github/workflows/s5-curve-uv3-live-read.yml"
+      - "phantomx/quickswap_v3.py"
+      - "phantomx/cross_venue_qsv3_route.py"
+      - "phantomx/dynamic_*.py"
+      # S1 imports the canonical first-hunt frontier/constants; changes there
+      # must trigger a fresh S1 evidence run.
+      - "scripts/first_hunt_live_scan.py"
+      - "scripts/s1_qsv3_live_scan.py"
+      - ".github/workflows/s1-qsv3-live-read.yml"
   workflow_dispatch:
 
 permissions:
@@ -20,15 +23,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  s5-live-read:
-    name: S5 Curve <-> Uniswap V3
+  s1-live-read:
+    name: S1 QuickSwap V3 <-> Uniswap V3
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 20
     steps:
       - name: Checkout exact branch head
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
       - name: Verify exact branch checkout
         shell: bash
         run: |
@@ -42,20 +46,19 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
+
       - name: Install Phase-19 dependencies
         run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
-      - name: Run S5 read-only live hunt
-        run: python scripts/s5_curve_uv3_live_scan.py
+
+      - name: Run S1 read-only live hunt
+        run: python scripts/s1_qsv3_live_scan.py
         env:
           PYTHONUNBUFFERED: "1"
-      - name: Publish S5 evidence
-        if: always()
+
+      - name: Publish S1 evidence
         uses: actions/upload-artifact@v4
         with:
-          name: phantomx-s5-curve-uv3-live-scan
-          path: artifacts/s5_curve_uv3_live_scan.json
+          name: phantomx-s1-qsv3-live-scan
+          path: artifacts/s1_qsv3_live_scan.json
           if-no-files-found: error
-# current-head refresh trigger: 2026-09-21 after S3 completion
-# current-head clean rerun trigger: 2026-09-21 after Curve pair-surface repair
-# current-head bounded proof rerun: 2026-09-21 after S9/S10 evidence sync
-# current-head tree-integrity correction rerun: 2026-09-21 after atomic tree repair
+# current-head refresh trigger: 2026-09-21 after S0 First-Hunt #68 certificate

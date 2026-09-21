@@ -1,0 +1,1 @@
+The Phase-19 control-room gate is repository-only. It validates coordination metadata and safety locks; it never authorizes production execution.

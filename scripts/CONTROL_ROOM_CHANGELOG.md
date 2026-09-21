@@ -1,0 +1,1 @@
+Added repository-side control-room consistency validation to detect drift between canonical Phase-19 status, frozen external-evidence identity, required validators, production-lock statements, and repository-tracked evidence workspace paths.

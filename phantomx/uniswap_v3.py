@@ -98,12 +98,6 @@ class UniswapV3ExactQuoter:
         self.quoter_address = quoter_address
         self.chain_id = chain_id
         self._pool_cache: dict[tuple[str, str, int, int], str] = {}
-        self._missing_pool_cache: set[tuple[str, str, int, int]] = set()
-
-    @staticmethod
-    def _pool_cache_key(token_in: str, token_out: str, fee: int, block_number: int) -> tuple[str, str, int, int]:
-        token0, token1 = sorted((token_in.lower(), token_out.lower()))
-        return token0, token1, fee, block_number
 
     def snapshot(self) -> BlockSnapshot:
         try:
@@ -116,23 +110,15 @@ class UniswapV3ExactQuoter:
             raise UniswapV3Error("snapshot chain identity mismatch")
         if token_in.lower() == token_out.lower():
             raise UniswapV3Error("token_in and token_out must differ")
-        key = self._pool_cache_key(token_in, token_out, fee, snapshot.block_number)
-        missing_error = "Uniswap V3 pool does not exist for requested fee tier"
-        if key in self._missing_pool_cache:
-            raise UniswapV3Error(missing_error)
+        key = (token_in.lower(), token_out.lower(), fee, snapshot.block_number)
         cached = self._pool_cache.get(key)
         if cached is not None:
             return cached
-        try:
-            result = self._rpc.call("eth_call", [
-                {"to": self.factory_address, "data": _encode_get_pool(token_in, token_out, fee)},
-                hex(snapshot.block_number),
-            ])
-            pool = _decode_address(result)
-        except UniswapV3Error as exc:
-            if str(exc) == missing_error:
-                self._missing_pool_cache.add(key)
-            raise
+        result = self._rpc.call("eth_call", [
+            {"to": self.factory_address, "data": _encode_get_pool(token_in, token_out, fee)},
+            hex(snapshot.block_number),
+        ])
+        pool = _decode_address(result)
         self._pool_cache[key] = pool
         return pool
 

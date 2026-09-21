@@ -92,33 +92,6 @@ class UniswapV3Tests(unittest.TestCase):
         with self.assertRaises(UniswapV3Error):
             UniswapV3ExactQuoter(rpc, FACTORY, QUOTER).quote(100, A, B, 500, BlockSnapshot(137, 1, 100))
 
-    def test_missing_pool_is_cached_across_amounts_and_directions(self):
-        rpc = FakeRpc(quote=amount_result(999), pool="0x" + "00" * 20)
-        q = UniswapV3ExactQuoter(rpc, FACTORY, QUOTER)
-        snapshot = BlockSnapshot(137, 1, 100)
-        with self.assertRaises(UniswapV3Error):
-            q.quote(100, A, B, 500, snapshot)
-        with self.assertRaises(UniswapV3Error):
-            q.quote(200, B, A, 500, snapshot)
-        factory_calls = [
-            call for call in rpc.calls
-            if call[0] == "eth_call" and call[1][0]["to"] == FACTORY
-        ]
-        self.assertEqual(len(factory_calls), 1)
-
-    def test_missing_pool_cache_is_block_scoped(self):
-        rpc = FakeRpc(quote=amount_result(999), pool="0x" + "00" * 20)
-        q = UniswapV3ExactQuoter(rpc, FACTORY, QUOTER)
-        with self.assertRaises(UniswapV3Error):
-            q.quote(100, A, B, 500, BlockSnapshot(137, 1, 100))
-        with self.assertRaises(UniswapV3Error):
-            q.quote(100, A, B, 500, BlockSnapshot(137, 2, 101))
-        factory_calls = [
-            call for call in rpc.calls
-            if call[0] == "eth_call" and call[1][0]["to"] == FACTORY
-        ]
-        self.assertEqual(len(factory_calls), 2)
-
     def test_zero_quote_fails_closed(self):
         rpc = FakeRpc(quote=amount_result(0))
         with self.assertRaises(UniswapV3Error):

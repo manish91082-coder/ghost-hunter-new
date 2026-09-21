@@ -1,0 +1,220 @@
+name: PHANTOMX First-Hunt Read-Only Live Scan
+
+on:
+  push:
+    branches:
+      - phase-19-e2e-harness
+    paths:
+      - ".github/PHANTOMX_FIRST_HUNT_KICK"
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phantomx-first-hunt-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  resolve-market-block:
+    name: Resolve shared Polygon market block
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      block_number: ${{ steps.market.outputs.PHANTOMX_INVENTORY_PINNED_BLOCK }}
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Verify exact branch checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "manish91082-coder/ghost-hunter-new"
+          test "$GITHUB_REF_NAME" = "phase-19-e2e-harness"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          echo "EXACT_HEAD=$GITHUB_SHA"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install Phase-19 dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
+
+      - name: Resolve one chain-verified block through free RPC pool
+        id: market
+        shell: bash
+        env:
+          PHANTOMX_INVENTORY_WINDOW_BLOCKS: "1"
+        run: |
+          set -euo pipefail
+          python scripts/resolve_inventory_context.py | tee /tmp/market
+          cat /tmp/market >> "$GITHUB_OUTPUT"
+          cat /tmp/market
+
+  first-hunt-shard:
+    needs: resolve-market-block
+    name: First-Hunt fee ${{ matrix.fee_tier }} pair ${{ matrix.pair_index }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - { fee_tier: 100, pair_index: 0 }
+          - { fee_tier: 100, pair_index: 1 }
+          - { fee_tier: 100, pair_index: 2 }
+          - { fee_tier: 100, pair_index: 3 }
+          - { fee_tier: 100, pair_index: 4 }
+          - { fee_tier: 100, pair_index: 5 }
+          - { fee_tier: 100, pair_index: 6 }
+          - { fee_tier: 100, pair_index: 7 }
+          - { fee_tier: 100, pair_index: 8 }
+          - { fee_tier: 500, pair_index: 0 }
+          - { fee_tier: 500, pair_index: 1 }
+          - { fee_tier: 500, pair_index: 2 }
+          - { fee_tier: 500, pair_index: 3 }
+          - { fee_tier: 500, pair_index: 4 }
+          - { fee_tier: 500, pair_index: 5 }
+          - { fee_tier: 500, pair_index: 6 }
+          - { fee_tier: 500, pair_index: 7 }
+          - { fee_tier: 500, pair_index: 8 }
+          - { fee_tier: 3000, pair_index: 0 }
+          - { fee_tier: 3000, pair_index: 1 }
+          - { fee_tier: 3000, pair_index: 2 }
+          - { fee_tier: 3000, pair_index: 3 }
+          - { fee_tier: 3000, pair_index: 4 }
+          - { fee_tier: 3000, pair_index: 5 }
+          - { fee_tier: 3000, pair_index: 6 }
+          - { fee_tier: 3000, pair_index: 7 }
+          - { fee_tier: 3000, pair_index: 8 }
+          - { fee_tier: 10000, pair_index: 0 }
+          - { fee_tier: 10000, pair_index: 1 }
+          - { fee_tier: 10000, pair_index: 2 }
+          - { fee_tier: 10000, pair_index: 3 }
+          - { fee_tier: 10000, pair_index: 4 }
+          - { fee_tier: 10000, pair_index: 5 }
+          - { fee_tier: 10000, pair_index: 6 }
+          - { fee_tier: 10000, pair_index: 7 }
+          - { fee_tier: 10000, pair_index: 8 }
+    env:
+      PHANTOMX_HUNT_FEE_TIER: ${{ matrix.fee_tier }}
+      PHANTOMX_HUNT_PAIR_INDEX: ${{ matrix.pair_index }}
+      PHANTOMX_HUNT_BLOCK_NUMBER: ${{ needs.resolve-market-block.outputs.block_number }}
+
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Verify exact branch checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "manish91082-coder/ghost-hunter-new"
+          test "$GITHUB_REF_NAME" = "phase-19-e2e-harness"
+          test -n "$GITHUB_SHA"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          echo "EXACT_HEAD=$GITHUB_SHA"
+          echo "FEE_TIER=$PHANTOMX_HUNT_FEE_TIER"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install Phase-19 dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
+
+      - name: Diagnose Polygon RPC reachability
+        run: |
+          set -u
+          for endpoint in \
+            "https://polygon.drpc.org/" \
+            "https://public.1rpc.io/matic" \
+            "https://polygon-bor-rpc.publicnode.com"; do
+            printf "RPC %s -> " "$endpoint"
+            curl --silent --show-error --max-time 8 \
+              -H "Content-Type: application/json" \
+              --data '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}' \
+              "$endpoint" | head -c 200 || true
+            printf "\n"
+          done
+
+      - name: Initialize shard evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          printf '%s\n' "{\"schema_version\":1,\"mission\":\"PHANTOMX FIRST HUNT READ-ONLY LIVE SCAN\",\"status\":\"STARTED\",\"selected_fee_tier\":$PHANTOMX_HUNT_FEE_TIER,\"read_only\":true,\"signing\":false,\"submission\":false,\"broadcast\":false,\"live_capital\":false}" > artifacts/first_hunt_live_scan.json
+
+      - name: Run bounded First-Hunt fee shard
+        run: python scripts/first_hunt_live_scan.py
+
+      - name: Upload fee-tier shard evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phantomx-first-hunt-shard-fee-${{ matrix.fee_tier }}-pair-${{ matrix.pair_index }}
+          path: artifacts/first_hunt_live_scan.json
+          if-no-files-found: error
+
+  aggregate:
+    name: Aggregate First-Hunt coverage
+    if: always()
+    needs: first-hunt-shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Verify aggregate checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "manish91082-coder/ghost-hunter-new"
+          test "$GITHUB_REF_NAME" = "phase-19-e2e-harness"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          echo "EXACT_HEAD=$GITHUB_SHA"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Download completed fee shards
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          pattern: phantomx-first-hunt-shard-fee-*
+          path: downloaded-shards
+
+      - name: Initialize aggregate evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          printf '%s\n' '{"schema_version":2,"mission":"PHANTOMX FIRST HUNT READ-ONLY LIVE SCAN","status":"AGGREGATING","read_only":true,"signing":false,"submission":false,"broadcast":false,"live_capital":false}' > artifacts/first_hunt_live_scan.json
+
+      - name: Aggregate fail-closed First-Hunt shards
+        run: python scripts/aggregate_first_hunt_shards.py downloaded-shards artifacts/first_hunt_live_scan.json
+
+      - name: Upload aggregate hunt evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phantomx-first-hunt-live-scan
+          path: artifacts/first_hunt_live_scan.json
+          if-no-files-found: error

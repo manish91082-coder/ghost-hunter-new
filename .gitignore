@@ -1,0 +1,13 @@
+# Ghost Hunter Clean V2/V3 Engine Git Ignore
+venv/
+__pycache__/
+.pytest_cache/
+.env
+*.log
+*.jsonl
+*.coverage
+.coverage
+htmlcov/
+stress_test_*/
+client_secret.json
+gdrive_token.json
