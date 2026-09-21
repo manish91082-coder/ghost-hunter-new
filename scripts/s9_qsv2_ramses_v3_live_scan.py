@@ -11,6 +11,8 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+from phantomx.opportunity_discovery import _is_retryable_failure as _retryable_failure
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -25,7 +27,10 @@ from phantomx.dynamic_route_guard import DynamicRouteGuardError, evaluate_simula
 from phantomx.market_block import acquire_market_block
 from phantomx.quickswap_v2 import QuickSwapV2ExactQuoter
 from phantomx.ramses_v3 import DEFAULT_TICK_SPACINGS, RamsesV3ExactQuoter
-from first_hunt_live_scan import dynamic_loan_frontier_usdc
+try:
+    from first_hunt_live_scan import dynamic_loan_frontier_usdc
+except ModuleNotFoundError:
+    from scripts.first_hunt_live_scan import dynamic_loan_frontier_usdc
 from phantomx.rpc_failover import build_free_polygon_rpc_pool
 from phantomx.dynamic_pair_surface import discover_live_base_pairs
 
@@ -89,6 +94,44 @@ def _record(path: str, amount: int, tick_spacing: int, sim: Any, premium_bps: in
     }
 
 
+
+
+def classify_s9_tile_failure(exc: BaseException) -> str:
+    message = str(exc).lower()
+    terminal_markers = (
+        "ramses v3 pool does not exist for requested tick spacing",
+        "quickswap v2 pair does not exist",
+        "quickswap v3 pool does not exist",
+        "required route pool is unavailable",
+        "no pair",
+        "pool does not exist",
+    )
+    return "COMPLETE_NO_COMMON_ROUTE" if any(marker in message for marker in terminal_markers) else "PARTIAL_INCOMPLETE"
+
+
+def summarize_s9_coverage(tiles: list[dict[str, Any]], expected_tile_count: int, pair_universe_status: str) -> dict[str, Any]:
+    completed = sum(
+        1 for item in tiles
+        if item.get("coverage_status") in {"COMPLETE", "COMPLETE_NO_COMMON_ROUTE"}
+    )
+    incomplete = sum(
+        1 for item in tiles
+        if item.get("coverage_status") not in {"COMPLETE", "COMPLETE_NO_COMMON_ROUTE"}
+    )
+    complete = (
+        len(tiles) == expected_tile_count
+        and incomplete == 0
+        and pair_universe_status == "COMPLETE_RECENT_WINDOW"
+    )
+    return {
+        "expected_tile_count": expected_tile_count,
+        "observed_tile_count": len(tiles),
+        "completed_tile_count": completed,
+        "incomplete_tile_count": incomplete,
+        "status": "COMPLETE" if complete else "PARTIAL_INCOMPLETE",
+        "pair_universe_status": pair_universe_status,
+    }
+
 def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
     quickswap = QuickSwapV2ExactQuoter(rpc, QUICKSWAP_V2_ROUTER)
     ramses = RamsesV3ExactQuoter(rpc, RAMSES_V3_FACTORY, RAMSES_V3_QUOTER_V2)
@@ -128,86 +171,52 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
             try:
                 ramses_pool = ramses.resolve_pool(USDC_E, token_b, tick_spacing, context)
                 ramses_fee = ramses.pool_fee(ramses_pool, context)
-                forward = []
-                reverse = []
-                failures = []
+                forward, reverse, failures = [], [], []
                 for amount in amounts:
                     try:
-                        forward.append(
-                            build_quickswap_v2_to_ramses_v3_route(
-                                rpc, quickswap, ramses,
-                                amount_in=amount,
-                                token_a=USDC_E,
-                                token_b=token_b,
-                                ramses_tick_spacing=tick_spacing,
-                                block=context,
-                            )
-                        )
+                        forward.append(build_quickswap_v2_to_ramses_v3_route(
+                            rpc, quickswap, ramses, amount_in=amount, token_a=USDC_E, token_b=token_b,
+                            ramses_tick_spacing=tick_spacing, block=context))
                     except Exception as exc:
-                        failures.append({
-                            "direction": "quickswap_v2->ramses_v3",
-                            "loan_amount_raw": amount,
-                            "error_type": type(exc).__name__,
-                            "error": str(exc),
-                            "retryable": _retryable_failure(exc),
-                        })
+                        failures.append({"direction":"quickswap_v2->ramses_v3","loan_amount_raw":amount,"error_type":type(exc).__name__,"error":str(exc),"retryable":_retryable_failure(exc)})
                     try:
-                        reverse.append(
-                            build_ramses_v3_to_quickswap_v2_route(
-                                rpc, quickswap, ramses,
-                                amount_in=amount,
-                                token_a=USDC_E,
-                                token_b=token_b,
-                                ramses_tick_spacing=tick_spacing,
-                                block=context,
-                            )
-                        )
+                        reverse.append(build_ramses_v3_to_quickswap_v2_route(
+                            rpc, quickswap, ramses, amount_in=amount, token_a=USDC_E, token_b=token_b,
+                            ramses_tick_spacing=tick_spacing, block=context))
                     except Exception as exc:
-                        failures.append({
-                            "direction": "ramses_v3->quickswap_v2",
-                            "loan_amount_raw": amount,
-                            "error_type": type(exc).__name__,
-                            "error": str(exc),
-                            "retryable": _retryable_failure(exc),
-                        })
-                ceiling = evaluate_simulation_domain(
-                    forward=forward,
-                    reverse=reverse,
-                    max_degradation_bps=100,
-                )
+                        failures.append({"direction":"ramses_v3->quickswap_v2","loan_amount_raw":amount,"error_type":type(exc).__name__,"error":str(exc),"retryable":_retryable_failure(exc)})
+                expected = len(amounts) * 2
+                accounted = len(forward) + len(reverse) + len(failures)
+                retryable = any(item["retryable"] for item in failures)
+                coverage_status = "PARTIAL_INCOMPLETE" if accounted != expected or retryable else "COMPLETE"
+                ceiling = evaluate_simulation_domain(forward=forward, reverse=reverse, max_degradation_bps=100)
                 for item in ceiling.evaluated:
                     if item.forward is not None:
                         observations.append(_record("quickswap_v2->ramses_v3", item.amount, tick_spacing, item.forward, aave.flash_loan_premium_bps))
                     if item.reverse is not None:
                         observations.append(_record("ramses_v3->quickswap_v2", item.amount, tick_spacing, item.reverse, aave.flash_loan_premium_bps))
-                expected = len(amounts) * 2
-                accounted = len(forward) + len(reverse) + len(failures)
                 tiles.append({
-                    "pair": pair_name,
-                    "ramses_tick_spacing": tick_spacing,
-                    "ramses_pool": ramses_pool,
-                    "ramses_fee_raw": ramses_fee,
-                    "status": "SUCCESS",
-                    "coverage_status": "COMPLETE" if accounted == expected and not any(item["retryable"] for item in failures) else "PARTIAL_RETRYABLE" if any(item["retryable"] for item in failures) else "PARTIAL_INCOMPLETE",
-                    "expected_direction_evaluations": expected,
-                    "accounted_direction_evaluations": accounted,
-                    "success_direction_evaluations": len(forward) + len(reverse),
-                    "retryable_failure_count": sum(item["retryable"] for item in failures),
-                    "terminal_failure_count": sum(not item["retryable"] for item in failures),
-                    "failure_diagnostics": failures,
-                    "observation_count": len(ceiling.evaluated) * 2,
-                    "dynamic_route_ceiling_usdc": str(Decimal(ceiling.max_safe_amount) / Decimal(10**6)),
+                    "pair":pair_name,"ramses_tick_spacing":tick_spacing,"ramses_pool":ramses_pool,"ramses_fee_raw":ramses_fee,
+                    "status":"SUCCESS","coverage_status":coverage_status,"expected_direction_evaluations":expected,
+                    "accounted_direction_evaluations":accounted,"success_direction_evaluations":len(forward)+len(reverse),
+                    "retryable_failure_count":sum(item["retryable"] for item in failures),
+                    "terminal_failure_count":sum(not item["retryable"] for item in failures),
+                    "failure_diagnostics":failures,"observation_count":len(ceiling.evaluated)*2,
+                    "dynamic_route_ceiling_usdc":str(Decimal(ceiling.max_safe_amount)/Decimal(10**6)),
                 })
-            except (DynamicRouteGuardError, Exception) as exc:
+            except Exception as exc:
+                coverage_status=classify_s9_tile_failure(exc)
                 tiles.append({
-                    "pair": pair_name,
-                    "ramses_tick_spacing": tick_spacing,
-                    "status": "UNAVAILABLE_OR_FAILED",
-                    "error_type": type(exc).__name__,
-                    "error": str(exc),
+                    "pair":pair_name,"ramses_tick_spacing":tick_spacing,
+                    "status":"SUCCESS" if coverage_status=="COMPLETE_NO_COMMON_ROUTE" else "UNAVAILABLE_OR_FAILED",
+                    "coverage_status":coverage_status,"error_type":type(exc).__name__,"error":str(exc),
                 })
-
     ranked = sorted(observations, key=lambda x: x["gross_delta_raw"], reverse=True)
+    coverage = summarize_s9_coverage(
+        tiles,
+        expected_tile_count=len(DEFAULT_TICK_SPACINGS) * len(active_pairs),
+        pair_universe_status=pair_surface_status,
+    )
     return {
         "endpoint": provider_label,
         "chain_id": POLYGON_CHAIN_ID,
@@ -220,6 +229,7 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
         "top_gross_observations": ranked[:20],
         "successful_tiles": sum(t["status"] == "SUCCESS" for t in tiles),
         "tiles": tiles,
+        "coverage": coverage,
         "aave_dynamic": {
             "pool": aave.pool,
             "available_liquidity_usdc": str(Decimal(aave.available_liquidity_raw) / Decimal(10**6)),
@@ -294,7 +304,11 @@ def main() -> int:
     Path("artifacts/s9_qsv2_ramses_v3_live_scan.json").write_text(
         json.dumps(artifact, indent=2, sort_keys=True), encoding="utf-8"
     )
-    return 0 if results else 1
+    complete = bool(results) and all(
+        item.get("coverage", {}).get("status") == "COMPLETE"
+        for item in results
+    )
+    return 0 if complete else 2 if results else 1
 
 
 if __name__ == "__main__":

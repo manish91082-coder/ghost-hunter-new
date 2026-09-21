@@ -50,6 +50,7 @@ jobs:
         env:
           PYTHONUNBUFFERED: "1"
       - name: Publish S10 evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: phantomx-s10-qsv3-ramses-v3-live-scan

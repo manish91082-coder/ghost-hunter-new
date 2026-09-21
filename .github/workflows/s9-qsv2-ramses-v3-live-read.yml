@@ -51,6 +51,7 @@ jobs:
         env:
           PYTHONUNBUFFERED: "1"
       - name: Publish S9 evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: phantomx-s9-qsv2-ramses-v3-live-scan
