@@ -1,10 +1,74 @@
 import unittest
 
+from scripts.s1_qsv3_live_scan import classify_s1_tile
+from phantomx.opportunity_discovery import (
+    OpportunityCandidate,
+    OpportunityDiscoveryResult,
+    OpportunityFailure,
+)
 from phantomx.quickswap_v3 import QuickSwapV3ExactQuoter
 from phantomx.cross_venue_qsv3_route import build_quickswap_v3_to_uniswap_v3_route
 
 
 class StrategyS1SurfaceTests(unittest.TestCase):
+    def test_s1_tile_rejects_incomplete_coverage(self):
+        class Simulation:
+            def __init__(self, amount):
+                self.initial_amount = amount
+                self.final_amount = amount
+
+        result = OpportunityDiscoveryResult(
+            evaluated=(
+                OpportunityCandidate(
+                    "a", "b", "quickswap_v3->uniswap_v3", 100, Simulation(100)
+                ),
+            )
+        )
+        self.assertEqual(
+            classify_s1_tile(result=result, expected_evaluations=2),
+            "PARTIAL_INCOMPLETE",
+        )
+
+    def test_s1_tile_accepts_terminal_no_common_route(self):
+        result = OpportunityDiscoveryResult(
+            evaluated=(),
+            failures=(
+                OpportunityFailure(
+                    "a", "b", "quickswap_v3->uniswap_v3", 100,
+                    "EVM", "execution reverted", False
+                ),
+                OpportunityFailure(
+                    "a", "b", "uniswap_v3->quickswap_v3", 100,
+                    "EVM", "execution reverted", False
+                ),
+            ),
+        )
+        self.assertEqual(
+            classify_s1_tile(result=result, expected_evaluations=2),
+            "COMPLETE_NO_COMMON_ROUTE",
+        )
+
+    def test_s1_tile_accepts_complete_common_route(self):
+        class Simulation:
+            def __init__(self, amount):
+                self.initial_amount = amount
+                self.final_amount = amount
+
+        result = OpportunityDiscoveryResult(
+            evaluated=(
+                OpportunityCandidate(
+                    "a", "b", "quickswap_v3->uniswap_v3", 100, Simulation(100)
+                ),
+                OpportunityCandidate(
+                    "a", "b", "uniswap_v3->quickswap_v3", 100, Simulation(100)
+                ),
+            )
+        )
+        self.assertEqual(
+            classify_s1_tile(result=result, expected_evaluations=2),
+            "COMPLETE",
+        )
+
     def test_s1_objects_construct_with_polygon_adapters(self):
         class Rpc:
             def call(self, method, params):
