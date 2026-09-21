@@ -302,3 +302,16 @@ Missing lane = BLOCKED.
 - No architecture drift was found against `PROJECT_DETAILS.md`, `PHANTOMX_POLYGON_ARBITRAGE_STRATEGY_CATALOG.md`, `PHANTOMX_POLYGON_WIDE_HUNT_PLAN.md`, and the safety gates.
 - Safety remains unchanged: LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
 - Next execution priority remains CI verification of the semantic-revert repair, followed by a fresh isolated 36-cell First-Hunt only after verification.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • EXACT-HEAD RECONCILIATION AFTER FRESH FIRST-HUNT KICK
+
+- Canonical repository and branch were independently re-verified: `manish91082-coder/ghost-hunter-new` / `phase-19-e2e-harness`.
+- Branch HEAD immediately before this documentation synchronization was `a9cb6aca4fd3be5ca4d2c424d89f388cecbe46e4`, created solely by updating the existing `.github/PHANTOMX_FIRST_HUNT_KICK` sentinel to trigger a fresh controlled read-only hunt.
+- Exact-head Phase-19 run #953 / ID `35566476152` completed **successfully** on `a9cb6aca...`. The prior Phase-19 run #952 on `3cfc43ee...` also completed successfully. The exact-head verification therefore now exists for the repair + cleanup-trigger lineage.
+- Fresh First-Hunt #68 / ID `35566476146` was successfully created by the dedicated kick sentinel and is running/queued against exact HEAD `a9cb6aca...`; no market result or exhaustion claim is made until its aggregate evidence is complete.
+- The First-Hunt workflow remains a 36-cell matrix: 4 fee tiers × 9 pair indices, with fail-closed aggregation and no signing, submission, broadcast, or live capital.
+- Current tree at the reconciled engineering state contains **318 tracked files** across `.github/`, `contracts/`, `phantomx/`, `scripts/`, and `tests/`. Earlier 282-file statements in historical cleanup/status sections are historical checkpoints and are not the current inventory.
+- The two surgical deletions previously proven safe remain intact: `scripts/README.tmp` and `tests/phase19/test_control_room_validator.tmp`. Their deletion commits are preserved as audit evidence.
+- No architecture drift was found. Legacy `master` material remains outside the canonical branch and was not modified.
+- Market profitability remains unproven. No strict `net > $0.20` EconomicProof, realized PnL certificate, or production authorization exists.
+- **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
