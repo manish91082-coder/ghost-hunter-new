@@ -9,25 +9,38 @@ import time
 from dataclasses import asdict
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from phantomx.aave_v3_dynamic import AaveV3PolygonDynamicReader
-from phantomx.curve import CurveRegistryExactQuoter
+from phantomx.curve import CurveRegistryExactQuoter, REGISTRY_TYPES
 from phantomx.cross_venue_curve_uv3_route import (
     build_curve_to_uniswap_v3_route,
     build_uniswap_v3_to_curve_route,
 )
 from phantomx.dynamic_market_policy import DynamicLoanInputs, compute_dynamic_loan_ceiling
-from phantomx.dynamic_route_guard import DynamicRouteGuardError, evaluate_simulation_domain
+from phantomx.dynamic_route_guard import evaluate_simulation_domain
 from phantomx.market_block import acquire_market_block
 from phantomx.uniswap_v3 import UniswapV3ExactQuoter
 from phantomx.rpc_failover import build_free_polygon_rpc_pool
 from phantomx.dynamic_pair_surface import discover_live_base_pairs
-from first_hunt_live_scan import UNISWAP_V3_FACTORY, UNISWAP_V3_QUOTER, UNISWAP_V3_FEE_TIERS, dynamic_loan_frontier_usdc
+try:
+    from first_hunt_live_scan import (
+        UNISWAP_V3_FACTORY,
+        UNISWAP_V3_QUOTER,
+        UNISWAP_V3_FEE_TIERS,
+        dynamic_loan_frontier_usdc,
+    )
+except ModuleNotFoundError:
+    from scripts.first_hunt_live_scan import (
+        UNISWAP_V3_FACTORY,
+        UNISWAP_V3_QUOTER,
+        UNISWAP_V3_FEE_TIERS,
+        dynamic_loan_frontier_usdc,
+    )
 
 POLYGON_CHAIN_ID = 137
 USDC_E = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
@@ -89,6 +102,92 @@ def _record(path: str, amount: int, pool_ref: Any, sim: Any, premium_bps: int) -
     }
 
 
+def _failure_diagnostics(result: OpportunityDiscoveryResult) -> list[dict[str, Any]]:
+    return [{
+        "loan_amount_raw": item.loan_amount,
+        "venue_path": item.venue_path,
+        "error_type": item.error_type,
+        "error": item.error_message,
+        "retryable": item.retryable,
+    } for item in result.failures]
+
+
+def classify_s5_tile_failure(exc: BaseException) -> str:
+    message = str(exc).lower()
+    terminal_markers = (
+        "uniswap v3 pool does not exist for requested fee tier",
+        "curve returned zero output",
+        "uniswap v3 returned zero output",
+        "seeded curve pool does not contain requested token pair",
+        "no pair",
+        "required route pool is unavailable",
+    )
+    return "COMPLETE_NO_COMMON_ROUTE" if any(marker in message for marker in terminal_markers) else "PARTIAL_INCOMPLETE"
+
+
+def classify_s5_tile_results(
+    forward: OpportunityDiscoveryResult,
+    reverse: OpportunityDiscoveryResult,
+    *,
+    expected_evaluations_per_direction: int,
+) -> str:
+    expected = expected_evaluations_per_direction * 2
+    accounted = (
+        len(forward.evaluated) + len(forward.failures)
+        + len(reverse.evaluated) + len(reverse.failures)
+    )
+    if accounted != expected or forward.retryable_failures or reverse.retryable_failures:
+        return "PARTIAL_INCOMPLETE"
+    failures = forward.failures + reverse.failures
+    if not forward.evaluated and not reverse.evaluated:
+        return (
+            "COMPLETE_NO_COMMON_ROUTE"
+            if all(
+                classify_s5_tile_failure(RuntimeError(item.error_message)) == "COMPLETE_NO_COMMON_ROUTE"
+                for item in failures
+            )
+            else "PARTIAL_INCOMPLETE"
+        )
+    forward_amounts = {item.loan_amount for item in forward.evaluated}
+    reverse_amounts = {item.loan_amount for item in reverse.evaluated}
+    if forward_amounts & reverse_amounts:
+        return "COMPLETE"
+    return (
+        "COMPLETE_NO_COMMON_ROUTE"
+        if failures and all(
+            classify_s5_tile_failure(RuntimeError(item.error_message)) == "COMPLETE_NO_COMMON_ROUTE"
+            for item in failures
+        )
+        else "PARTIAL_INCOMPLETE"
+    )
+
+
+def summarize_s5_coverage(
+    tiles: Sequence[dict[str, Any]],
+    *,
+    pair_universe_status: str,
+) -> dict[str, Any]:
+    completed = sum(
+        1 for item in tiles
+        if item.get("coverage_status") in {"COMPLETE", "COMPLETE_NO_COMMON_ROUTE"}
+    )
+    incomplete = sum(
+        1 for item in tiles
+        if item.get("coverage_status") not in {"COMPLETE", "COMPLETE_NO_COMMON_ROUTE"}
+    )
+    tile_complete = bool(tiles) and incomplete == 0
+    pair_complete = pair_universe_status == "COMPLETE_RECENT_WINDOW"
+    return {
+        "expected_tile_count": len(tiles),
+        "observed_tile_count": len(tiles),
+        "completed_tile_count": completed,
+        "incomplete_tile_count": incomplete,
+        "tile_status": "COMPLETE" if tile_complete else "PARTIAL_INCOMPLETE",
+        "pair_universe_status": pair_universe_status,
+        "status": "COMPLETE" if tile_complete and pair_complete else "PARTIAL_INCOMPLETE",
+    }
+
+
 def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
     curve = CurveRegistryExactQuoter(rpc)
     uv3 = UniswapV3ExactQuoter(rpc, UNISWAP_V3_FACTORY, UNISWAP_V3_QUOTER)
@@ -128,45 +227,78 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
                 pass
         for ref in refs:
             for ufee in UNISWAP_V3_FEE_TIERS:
+                forward_result = discover_exact_opportunities(
+                    token_pairs=((USDC_E, token_b),),
+                    loan_amounts=amounts,
+                    evaluate_route=lambda token_a, token_out, amount: build_curve_to_uniswap_v3_route(
+                        rpc, curve, uv3, amount_in=amount, token_a=token_a, token_b=token_out,
+                        curve_pool=ref, uniswap_fee=ufee, block=context
+                    ),
+                    venue_path="curve->uniswap_v3",
+                    continue_on_error=True,
+                )
+                reverse_result = discover_exact_opportunities(
+                    token_pairs=((USDC_E, token_b),),
+                    loan_amounts=amounts,
+                    evaluate_route=lambda token_a, token_out, amount: build_uniswap_v3_to_curve_route(
+                        rpc, curve, uv3, amount_in=amount, token_a=token_a, token_b=token_out,
+                        curve_pool=ref, uniswap_fee=ufee, block=context
+                    ),
+                    venue_path="uniswap_v3->curve",
+                    continue_on_error=True,
+                )
+                combined = OpportunityDiscoveryResult(
+                    evaluated=forward_result.evaluated + reverse_result.evaluated,
+                    failures=forward_result.failures + reverse_result.failures,
+                )
+                coverage_status = classify_s5_tile_results(
+                    forward_result,
+                    reverse_result,
+                    expected_evaluations_per_direction=len(amounts),
+                )
+                tile = {
+                    "pair": pair_name,
+                    "registry": ref.registry_name,
+                    "pool": ref.pool,
+                    "curve_fee_raw": ref.fee_raw,
+                    "curve_i": ref.i,
+                    "curve_j": ref.j,
+                    "underlying": ref.underlying,
+                    "uniswap_fee": ufee,
+                    "status": "SUCCESS" if coverage_status in {"COMPLETE", "COMPLETE_NO_COMMON_ROUTE"} else "UNAVAILABLE_OR_FAILED",
+                    "coverage_status": coverage_status,
+                    "expected_direction_evaluations": len(amounts) * 2,
+                    "accounted_direction_evaluations": len(combined.evaluated) + len(combined.failures),
+                    "retryable_failure_count": len(combined.retryable_failures),
+                    "terminal_failure_count": len(combined.terminal_failures),
+                    "failure_diagnostics": _failure_diagnostics(combined),
+                    "observation_count": 0,
+                }
+                if coverage_status != "COMPLETE":
+                    tiles.append(tile)
+                    continue
                 try:
-                    forward = tuple(build_curve_to_uniswap_v3_route(
-                        rpc, curve, uv3, amount_in=amount, token_a=USDC_E, token_b=token_b,
-                        curve_pool=ref, uniswap_fee=ufee, block=context
-                    ) for amount in amounts)
-                    reverse = tuple(build_uniswap_v3_to_curve_route(
-                        rpc, curve, uv3, amount_in=amount, token_a=USDC_E, token_b=token_b,
-                        curve_pool=ref, uniswap_fee=ufee, block=context
-                    ) for amount in amounts)
-                    guard = evaluate_simulation_domain(forward=forward, reverse=reverse, max_degradation_bps=100)
+                    forward = tuple(item.simulation for item in forward_result.evaluated)
+                    reverse = tuple(item.simulation for item in reverse_result.evaluated)
+                    guard = evaluate_simulation_domain(
+                        forward=forward,
+                        reverse=reverse,
+                        max_degradation_bps=100,
+                    )
                     for item in guard.evaluated:
                         if item.forward is not None:
                             observations.append(_record("curve->uniswap_v3", item.amount, ref, item.forward, aave.flash_loan_premium_bps))
                         if item.reverse is not None:
                             observations.append(_record("uniswap_v3->curve", item.amount, ref, item.reverse, aave.flash_loan_premium_bps))
-                    tiles.append({
-                        "pair": pair_name,
-                        "registry": ref.registry_name,
-                        "pool": ref.pool,
-                        "curve_fee_raw": ref.fee_raw,
-                        "curve_i": ref.i,
-                        "curve_j": ref.j,
-                        "underlying": ref.underlying,
-                        "uniswap_fee": ufee,
-                        "status": "SUCCESS",
-                        "observation_count": len(guard.evaluated) * 2,
-                    })
-                except (DynamicRouteGuardError, Exception) as exc:
-                    tiles.append({
-                        "pair": pair_name,
-                        "registry": ref.registry_name,
-                        "pool": ref.pool,
-                        "uniswap_fee": ufee,
-                        "status": "UNAVAILABLE_OR_FAILED",
-                        "error_type": type(exc).__name__,
-                        "error": str(exc),
-                    })
-
+                    tile["observation_count"] = len(guard.evaluated) * 2
+                except Exception as exc:
+                    tile["status"] = "UNAVAILABLE_OR_FAILED"
+                    tile["coverage_status"] = "PARTIAL_INCOMPLETE"
+                    tile["error_type"] = type(exc).__name__
+                    tile["error"] = str(exc)
+                tiles.append(tile)
     ranked = sorted(observations, key=lambda x: x["gross_delta_raw"], reverse=True)
+    coverage = summarize_s5_coverage(tiles, pair_universe_status=pair_surface_status)
     return {
         "endpoint": provider_label,
         "chain_id": POLYGON_CHAIN_ID,
@@ -175,6 +307,7 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
         "gross_max_usdc": str(Decimal(ranked[0]["gross_delta_raw"]) / Decimal(10**6)) if ranked else "0",
         "top_gross_observations": ranked[:20],
         "successful_tiles": sum(t["status"] == "SUCCESS" for t in tiles),
+        "coverage": coverage,
         "tiles": tiles,
         "aave_dynamic": {
             "pool": aave.pool,
@@ -184,7 +317,7 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
             "loan_frontier_usdc": list(dynamic_loan_frontier_usdc(ceiling // 10**6)),
         },
         "status": "SUCCESS",
-        "pair_universe": {"status": pair_surface_status, "active_count": len(active_pairs)},
+        "pair_universe": {"status": pair_surface_status, "active_count": len(active_pairs), "seed_count": len(PAIRS)},
     }
 
 
@@ -232,7 +365,7 @@ def main() -> int:
             "workflow_run_id": os.environ.get("GITHUB_RUN_ID", "UNKNOWN"),
             "workflow_run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT", "UNKNOWN"),
         },
-        "registries": [],
+        "registries": [{"name": name, "address": address} for name, address in REGISTRY_TYPES],
         "pairs": [name for name, _ in PAIRS],
         "successful_endpoints": results,
         "pair_universe": {"status": results[0].get("pair_universe", {}).get("status", "PAIR_UNIVERSE_INCOMPLETE") if results else "PAIR_UNIVERSE_INCOMPLETE", "active_count": results[0].get("pair_universe", {}).get("active_count", 0) if results else 0},
@@ -249,7 +382,13 @@ def main() -> int:
     Path("artifacts/s5_curve_uv3_live_scan.json").write_text(
         json.dumps(artifact, indent=2, sort_keys=True), encoding="utf-8"
     )
-    return 0 if results else 1
+    complete = bool(results) and all(
+        item.get("status") == "COMPLETE"
+        and item.get("coverage", {}).get("status") == "COMPLETE"
+        and item.get("pair_universe", {}).get("status") == "COMPLETE_RECENT_WINDOW"
+        for item in results
+    )
+    return 0 if complete else 2 if results else 1
 
 
 if __name__ == "__main__":
