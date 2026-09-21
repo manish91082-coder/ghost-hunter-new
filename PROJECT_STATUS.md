@@ -184,3 +184,19 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - No gross-positive or post-flash-positive observation is promoted to EconomicProof automatically. Exact gas, complete costs, final requote/state lock, EVM preflight, external signer/provider/private-relay evidence, staging, controlled execution and realized-PnL proof remain separate gates.
 - **LIVE SIGNING = BLOCKED. PUBLIC BROADCAST = BLOCKED. LIVE CAPITAL = LOCKED.**
 - **Process rule:** every substantive execution cycle must create/update the relevant evidence/status file before the cycle is reported complete.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • SEMANTIC-REVERT COVERAGE REPAIR
+
+- First-Hunt #67 / run ID `35536094045` is now closed with **30 jobs total: 26 successful, 4 failed**. The four failed atomic cells were fee 100/pair 4, fee 100/pair 6, fee 100/pair 1, and fee 500/pair 5. No complete 36-cell market certificate is accepted from this run.
+- The failure pattern exposed a second-layer classifier bug after the earlier RPC-layer repair: `phantomx/rpc_failover.py` treated `execution reverted` as terminal, but `phantomx/opportunity_discovery.py` still promoted any `RPCPoolError` to retryable status before reading the semantic message.
+- Engineering repair commit: `014e14ed25859a80d0f057c3e6de76adac1d4cb3` checks for semantic `execution reverted` first and returns terminal classification while preserving genuine transport/rate-limit retry behavior.
+- Regression commit: `864f45b9418cf019bd4f6ab1acda4bb2bd565f21` adds explicit semantic-revert and 429 transport classification tests.
+- Cycle evidence: `PHANTOMX_CYCLE_2026-09-21_SEMANTIC_REVERT_COVERAGE_FIX.md` records the forensic finding, repair, and current verification limitation.
+- First-Hunt #67 produced 37 published artifacts, including the read-only live-scan artifact, but no aggregate market-complete certificate was produced. The run is therefore treated as incomplete evidence, not as a market-negative result.
+- GitHub combined commit-status queries for the new repair commits currently expose no published status checks, so **CI GREEN is not claimed yet** for the new repair lineage.
+- The next admissible market step is: verify Phase-19 CI on the repair lineage, then launch a fresh isolated 36-cell First-Hunt. The fresh run must prove every atomic shard and every pair/fee tile complete before any exhaustion conclusion.
+- Profitability remains unproven. Exact execution-path gas, complete-cost EconomicProof, final requote/state lock, external signer/provider/private-relay evidence, staging, controlled execution and realized PnL > $0.20 remain separate gates.
+- **LIVE SIGNING = BLOCKED. PUBLIC BROADCAST = BLOCKED. LIVE CAPITAL = LOCKED.**
+
+**Process gate reaffirmed:** substantive cycle = work → evidence/step file → `PROJECT_STATUS.md` update → verification state → report.
