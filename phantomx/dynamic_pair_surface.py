@@ -74,8 +74,9 @@ def discover_live_base_pairs(
     )
     pair_map: dict[str, DynamicPairSpec] = {}
 
-    for name, token in seed_pairs:
-        pair_map[token.lower()] = DynamicPairSpec(name, token, "SEED", tuple())
+    if "curve" not in required:
+        for name, token in seed_pairs:
+            pair_map[token.lower()] = DynamicPairSpec(name, token, "SEED", tuple())
 
     curve_lookup_complete = True
     if "curve" in required:
@@ -124,8 +125,7 @@ def discover_live_base_pairs(
 
     status = (
         "COMPLETE_RECENT_WINDOW"
-        if results
-        and all(r.status in {"QUOTED", "ONCHAIN_UNAVAILABLE"} for r in results)
+        if all(r.status in {"QUOTED", "ONCHAIN_UNAVAILABLE"} for r in results)
         and curve_lookup_complete
         else "PAIR_UNIVERSE_INCOMPLETE"
     )
