@@ -81,3 +81,8 @@ This repair changes discovery evidence classification only. Signing, submission,
 - Commit `f499920edb177680c04d0bd7ce3749af131394dd` makes only the uninformative `execution reverted: Unexpected error` response recoverable.
 - Commit `ba4d347c9d5fe9471aab06cdbe8797ac358f7146` adds regression coverage and is certified by Phase-19 #986 / `35581593367` GREEN with 901 tests.
 - The next S3 current-head run is the proof boundary for whether the four previously unresolved cells can be independently resolved.
+
+
+### Canonical Tree Verification Finding
+
+A subsequent continuity-trigger commit used a stale base tree and consequently did not retain the intended RPC ambiguity repair in the live tree, despite having the repair commit in its parent history. Direct file inspection exposed the mismatch. The repair is being reapplied from the actual canonical HEAD and will receive a fresh Phase-19 plus S3 verification. This is recorded as a repository-integrity finding, not a market result.

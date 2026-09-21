@@ -351,3 +351,12 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - The RPC-layer repair now treats an uninformative `execution reverted: Unexpected error` as recoverable, while reasoned execution reverts remain terminal. This is bounded provider failover, not semantic-profit acceptance.
 - A new S3 current-head refresh is being triggered after this RPC-layer repair. No S3 positive/negative market conclusion is claimed until that run's artifact is parsed.
 - Safety unchanged: **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • CANONICAL RPC REPAIR REAPPLIED
+
+- Verification found that the prior continuity-trigger commit `d98befea...` had a tree that did not retain the intended `rpc_failover.py` content despite the repair commits being in its parent history.
+- The canonical HEAD is therefore being repaired from the actual live tree, not from historical ancestry assumptions.
+- The intended RPC boundary is unchanged: reasoned execution reverts remain terminal; only uninformative `execution reverted: Unexpected error` responses are eligible for bounded provider failover.
+- A fresh S3 trigger is included on the same canonical-tree repair commit so the live evidence exercises the actual file content.
+- No market or profitability conclusion is claimed until the fresh S3 artifact proves complete coverage.

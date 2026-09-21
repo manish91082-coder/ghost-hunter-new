@@ -112,3 +112,9 @@ LIVE CAPITAL = LOCKED
 - RPC repair `f499920edb177680c04d0bd7ce3749af131394dd` makes only the uninformative `execution reverted: Unexpected error` recoverable across the bounded free-provider fleet; reasoned execution reverts remain non-recoverable.
 - Regression commit `ba4d347c9d5fe9471aab06cdbe8797ac358f7146` is verified by Phase-19 #986 / `35581593367` GREEN with 901 tests.
 - S3 current-head refresh after this repair is the next proof boundary. Until its artifact is inspected, S3 remains UNKNOWN/BLOCKED.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • CANONICAL RPC REPAIR REAPPLIED
+
+- Live-tree verification exposed a content-lineage mismatch in `d98befea...`: its tree retained the old RPC revert policy.
+- The RPC ambiguity repair is being reapplied directly to the current canonical tree and will be re-verified by Phase-19 and a fresh S3 current-head run.

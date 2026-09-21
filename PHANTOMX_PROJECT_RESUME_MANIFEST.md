@@ -397,3 +397,9 @@ Missing lane = BLOCKED.
 - The four unresolved cells are USDC.e/DAI at Ramses tickSpacing 1 across all four declared Uniswap fee tiers, all with uninformative `execution reverted: Unexpected error`.
 - Commit `f499920edb177680c04d0bd7ce3749af131394dd` introduces bounded failover for this ambiguous provider response only; regression commit `ba4d347c9d5fe9471aab06cdbe8797ac358f7146` is Phase-19 verified.
 - Next gate is current-head S3 live verification after the RPC repair.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • CANONICAL RPC REPAIR REAPPLIED
+
+- Do not infer file content from parent ancestry alone. Current branch tree content is authoritative.
+- The ambiguous-RPC repair is being reapplied directly from canonical HEAD and must be verified again before the S3 lane can advance.

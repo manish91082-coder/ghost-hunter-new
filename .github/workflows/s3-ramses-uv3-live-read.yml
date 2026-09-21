@@ -57,4 +57,4 @@ jobs:
           if-no-files-found: error
 # current-head refresh trigger: 2026-09-21 after S1 coverage repair
 
-# current-head refresh trigger: 2026-09-21 after ambiguous RPC revert repair
+# current-head refresh trigger: 2026-09-21 after canonical RPC ambiguity repair reapply
