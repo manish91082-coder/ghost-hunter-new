@@ -427,3 +427,16 @@ Missing lane = BLOCKED.
 - No strategy evidence above is an EconomicProof or profitability certificate. No signing, submission, public broadcast, live capital, or realized-PnL claim is authorized.
 - Safety: **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
 - Durable evidence record: `PHANTOMX_S9_S10_COVERAGE_REPAIR_EVIDENCE_2026-09-21.md`.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • LIVE TREE REPAIR / S5 CURRENT-HEAD
+
+- Live GitHub branch `phase-19-e2e-harness` was reconciled directly. Do not trust older HEAD values in this manifest over `PROJECT_STATUS.md`.
+- Tree-integrity incident: `68a52cc0...` was an invalid partial-tree intermediate commit. S5 #28 failed before scanning because `requirements-phase19.txt` disappeared from the tree. No market evidence was accepted.
+- Canonical repair: `aadf4979...`; verified full tree 338 entries and only intended S5 workflow/kick modifications versus `b6be20f...`.
+- First-Hunt #70: 36/36 complete, 1,280 observations, 0 gross-positive, 0 post-flash-positive, block `94204969`; bounded discovery evidence only.
+- Historical #115: canonical campaign `polygon-genesis-94135487`, slice 400000-499999, next cursor 500000; all six venues ONCHAIN_UNAVAILABLE, so historical availability remains unresolved for that slice.
+- Clean current S5 head: `dc2deb28...`; only `.github/PHANTOMX_S5_KICK` changed from repaired tree; S5 timeout 60 minutes.
+- Phase-19 #1023 GREEN. S5 #29 / ID `35635495324` active on `dc2deb28...`.
+- Dedicated incident evidence: `PHANTOMX_CONTROL_PLANE_TREE_REPAIR_EVIDENCE_2026-09-21.md`.
+- Safety invariant unchanged: LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+- Next gate is S5 #29 terminal artifact inspection. Never promote read-only scan output directly to execution authorization.
