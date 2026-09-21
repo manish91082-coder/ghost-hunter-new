@@ -102,6 +102,12 @@ def _is_retryable_failure(exc: BaseException) -> bool:
     seen: set[int] = set()
     while current is not None and id(current) not in seen:
         seen.add(id(current))
+        # Semantic EVM execution reverts are deterministic market/call outcomes,
+        # even when wrapped by the RPC pool as an RPCPoolError. They must never be
+        # promoted back to transport-retry semantics by this higher discovery layer.
+        message = str(current).lower()
+        if "execution reverted" in message:
+            return False
         if type(current).__name__ in infrastructure_types:
             return True
         cause_type = getattr(current, "cause_type", None)
