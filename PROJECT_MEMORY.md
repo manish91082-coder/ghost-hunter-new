@@ -141,3 +141,13 @@ LIVE CAPITAL = LOCKED
 - No strategy evidence above is an EconomicProof or profitability certificate. No signing, submission, public broadcast, live capital, or realized-PnL claim is authorized.
 - Safety: **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
 - Durable evidence record: `PHANTOMX_S9_S10_COVERAGE_REPAIR_EVIDENCE_2026-09-21.md`.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • CONTROL-PLANE ISOLATION
+
+- Current canonical HEAD before this memory synchronization: `5f7c486d81d36ad2934d7976c70340ed375dd3db`.
+- A dedicated control-plane repair removed push triggers from the market/inventory workflow set so normal code changes do not fan out multiple live-read hunts.
+- S5 is the deliberate exception: it has a narrow push trigger on `.github/PHANTOMX_S5_KICK` only, preserving an explicit controlled refresh mechanism without coupling S5 to generic implementation changes.
+- Regression policy is encoded in `tests/phase19/test_market_workflow_trigger_policy.py`; the exact-head Phase-19 run #1019 / `35621384834` completed GREEN.
+- S5 #25 / `35613663393` on HEAD `7825318366afd68430d511a15ce06f739c2b7f14` ended CANCELLED with no artifact, so it contributes no market-negative conclusion.
+- First-Hunt #69 on HEAD `7825318366afd68430d511a15ce06f739c2b7f14` remains the latest bounded complete current-head hunt with 1,280 observations and no positive gross/post-flash result.
+- Safety locks remain unchanged: LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.

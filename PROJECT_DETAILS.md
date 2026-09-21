@@ -175,3 +175,11 @@ No legacy v2/v3 runtime, obsolete configuration, generated trading logs, credent
 - Current S3 result: 168/168 tiles complete, with 164 terminal no-route cells, 4 route cells, 160 observations and no gross-positive observation.
 - The RPC ambiguity boundary remains narrow: informative semantic execution reverts stay terminal; only uninformative `execution reverted: Unexpected error` responses are recoverable through bounded provider failover.
 - No execution authorization was introduced. Next operating step is strategy refresh, beginning with S5.
+
+## CONTROL-PLANE OPERATING CONTRACT • 2026-09-21
+
+- Market-dependent workflow execution is intentionally decoupled from ordinary repository pushes.
+- Controlled market/inventory workflows use `workflow_dispatch`, while narrowly scoped evidence kicks may use dedicated repository kick files.
+- S5 Curve ↔ Uniswap V3 has a dedicated `.github/PHANTOMX_S5_KICK` automatic trigger and no longer fires on general Curve, dynamic-pair, or Uniswap implementation changes.
+- This preserves zero-cost RPC discipline and avoids simultaneous unrelated hunters consuming the same public provider fleet.
+- No execution authorization, signer path, public broadcast path, or live-capital access is added by this control-plane change.

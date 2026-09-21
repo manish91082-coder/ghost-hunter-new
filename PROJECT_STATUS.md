@@ -390,3 +390,13 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - No strategy evidence above is an EconomicProof or profitability certificate. No signing, submission, public broadcast, live capital, or realized-PnL claim is authorized.
 - Safety: **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
 - Durable evidence record: `PHANTOMX_S9_S10_COVERAGE_REPAIR_EVIDENCE_2026-09-21.md`.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • MARKET-HUNT TRIGGER ISOLATION
+
+- Canonical branch HEAD: `5f7c486d81d36ad2934d7976c70340ed375dd3db` (`chore: isolate market hunts behind manual dispatch`).
+- Control-plane repair: Polygon inventory plus S1, S2, S3, S5A, S6, S9, S10, S10 candidate refinement and X1 market workflows are now **manual-dispatch only**. This prevents ordinary repository pushes from creating broad RPC/market-hunt fan-out.
+- S5 retains one deliberately narrow automatic trigger: `.github/PHANTOMX_S5_KICK` only. The S5 workflow no longer triggers on Curve/Uniswap implementation changes or dynamic-pair changes.
+- Regression coverage was added in `tests/phase19/test_market_workflow_trigger_policy.py`; Phase-19 run #1019 / `35621384834` is **GREEN** on this exact HEAD, including the full Phase-19 unittest suite.
+- The preceding S5 current-head run #25 / `35613663393` was **CANCELLED** after reaching the read-only hunt step and produced no admissible market artifact. It is not a negative market result.
+- Current First-Hunt #69 remains the latest bounded complete current-head read-only hunt: 36/36 tiles complete, 1,280 observations, 0 gross-positive and 0 post-flash-positive; no profitability certificate.
+- Production state is unchanged: **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED**. Realized net profit > $0.20 remains unproven.
