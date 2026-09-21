@@ -216,7 +216,11 @@ class CurveRegistryExactQuoter:
             raw = self._call(registry, data, snapshot)
         except CurveError as exc:
             message = str(exc).lower()
-            if "transport failure" in message or "rpcpoolerror" in message or "rpc error code=429" in message:
+            if "all bounded polygon rpc recovery passes failed" in message:
+                raise
+            if "execution reverted" in message:
+                return None
+            if "transport failure" in message or "rpc error code=429" in message:
                 raise
             return None
         if len(raw) != 32:
