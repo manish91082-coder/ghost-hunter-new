@@ -244,3 +244,13 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Strict profitability remains UNPROVEN: no current `EconomicProof` above `$0.20), no realized-PnL certificate, and no production authority evidence has been accepted.
 - **LIVE SIGNING = BLOCKED. PUBLIC BROADCAST = BLOCKED. LIVE CAPITAL = LOCKED.**
 - Next deterministic gate: capture First-Hunt #68 terminal aggregate evidence; then classify every 36 cell and only thereafter decide whether further discovery/coverage repair is required.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • FIRST-HUNT #68 LIVE PROGRESS
+
+- Current branch HEAD at this status write: `6829f65abc5e1378a91853e32b5225258d005966`.
+- The current HEAD differs from the previously verified Phase-19 HEAD `3643648df2642498a26f20eecc1a82bdca5ec161` only by this `PROJECT_STATUS.md` update; no runtime/scanner/workflow logic changed.
+- Phase-19 run #954 / ID `35566623730` is GREEN on `3643648...`, covering the same engineering/code state as the current status-only HEAD.
+- First-Hunt #68 / ID `35566476146` remains the active fresh 36-cell read-only market scan on exact hunt commit `a9cb6aca...`. At the latest observed state, market-block resolution is GREEN and shard execution is underway; the workflow has **37 total jobs** including the aggregate stage, with multiple fee/pair shards already successful and the remaining shards still running/queued.
+- No partial First-Hunt result is promoted to market-negative, market-positive, exhaustion, or profitability evidence. The aggregate certificate is the only admissible terminal coverage result.
+- Production safety remains unchanged: **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
+- Next deterministic action is to capture the terminal aggregate artifact from First-Hunt #68, then classify all 36 tiles and proceed from the actual evidence.
