@@ -214,7 +214,10 @@ class CurveRegistryExactQuoter:
             data = FIND_POOL_FOR_COINS_INDEXED_SELECTOR + (_address_word(token_in) + _address_word(token_out) + _uint_word(index)).hex()
         try:
             raw = self._call(registry, data, snapshot)
-        except CurveError:
+        except CurveError as exc:
+            message = str(exc).lower()
+            if "transport failure" in message or "rpcpoolerror" in message or "rpc error code=429" in message:
+                raise
             return None
         if len(raw) != 32:
             return None
