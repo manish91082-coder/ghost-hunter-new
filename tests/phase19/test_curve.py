@@ -69,6 +69,21 @@ class CurveAdapterTests(unittest.TestCase):
             q.pool_count(CURVE_FACTORY_REGISTRY, SNAP)
         self.assertIn("transport failure", str(ctx.exception))
 
+    def test_registry_execution_revert_is_terminal_no_pool(self):
+        class RevertingRpc(FakeRpc):
+            def call(self, method, params):
+                if method == "eth_call" and (
+                    params[0]["data"].startswith(FIND_POOL_FOR_COINS_SELECTOR)
+                    or params[0]["data"].startswith(FIND_POOL_FOR_COINS_INDEXED_SELECTOR)
+                ):
+                    raise RuntimeError("execution reverted")
+                return super().call(method, params)
+
+        rpc = RevertingRpc()
+        q = CurveRegistryExactQuoter(rpc, (("factory", CURVE_FACTORY_REGISTRY),))
+        pools = q.find_pools_for_pair(A, B, SNAP, max_pools_per_registry=2)
+        self.assertEqual(pools, [])
+
     def test_find_pools_uses_pair_lookup_and_binds_block(self):
         rpc = FakeRpc()
         q = CurveRegistryExactQuoter(rpc, (( "factory", CURVE_FACTORY_REGISTRY),))
