@@ -1,5 +1,7 @@
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
+
+from phantomx.market_block import MarketBlockSnapshot
 
 from phantomx.dynamic_pair_surface import discover_live_base_pairs
 
@@ -37,21 +39,25 @@ class DynamicPairSurfaceTests(unittest.TestCase):
 
     def test_curve_required_is_not_treated_as_unknown_venue(self):
         rpc = Mock()
-        rpc.call.side_effect = [
-            "0x64",
-            {"timestamp": "0x1"},
-            [],
-        ]
-        with self.assertRaises(Exception) as ctx:
-            discover_live_base_pairs(
+        rpc.call.return_value = "0x64"
+        with patch(
+            "phantomx.dynamic_pair_surface.acquire_market_block_at",
+            return_value=MarketBlockSnapshot(chain_id=137, block_number=100, timestamp=1_700_000_000),
+        ), patch(
+            "phantomx.dynamic_pair_surface.CurveRegistryExactQuoter"
+        ) as curve_quoter:
+            curve_quoter.return_value.find_pools_for_pair.return_value = []
+            result = discover_live_base_pairs(
                 rpc,
                 base_token="0x" + "22" * 20,
                 seed_pairs=(("USDC/WETH", "0x" + "11" * 20),),
-                required_venues=("curve", "uniswap_v3"),
+                required_venues=("curve",),
                 lookback_blocks=10,
                 chunk_size=10,
             )
-        self.assertNotIn("unknown venue ids: ['curve']", str(ctx.exception))
+        self.assertEqual(result.status, "PAIR_UNIVERSE_INCOMPLETE")
+        self.assertEqual(len(result.pairs), 1)
+        self.assertEqual(result.pairs[0].source, "SEED")
 
 
 if __name__ == "__main__":
