@@ -57,3 +57,4 @@ jobs:
           if-no-files-found: error
 # current-head refresh trigger: 2026-09-21 after S3 completion
 # current-head clean rerun trigger: 2026-09-21 after Curve pair-surface repair
+# current-head bounded proof rerun: 2026-09-21 after S9/S10 evidence sync
