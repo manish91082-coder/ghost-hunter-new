@@ -62,6 +62,42 @@ class OpportunityDiscoveryTests(unittest.TestCase):
                 venue_path="QuickSwap→UniswapV3", evaluate_route=evaluate,
             )
 
+    def test_semantic_rpc_revert_is_terminal_not_retryable(self):
+        from phantomx.opportunity_discovery import OpportunityFailure
+        from phantomx.rpc_failover import RPCPoolError
+
+        def evaluate(a, b, amount):
+            raise RPCPoolError("eth_call: RPC error code=-32000 message=execution reverted")
+
+        result = discover_exact_opportunities(
+            token_pairs=((A, B),),
+            loan_amounts=(100, 200),
+            venue_path="QuickSwap→UniswapV3",
+            evaluate_route=evaluate,
+            continue_on_error=True,
+        )
+        self.assertEqual(len(result.evaluated), 0)
+        self.assertEqual(len(result.failures), 2)
+        self.assertEqual(len(result.retryable_failures), 0)
+        self.assertEqual(len(result.terminal_failures), 2)
+        self.assertTrue(all(item.error_type == "RPCPoolError" for item in result.failures))
+
+    def test_transport_rpc_pool_error_remains_retryable(self):
+        from phantomx.rpc_failover import RPCPoolError
+
+        def evaluate(a, b, amount):
+            raise RPCPoolError("eth_call: RPC error code=429 message=rate limit")
+
+        result = discover_exact_opportunities(
+            token_pairs=((A, B),),
+            loan_amounts=(100,),
+            venue_path="QuickSwap→UniswapV3",
+            evaluate_route=evaluate,
+            continue_on_error=True,
+        )
+        self.assertEqual(len(result.retryable_failures), 1)
+        self.assertEqual(len(result.terminal_failures), 0)
+
     def test_duplicate_amounts_and_identity_errors_fail_closed(self):
         with self.assertRaises(OpportunityDiscoveryError):
             discover_exact_opportunities(
