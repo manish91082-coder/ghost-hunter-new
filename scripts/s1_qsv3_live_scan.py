@@ -281,7 +281,25 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
             "dynamic_ceiling_usdc": str(Decimal(ceiling_raw) / Decimal(10**6)),
             "loan_frontier_usdc": list(frontier),
         },
-        "status": "SUCCESS",
+        "coverage": {
+            "expected_tile_count": len(UNISWAP_V3_FEE_TIERS) * len(active_pairs),
+            "completed_tile_count": sum(
+                1 for item in tiles
+                if item.get("coverage_status") in {"COMPLETE", "COMPLETE_NO_COMMON_ROUTE"}
+            ),
+            "incomplete_tile_count": sum(
+                1 for item in tiles
+                if item.get("coverage_status") not in {"COMPLETE", "COMPLETE_NO_COMMON_ROUTE"}
+            ),
+            "status": "COMPLETE" if tiles and all(
+                item.get("coverage_status") in {"COMPLETE", "COMPLETE_NO_COMMON_ROUTE"}
+                for item in tiles
+            ) else "PARTIAL_INCOMPLETE",
+        },
+        "status": "COMPLETE" if tiles and all(
+            item.get("coverage_status") in {"COMPLETE", "COMPLETE_NO_COMMON_ROUTE"}
+            for item in tiles
+        ) else "PARTIAL_INCOMPLETE",
         "pair_universe": {"status": pair_surface_status, "active_count": len(active_pairs)},
     }
 
@@ -347,7 +365,11 @@ def main() -> int:
     Path("artifacts/s1_qsv3_live_scan.json").write_text(
         json.dumps(artifact, indent=2, sort_keys=True), encoding="utf-8"
     )
-    return 0 if results else 1
+    complete = bool(results) and all(
+        item.get("status") == "COMPLETE" and item.get("coverage", {}).get("status") == "COMPLETE"
+        for item in results
+    )
+    return 0 if complete else 2 if results else 1
 
 
 if __name__ == "__main__":
