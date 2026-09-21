@@ -118,3 +118,12 @@ LIVE CAPITAL = LOCKED
 
 - Live-tree verification exposed a content-lineage mismatch in `d98befea...`: its tree retained the old RPC revert policy.
 - The RPC ambiguity repair is being reapplied directly to the current canonical tree and will be re-verified by Phase-19 and a fresh S3 current-head run.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • S3 #23 COMPLETE
+
+- S3 #23 `35595059504` is complete for its declared 168-tile matrix on `4028cdd375b3455b2d4b3972506b669058d9e6f6`.
+- Coverage: 168/168 complete; 164 terminal no-route; 4 common-route tiles; 160 observations; 0 gross-positive; best gross `-$0.009175`; best post-flash `-$0.059175`.
+- Pair universe is `COMPLETE_RECENT_WINDOW` with 7 active seeded pairs. Dynamic Aave ceiling is 597079.810291 USDC at 5 bps premium.
+- No economic certificate or profit claim exists. S3 is bounded complete-discovery evidence only.
+- Phase-19 #991 is GREEN with 902 tests. Next lane is S5 after current-workflow inspection.

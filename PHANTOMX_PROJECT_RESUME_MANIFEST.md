@@ -403,3 +403,13 @@ Missing lane = BLOCKED.
 
 - Do not infer file content from parent ancestry alone. Current branch tree content is authoritative.
 - The ambiguous-RPC repair is being reapplied directly from canonical HEAD and must be verified again before the S3 lane can advance.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • S3 #23 COMPLETE
+
+- Current HEAD: `4028cdd375b3455b2d4b3972506b669058d9e6f6`.
+- S3 #23 / `35595059504` is complete on the declared 168-cell matrix: 168/168 covered, 0 incomplete, 160 observations, 0 gross-positive, best gross `-$0.009175`, best post-flash `-$0.059175`.
+- 164 cells are terminal `COMPLETE_NO_COMMON_ROUTE`; 4 cells have common routes and were quoted successfully.
+- Artifact: `10636560576`; GitHub digest `sha256:7f9483318d3d605abb8a2c2924172bc3ab8140328e1bf6da3dee112673d60aca`.
+- This is complete bounded S3 evidence only. Polygon-wide universe exhaustion and strict `net > $0.20` profitability remain unproven.
+- Next frozen expansion lane: S5 Curve ↔ Uniswap V3, subject to current workflow/evidence inspection.

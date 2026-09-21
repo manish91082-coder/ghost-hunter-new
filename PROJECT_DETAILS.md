@@ -166,3 +166,12 @@ No legacy v2/v3 runtime, obsolete configuration, generated trading logs, credent
 
 - Git history ancestry is not sufficient evidence of current file semantics. The live branch tree was inspected directly after a documentation-trigger commit exposed a stale tree base.
 - The RPC ambiguity policy is being re-established in the current tree and re-certified by deterministic and live-read evidence.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • S3 DISCOVERY LANE COMPLETE
+
+- S3 now has a complete explicit coverage contract and a successful terminal run.
+- The S3 workflow preserves artifacts even on fail-closed exits; complete aggregate requires exact tile cardinality plus zero incomplete tiles.
+- Current S3 result: 168/168 tiles complete, with 164 terminal no-route cells, 4 route cells, 160 observations and no gross-positive observation.
+- The RPC ambiguity boundary remains narrow: informative semantic execution reverts stay terminal; only uninformative `execution reverted: Unexpected error` responses are recoverable through bounded provider failover.
+- No execution authorization was introduced. Next operating step is strategy refresh, beginning with S5.

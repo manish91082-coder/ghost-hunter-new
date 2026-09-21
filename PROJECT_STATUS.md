@@ -360,3 +360,19 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - The intended RPC boundary is unchanged: reasoned execution reverts remain terminal; only uninformative `execution reverted: Unexpected error` responses are eligible for bounded provider failover.
 - A fresh S3 trigger is included on the same canonical-tree repair commit so the live evidence exercises the actual file content.
 - No market or profitability conclusion is claimed until the fresh S3 artifact proves complete coverage.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • S3 #23 COMPLETE BOUNDED RESULT
+
+- S3 live-read run #23 / ID `35595059504` completed **SUCCESS** on exact HEAD `4028cdd375b3455b2d4b3972506b669058d9e6f6`.
+- Artifact ID `10636560576`; GitHub artifact digest `sha256:7f9483318d3d605abb8a2c2924172bc3ab8140328e1bf6da3dee112673d60aca`; extracted JSON SHA-256 `c1b6525f5f04ed2a0cc3e63e085f6f50ef622521dfb53649c920075a1a9b62e9`.
+- S3 declared matrix: 6 Ramses tick spacings × 4 Uniswap V3 fee tiers × 7 active recent-window pairs = **168 tiles**.
+- Coverage certificate: **168/168 observed, 168/168 completed, 0 incomplete**. Tile outcomes: 164 `COMPLETE_NO_COMMON_ROUTE`, 4 `COMPLETE`.
+- Pair universe status: `COMPLETE_RECENT_WINDOW`, 7 active pairs from the 7 seeded pairs.
+- Pinned live Aave USDC liquidity: **628505.063465 USDC**; dynamic ceiling **597079.810291 USDC**; flash premium **5 bps**; 20-point loan frontier ending at 597079 USDC.
+- Exact route observations: **160**. Gross-positive: **0**. Best gross: **-$0.009175 USDC**. Best post-flash premium delta: **-$0.059175 USDC**.
+- Artifact explicitly records `economic_certification=NOT_PERFORMED` and `profit_claim=NONE`. Therefore S3 is now admissible **bounded complete-discovery evidence**, not a profitability certificate and not Polygon-wide exhaustion proof.
+- The prior S3 coverage false-negative and RPC ambiguity issues are resolved on the current lineage and were exercised by this successful complete scan.
+- Phase-19 #991 / ID `35595059445` is GREEN on the same exact HEAD; compile, EVM, Polygon fork protocol smoke, Polygon fork execution probe and **902 Python tests** passed.
+- Next deterministic strategy gate is the next existing discovery lane in the frozen expansion order, **S5 Curve ↔ Uniswap V3**, after checking its current workflow/tree for admissible existing evidence.
+- Safety remains unchanged: **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**

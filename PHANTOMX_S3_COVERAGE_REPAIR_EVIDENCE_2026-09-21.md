@@ -86,3 +86,21 @@ This repair changes discovery evidence classification only. Signing, submission,
 ### Canonical Tree Verification Finding
 
 A subsequent continuity-trigger commit used a stale base tree and consequently did not retain the intended RPC ambiguity repair in the live tree, despite having the repair commit in its parent history. Direct file inspection exposed the mismatch. The repair is being reapplied from the actual canonical HEAD and will receive a fresh Phase-19 plus S3 verification. This is recorded as a repository-integrity finding, not a market result.
+
+
+### S3 Run #23 Final Result
+
+- Run #23 / `35595059504`, exact HEAD `4028cdd375b3455b2d4b3972506b669058d9e6f6`.
+- Workflow: **SUCCESS**.
+- Artifact ID: `10636560576`; GitHub artifact digest: `sha256:7f9483318d3d605abb8a2c2924172bc3ab8140328e1bf6da3dee112673d60aca`.
+- Extracted JSON SHA-256: `c1b6525f5f04ed2a0cc3e63e085f6f50ef622521dfb53649c920075a1a9b62e9`.
+- Coverage: expected 168, observed 168, completed 168, incomplete 0, aggregate `COMPLETE`.
+- Tile outcomes: 164 `COMPLETE_NO_COMMON_ROUTE`, 4 `COMPLETE`.
+- Pair surface: 7/7 active seed pairs, status `COMPLETE_RECENT_WINDOW`.
+- Exact observations: 160.
+- Gross-positive: 0.
+- Best gross: `-$0.009175 USDC`.
+- Best post-flash-premium delta: `-$0.059175 USDC`.
+- Aave available USDC liquidity: 628505.063465; dynamic ceiling: 597079.810291; flash premium: 5 bps.
+- Economic certification: `NOT_PERFORMED`. Profit claim: `NONE`.
+- This result is bounded complete-discovery evidence only. It does not prove Polygon-wide exhaustion or strict realized net profit > $0.20.
