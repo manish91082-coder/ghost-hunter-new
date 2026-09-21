@@ -188,28 +188,42 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
     for fee in UNISWAP_V3_FEE_TIERS:
         for pair in active_pairs:
             try:
-                forward = tuple(
-                    build_quickswap_v3_to_uniswap_v3_route(
-                        rpc, qsv3, u3,
-                        amount_in=amount,
-                        token_a=USDC,
-                        token_b=pair.token_b,
-                        uniswap_fee=fee,
-                        block=context,
-                    )
-                    for amount in amounts
+                forward_result = _discover_direction(
+                    rpc, qsv3, u3, token_b=pair.token_b, amounts=amounts,
+                    fee=fee, venue_path="quickswap_v3->uniswap_v3", block=context,
                 )
-                reverse = tuple(
-                    build_uniswap_v3_to_quickswap_v3_route(
-                        rpc, qsv3, u3,
-                        amount_in=amount,
-                        token_a=USDC,
-                        token_b=pair.token_b,
-                        uniswap_fee=fee,
-                        block=context,
-                    )
-                    for amount in amounts
+                reverse_result = _discover_direction(
+                    rpc, qsv3, u3, token_b=pair.token_b, amounts=amounts,
+                    fee=fee, venue_path="uniswap_v3->quickswap_v3", block=context,
                 )
+                combined = OpportunityDiscoveryResult(
+                    evaluated=forward_result.evaluated + reverse_result.evaluated,
+                    failures=forward_result.failures + reverse_result.failures,
+                )
+                expected_evaluations = len(amounts) * 2
+                coverage_status = classify_s1_tile(
+                    result=combined,
+                    expected_evaluations=expected_evaluations,
+                )
+                forward = tuple(item.simulation for item in forward_result.evaluated)
+                reverse = tuple(item.simulation for item in reverse_result.evaluated)
+                if coverage_status == "COMPLETE_NO_COMMON_ROUTE":
+                    tiles.append({
+                        "pair": pair.name,
+                        "uniswap_fee_tier": fee,
+                        "status": "SUCCESS",
+                        "coverage_status": coverage_status,
+                        "expected_direction_evaluations": expected_evaluations,
+                        "accounted_direction_evaluations": len(combined.evaluated) + len(combined.failures),
+                        "retryable_failure_count": len(combined.retryable_failures),
+                        "terminal_failure_count": len(combined.terminal_failures),
+                        "failure_diagnostics": _tile_failure_diagnostics(combined),
+                        "dynamic_route_ceiling_usdc": "0",
+                        "reference_amount_usdc": "0",
+                        "max_route_degradation_bps": 100,
+                        "observation_count": 0,
+                    })
+                    continue
                 ceiling = evaluate_simulation_domain(
                     forward=forward,
                     reverse=reverse,
@@ -220,21 +234,34 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
                         observations.append(_record(pair.token_b, "quickswap_v3->uniswap_v3", item.amount, item.forward))
                     if item.reverse is not None:
                         observations.append(_record(pair.token_b, "uniswap_v3->quickswap_v3", item.amount, item.reverse))
+                common_amounts = {
+                    item.loan_amount for item in forward_result.evaluated
+                } & {
+                    item.loan_amount for item in reverse_result.evaluated
+                }
                 tiles.append({
                     "pair": pair.name,
                     "uniswap_fee_tier": fee,
                     "status": "SUCCESS",
+                    "coverage_status": coverage_status if common_amounts else "PARTIAL_INCOMPLETE",
+                    "expected_direction_evaluations": expected_evaluations,
+                    "accounted_direction_evaluations": len(combined.evaluated) + len(combined.failures),
+                    "retryable_failure_count": len(combined.retryable_failures),
+                    "terminal_failure_count": len(combined.terminal_failures),
+                    "failure_diagnostics": _tile_failure_diagnostics(combined),
                     "dynamic_route_ceiling_usdc": str(Decimal(ceiling.max_safe_amount) / Decimal(10**6)),
                     "reference_amount_usdc": str(Decimal(ceiling.reference_amount) / Decimal(10**6)),
                     "max_route_degradation_bps": ceiling.max_degradation_bps,
                     "observation_count": len(ceiling.evaluated) * 2,
                 })
-            except (DynamicRouteGuardError, Exception) as exc:
+            except Exception as exc:
                 tiles.append({
                     "pair": pair.name,
                     "uniswap_fee_tier": fee,
                     "status": "UNAVAILABLE_OR_FAILED",
+                    "coverage_status": "PARTIAL_INCOMPLETE",
                     "error_type": type(exc).__name__,
+                    "error": str(exc),
                 })
 
     ranked = sorted(observations, key=lambda x: x["gross_delta_raw"], reverse=True)
