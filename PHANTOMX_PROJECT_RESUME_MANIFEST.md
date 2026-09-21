@@ -286,3 +286,19 @@ Missing lane = BLOCKED.
 - S0 First-Hunt #53 is running on `625f6385...`; it is the first clean broad hunt after discovery retry/coverage corrections.
 - No current-head profitable certificate exists. Gross-positive observations from S10 are below the flash-premium floor and have not reached gas/economic/final-lock stages.
 - Production execution gates remain blocked until a current genuine candidate passes complete EconomicProof, exact final gas/valuation, final requote/state lock, external authority/signer/relay/shadow gates, and realized PnL > $0.20.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • REPOSITORY DRIFT + CLEANUP AUDIT
+
+- Canonical branch remains `phase-19-e2e-harness`; the canonical PHANTOMX MVP architecture remains aligned with the immutable mission spine in this manifest.
+- Latest semantic-revert coverage repair remains:
+  - `014e14ed25859a80d0f057c3e6de76adac1d4cb3` discovery-layer terminal classification fix.
+  - `864f45b9418cf019bd4f6ab1acda4bb2bd565f21` regression tests for semantic revert versus transport retry behavior.
+- First-Hunt #67 / run ID `35536094045` is incomplete: 30 jobs, 26 successful, 4 failed. No complete 36-cell market certificate exists.
+- Repository cleanup audit `PHANTOMX_REPOSITORY_CLEANUP_AUDIT_2026-09-21.md` inspected the canonical branch inventory and found **zero files proven unrelated**. Therefore **zero files were deleted**.
+- The canonical branch contains 282 tracked files in the focused PHANTOMX tree. Legacy `v2/`, `v3/`, `agents/`, `common/`, notebook and training material observed on the `master` baseline are not present in the canonical branch and were deliberately not touched.
+- Control-room helper documents were retained because their contents directly describe Phase-19 safety/coordination validation. They are related audit material, even where overlapping in wording.
+- A documentation-drift finding was corrected: this manifest had lagged behind the 2026-09-21 semantic-revert repair. This section is now the authoritative current sync; older sections remain historical records.
+- No architecture drift was found against `PROJECT_DETAILS.md`, `PHANTOMX_POLYGON_ARBITRAGE_STRATEGY_CATALOG.md`, `PHANTOMX_POLYGON_WIDE_HUNT_PLAN.md`, and the safety gates.
+- Safety remains unchanged: LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+- Next execution priority remains CI verification of the semantic-revert repair, followed by a fresh isolated 36-cell First-Hunt only after verification.
