@@ -234,6 +234,7 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
                             "ramses_fee_raw": ramses_fee,
                             "uniswap_pool": uniswap_pool,
                             "status": "SUCCESS",
+                            "coverage_status": "COMPLETE",
                             "observation_count": len(ceiling.evaluated) * 2,
                             "dynamic_route_ceiling_usdc": str(Decimal(ceiling.max_safe_amount) / Decimal(10**6)),
                             "reference_amount_usdc": str(Decimal(ceiling.reference_amount) / Decimal(10**6)),
