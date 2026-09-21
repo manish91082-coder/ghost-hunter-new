@@ -322,3 +322,19 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - S3 live-read run #17 / ID `35578078265` is still active in its read-only scanner step. No S3 market result is admissible until its evidence artifact is published and coverage/economic fields are inspected.
 - S0 #68 remains complete only for its declared 36-cell bounded domain; S1 #45 is the repaired current-head S1 evidence; S3 is now the active next strategy lane.
 - Production remains fail-closed: LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • S3 COVERAGE REPAIR IMPLEMENTED
+
+- Canonical branch HEAD: `3ea4d347f1d400232342f5f44c93a5a9948e93c8` (`test: add S3 coverage classification regression matrix`).
+- Prior S3 run #17 / ID `35578078265` on `34023ae5...` was workflow-successful but its artifact contained **168/168 UNAVAILABLE_OR_FAILED tiles**, with **164 deterministic Ramses missing-pool results** and **4 RPC semantic-revert results**. It is not admissible complete market coverage or profitability evidence.
+- Root cause: the S3 scanner treated a deterministic absent Ramses/Uniswap pool as an undifferentiated tile failure and returned process success whenever the RPC pool produced a top-level result. This could incorrectly present unresolved tile coverage as successful scan completion.
+- Surgical repair commit: `0213dea08fffbc30256ded62dd5b91c28b605936` (`fix: fail closed on incomplete S3 coverage`). The scanner now classifies deterministic missing-pool failures as `COMPLETE_NO_COMMON_ROUTE`, preserves uncertainty as `PARTIAL_INCOMPLETE`, emits explicit aggregate coverage fields, and exits non-zero whenever any declared tile remains incomplete.
+- Regression matrix commit: `3ea4d347f1d400232342f5f44c93a5a9948e93c8`. It covers terminal missing-pool classification, RPC-revert/transport incompleteness, full-vs-partial aggregate coverage, and missing-tile detection.
+- Exact-head Phase-19 run #982 / ID `35580051618` is **GREEN** on `3ea4d347f1d400232342f5f44c93a5a9948e93c8`: Solidity compilation, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full unittest suite all succeeded; **899 tests, 0 failures/errors**.
+- Corrected S3 run #18 / ID `35579964402` is currently **IN_PROGRESS** on repair commit `0213dea0...`. Its scanner step is still running; no S3 result is admissible until the run is terminal and the artifact is inspected.
+- No `.github/workflows/data-plane-ci.yml` exists on the canonical branch at the checked path; therefore no separate `data-plane-ci` result is being inferred or fabricated.
+- S0 First-Hunt #68 remains complete only for its declared 36-cell bounded matrix: 36/36 coverage, 1,246 observations, 0 gross-positive, 0 post-flash-positive, pinned block 94,176,798; not Polygon-wide exhaustion and not profitability proof.
+- S1 #45 remains the repaired current-head bounded S1 evidence and is not a profitability certificate.
+- **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
+- Next deterministic gate: terminalize exact repair-run #18, inspect its coverage certificate and economic evidence, then either record admissible S3 bounded evidence or perform the next surgical repair. No production authorization changes on this lane.

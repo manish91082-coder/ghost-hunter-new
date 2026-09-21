@@ -143,3 +143,13 @@ No legacy v2/v3 runtime, obsolete configuration, generated trading logs, credent
 - S3 live-read run #17 / ID `35578078265` is still active in its read-only scanner step. No S3 market result is admissible until its evidence artifact is published and coverage/economic fields are inspected.
 - S0 #68 remains complete only for its declared 36-cell bounded domain; S1 #45 is the repaired current-head S1 evidence; S3 is now the active next strategy lane.
 - Production remains fail-closed: LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • S3 COVERAGE CONTRACT REPAIR
+
+- The S3 read-only discovery lane now has an explicit coverage contract: deterministic absence of a required venue pool is terminal `COMPLETE_NO_COMMON_ROUTE`; RPC/semantic/unknown failures remain `PARTIAL_INCOMPLETE`; only full declared tile coverage yields aggregate `COMPLETE`.
+- S3 aggregate completion is now bound to the exact declared matrix of **6 Ramses V3 tick spacings × 4 Uniswap V3 fee tiers × active live pair count**, with observed-tile count also required to equal the expected count.
+- Incomplete coverage causes a non-zero scanner exit even when the RPC pool returns a top-level result. This preserves evidence while preventing false workflow-success from becoming market-success.
+- This is an operating-contract correction only; no signing, submission, broadcast, or live-capital capability was added.
+- Exact-head Phase-19 #982 / `35580051618` is GREEN with 899 tests.
+- S3 repair verification #18 / `35579964402` remains in progress; production remains blocked until all downstream evidence gates are independently proven.

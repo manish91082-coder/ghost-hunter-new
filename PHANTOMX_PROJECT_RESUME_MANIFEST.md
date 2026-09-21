@@ -380,3 +380,12 @@ Missing lane = BLOCKED.
 - S3 live-read run #17 / ID `35578078265` is still active in its read-only scanner step. No S3 market result is admissible until its evidence artifact is published and coverage/economic fields are inspected.
 - S0 #68 remains complete only for its declared 36-cell bounded domain; S1 #45 is the repaired current-head S1 evidence; S3 is now the active next strategy lane.
 - Production remains fail-closed: LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • S3 COVERAGE REPAIR IMPLEMENTED
+
+- Canonical branch HEAD: `3ea4d347f1d400232342f5f44c93a5a9948e93c8`.
+- S3 #17 / `35578078265` was workflow-successful but artifact coverage was **168/168 UNAVAILABLE_OR_FAILED**: 164 deterministic missing Ramses pools, 4 RPC semantic reverts. This is not complete coverage evidence.
+- Repair `0213dea08fffbc30256ded62dd5b91c28b605936` now fail-closes unresolved S3 coverage, records explicit `COMPLETE_NO_COMMON_ROUTE` versus `PARTIAL_INCOMPLETE`, and returns non-zero on incomplete aggregate coverage.
+- Regression matrix `3ea4d347f1d400232342f5f44c93a5a9948e93c8` is verified by Phase-19 #982 / `35580051618` GREEN with 899 tests.
+- S3 verification run #18 / `35579964402` is active on the repair commit. No S3 conclusion is admissible until its terminal artifact is inspected.

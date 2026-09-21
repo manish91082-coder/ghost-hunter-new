@@ -94,3 +94,13 @@ LIVE CAPITAL = LOCKED
 - S3 live-read run #17 / ID `35578078265` is still active in its read-only scanner step. No S3 market result is admissible until its evidence artifact is published and coverage/economic fields are inspected.
 - S0 #68 remains complete only for its declared 36-cell bounded domain; S1 #45 is the repaired current-head S1 evidence; S3 is now the active next strategy lane.
 - Production remains fail-closed: LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • S3 COVERAGE REPAIR IMPLEMENTED
+
+- Canonical HEAD is `3ea4d347f1d400232342f5f44c93a5a9948e93c8`.
+- S3 run #17 / `35578078265` exposed a coverage-model defect: 168/168 declared tiles were stored as `UNAVAILABLE_OR_FAILED`; 164 were deterministic Ramses pool absence and 4 were RPC semantic reverts. The artifact therefore could not support a complete S3 conclusion despite workflow success.
+- Repair `0213dea08fffbc30256ded62dd5b91c28b605936` makes S3 fail closed on unresolved coverage and distinguishes terminal no-route cells from incomplete cells.
+- Regression commit `3ea4d347f1d400232342f5f44c93a5a9948e93c8` is verified by Phase-19 #982 / `35580051618` GREEN with 899 tests.
+- S3 run #18 / `35579964402` is the current repair verification run and remains in progress. Until its terminal artifact is parsed, S3 market status is UNKNOWN/BLOCKED, not negative and not positive.
+- The safety contract is unchanged: no signing, public broadcast, or live capital.
