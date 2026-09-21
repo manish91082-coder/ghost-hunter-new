@@ -151,3 +151,16 @@ LIVE CAPITAL = LOCKED
 - S5 #25 / `35613663393` on HEAD `7825318366afd68430d511a15ce06f739c2b7f14` ended CANCELLED with no artifact, so it contributes no market-negative conclusion.
 - First-Hunt #69 on HEAD `7825318366afd68430d511a15ce06f739c2b7f14` remains the latest bounded complete current-head hunt with 1,280 observations and no positive gross/post-flash result.
 - Safety locks remain unchanged: LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • TREE REPAIR + S5 V4
+
+- Canonical current branch state was verified against live GitHub, not chat memory.
+- Pre-incident canonical HEAD: `b6be20f3764b58260ce1114be09052f6c04d52ff`, full tree 338 entries.
+- Intermediate commit `68a52cc0...` was a partial-tree control-plane error and is not admissible project state or market evidence.
+- Repair `aadf4979...` restored the full 338-entry tree; only the intended S5 workflow and kick differed from `b6be20f...`.
+- Read-only First-Hunt #70 completed 36/36 declared tiles with 1,280 observations, zero gross-positive/post-flash-positive at block `94204969`; no EconomicProof or profit claim.
+- Historical crawler #115 completed slice 400000-499999 with next cursor 500000, but all six venues were ONCHAIN_UNAVAILABLE; do not interpret that as no-pool evidence.
+- Clean S5 kick-only commit `dc2deb28...` changed only `.github/PHANTOMX_S5_KICK`; S5 timeout is 60 minutes.
+- Phase-19 #1023 is GREEN on `dc2deb28...`. S5 #29 / `35635495324` is active on that exact HEAD.
+- Evidence record: `PHANTOMX_CONTROL_PLANE_TREE_REPAIR_EVIDENCE_2026-09-21.md`.
+- Production remains locked: LIVE SIGNING BLOCKED; PUBLIC BROADCAST BLOCKED; LIVE CAPITAL LOCKED.
