@@ -92,3 +92,14 @@ No legacy v2/v3 runtime, obsolete configuration, generated trading logs, credent
 **Production readiness:** NOT ACHIEVED  
 **Live mainnet execution:** BLOCKED  
 **Live capital:** LOCKED
+
+## Current continuity / evidence synchronization • 2026-09-21
+
+- Durable project-memory files are `PROJECT_MEMORY.md` and `PHANTOMX_PROJECT_RESUME_MANIFEST.md`; `PROJECT_STATUS.md` is the canonical live mission-control state.
+- `PROJECT_DETAILS.md` defines architecture, scope and integration contracts. It is synchronized whenever those architectural/operating facts materially change; it is not rewritten blindly for every chat message.
+- Current branch HEAD before this update: `063090201ebe9ba3c17589b34d9b0f9e0ffe5d69`.
+- First-Hunt #68 / run `35566476146` is complete for its declared domain: 36/36 atomic cells covered, 1,246 route observations, 0 gross-positive and 0 post-flash-positive observations at Polygon block 94,176,798.
+- Four tiles are terminal `COMPLETE_NO_COMMON_ROUTE`; this is complete coverage of those cells, not universe-wide exhaustion.
+- Hunt artifact records `economic_certification=NOT_PERFORMED` and `profit_claim=NONE`.
+- The next engineering gate is therefore not a new random discovery expansion: reconcile complete S0 coverage with the existing exact-gas / live-valuation / EconomicProof boundary and determine whether a genuine candidate exists for downstream execution-integrity certification.
+- Production remains blocked: no signer activation, broadcast, live capital, or realized-PnL authorization has been enabled.
