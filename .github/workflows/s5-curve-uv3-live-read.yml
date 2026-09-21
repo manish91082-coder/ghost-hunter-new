@@ -6,6 +6,7 @@ on:
       - phase-19-e2e-harness
     paths:
       - "phantomx/curve.py"
+      - "phantomx/dynamic_pair_surface.py"
       - "phantomx/cross_venue_curve_uv3_route.py"
       - "scripts/s5_curve_uv3_live_scan.py"
       - ".github/workflows/s5-curve-uv3-live-read.yml"
