@@ -1,14 +1,7 @@
 name: PHANTOMX S2 Uniswap V4 Uniswap V3 Live Hunt
 
 on:
-  push:
-    branches:
-      - phase-19-e2e-harness
-    paths:
-      - "phantomx/uniswap_v4.py"
-      - "phantomx/cross_venue_uv4_uv3_route.py"
-      - "scripts/s2_uv4_uv3_live_scan.py"
-      - ".github/workflows/s2-uv4-uv3-live-read.yml"
+  # Market-hunt execution is explicit/manual to prevent push-triggered RPC fan-out.
   workflow_dispatch:
 
 permissions:

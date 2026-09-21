@@ -1,13 +1,7 @@
 name: PHANTOMX S10 Candidate Refinement
 
 on:
-  push:
-    branches:
-      - phase-19-e2e-harness
-    paths:
-      - "scripts/s10_candidate_refine_live.py"
-      - "phantomx/**"
-      - ".github/workflows/s10-candidate-refinement.yml"
+  # Market-hunt execution is explicit/manual to prevent push-triggered RPC fan-out.
   workflow_dispatch:
 
 permissions:

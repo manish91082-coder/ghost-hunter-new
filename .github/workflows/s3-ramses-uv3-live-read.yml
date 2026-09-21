@@ -1,15 +1,7 @@
 name: PHANTOMX S3 Ramses V3 Live Hunt
 
 on:
-  push:
-    branches:
-      - phase-19-e2e-harness
-    paths:
-      - "phantomx/ramses_v3.py"
-      - "phantomx/cross_venue_ramses_v3_route.py"
-      - "scripts/s3_ramses_uv3_live_scan.py"
-      - "phantomx/dynamic_*.py"
-      - ".github/workflows/s3-ramses-uv3-live-read.yml"
+  # Market-hunt execution is explicit/manual to prevent push-triggered RPC fan-out.
   workflow_dispatch:
 
 permissions:

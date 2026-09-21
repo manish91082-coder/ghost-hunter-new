@@ -1,13 +1,7 @@
 name: PHANTOMX S5A Curve MAI Forensic Probe
 
 on:
-  push:
-    branches:
-      - phase-19-e2e-harness
-    paths:
-      - "phantomx/curve.py"
-      - "phantomx/cross_venue_curve_uv3_route.py"
-      - "scripts/s5a_curve_mai_probe.py"
+  # Market-hunt execution is explicit/manual to prevent push-triggered RPC fan-out.
   workflow_dispatch:
 
 permissions:

@@ -1,16 +1,7 @@
 name: PHANTOMX X1 Uniswap V3 Fee Dislocation Live Hunt
 
 on:
-  push:
-    branches:
-      - phase-19-e2e-harness
-    paths:
-      - "phantomx/uniswap_v3.py"
-      - "phantomx/cycle_route.py"
-      - "phantomx/rpc_failover.py"
-      - "scripts/first_hunt_live_scan.py"
-      - "scripts/x1_uv3_fee_dislocation_live_scan.py"
-      - ".github/workflows/x1-uv3-fee-dislocation-live-read.yml"
+  # Market-hunt execution is explicit/manual to prevent push-triggered RPC fan-out.
   workflow_dispatch:
 
 permissions:

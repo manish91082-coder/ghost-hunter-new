@@ -1,16 +1,7 @@
 name: PHANTOMX S10 QuickSwap V3 Ramses V3 Live Hunt
 
 on:
-  push:
-    branches:
-      - phase-19-e2e-harness
-    paths:
-      - "phantomx/quickswap_v3.py"
-      - "phantomx/ramses_v3.py"
-      - "phantomx/cross_venue_qsv3_ramses_v3_route.py"
-      - "scripts/s10_qsv3_ramses_v3_live_scan.py"
-      - "phantomx/dynamic_*.py"
-      - ".github/workflows/s10-qsv3-ramses-v3-live-read.yml"
+  # Market-hunt execution is explicit/manual to prevent push-triggered RPC fan-out.
   workflow_dispatch:
 
 permissions:

@@ -1,14 +1,7 @@
 name: PHANTOMX Polygon Universe Inventory
 
 on:
-  push:
-    branches:
-      - phase-19-e2e-harness
-    paths:
-      - ".github/workflows/polygon-inventory-diagnostic.yml"
-      - "scripts/polygon_venue_inventory_live.py"
-      - "scripts/balancer_v2_inventory_live.py"
-      - "phantomx/**"
+  # Market-hunt execution is explicit/manual to prevent push-triggered RPC fan-out.
   workflow_dispatch:
 
 permissions:

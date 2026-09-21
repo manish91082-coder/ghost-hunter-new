@@ -1,16 +1,7 @@
 name: PHANTOMX S6 Triangular Live Hunt
 
 on:
-  push:
-    branches:
-      - phase-19-e2e-harness
-    paths:
-      - "phantomx/triangular_route.py"
-      - "phantomx/ramses_v3.py"
-      - "scripts/s6_triangular_live_scan.py"
-      - ".github/workflows/s6-triangular-live-read.yml"
-      # S6 reuses the canonical live Aave loan frontier and RPC transport.
-      - "scripts/first_hunt_live_scan.py"
+  # Market-hunt execution is explicit/manual to prevent push-triggered RPC fan-out.
   workflow_dispatch:
 
 permissions:
