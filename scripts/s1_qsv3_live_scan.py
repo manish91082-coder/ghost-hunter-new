@@ -37,16 +37,28 @@ from phantomx.opportunity_discovery import (
 )
 from phantomx.uniswap_v3 import UniswapV3ExactQuoter
 
-from first_hunt_live_scan import (
-    PAIRS,
-    PairSpec,
-    SEED_LOAN_USDC,
-    UNISWAP_V3_FACTORY,
-    UNISWAP_V3_FEE_TIERS,
-    UNISWAP_V3_QUOTER,
-    USDC,
-    dynamic_loan_frontier_usdc,
-)
+try:
+    from first_hunt_live_scan import (
+        PAIRS,
+        PairSpec,
+        SEED_LOAN_USDC,
+        UNISWAP_V3_FACTORY,
+        UNISWAP_V3_FEE_TIERS,
+        UNISWAP_V3_QUOTER,
+        USDC,
+        dynamic_loan_frontier_usdc,
+    )
+except ModuleNotFoundError:
+    from scripts.first_hunt_live_scan import (
+        PAIRS,
+        PairSpec,
+        SEED_LOAN_USDC,
+        UNISWAP_V3_FACTORY,
+        UNISWAP_V3_FEE_TIERS,
+        UNISWAP_V3_QUOTER,
+        USDC,
+        dynamic_loan_frontier_usdc,
+    )
 
 QUICKSWAP_V3_FACTORY = "0x411b0fAcC3489691f28ad58c47006AF5E3Ab3A28"
 QUICKSWAP_V3_QUOTER = "0xa15F0D7377B2A0C0c10db057f641beD21028FC89"
