@@ -230,3 +230,17 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Cleanup evidence file: `PHANTOMX_REPOSITORY_CLEANUP_AUDIT_2026-09-21.md`, committed as `90ab6f05ba8a0a4ffc5120e32cccd9ec7f235431`.
 - Current safety and mission gates remain unchanged: **LIVE SIGNING = BLOCKED. PUBLIC BROADCAST = BLOCKED. LIVE CAPITAL = LOCKED.**
 - CI for the semantic-revert repair lineage is still not claimed GREEN until an actual applicable workflow run is observed. Fresh First-Hunt must wait for that verification.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • FRESH FIRST-HUNT / EXACT-HEAD VERIFICATION
+
+- Canonical repository/branch: `manish91082-coder/ghost-hunter-new` / `phase-19-e2e-harness`.
+- Fresh First-Hunt trigger commit: `a9cb6aca4fd3be5ca4d2c424d89f388cecbe46e4`. The commit changes only the dedicated `.github/PHANTOMX_FIRST_HUNT_KICK` sentinel and does not alter scanner, quote, route, economics, execution, or safety code.
+- Exact-head Phase-19 run #953 / ID `35566476152` completed **successfully** on `a9cb6aca...`. This is the first published exact-head Phase-19 verification after the semantic-revert repair and cleanup lineage.
+- Fresh First-Hunt #68 / ID `35566476146` is the current controlled read-only 36-cell hunt launched from `a9cb6aca...`. At the latest observation it is queued after successfully creating the market-resolution job; no aggregate market conclusion exists yet.
+- First-Hunt coverage target remains 36 atomic cells = 4 fee tiers × 9 pair indices. Incomplete or failed cells remain unresolved and cannot be interpreted as NO_OPPORTUNITY or exhaustion.
+- Current canonical repository tree contains **318 tracked files**. The earlier 282-file count in historical cleanup/status sections is not current inventory and must not be used as the present tree count.
+- Surgical cleanup remains limited to two proven temporary artifacts: `scripts/README.tmp` and `tests/phase19/test_control_room_validator.tmp`. No core runtime, strategy, workflow, contract, test, evidence, policy, or continuity artifact was deleted.
+- No mission-level architecture drift is identified. `master` legacy material remains untouched and is not part of the canonical branch.
+- Strict profitability remains UNPROVEN: no current `EconomicProof` above `$0.20), no realized-PnL certificate, and no production authority evidence has been accepted.
+- **LIVE SIGNING = BLOCKED. PUBLIC BROADCAST = BLOCKED. LIVE CAPITAL = LOCKED.**
+- Next deterministic gate: capture First-Hunt #68 terminal aggregate evidence; then classify every 36 cell and only thereafter decide whether further discovery/coverage repair is required.
