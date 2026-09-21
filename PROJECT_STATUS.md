@@ -416,3 +416,16 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Current canonical status commit is documentation-only relative to the repaired S5 control state; no scanner, route, economics, signer, broadcast, or live-capital implementation was changed by the tree-repair evidence update.
 - **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
 - Next admissible operating gate: inspect S5 #29 terminal artifact. If complete, record bounded S5 discovery evidence and proceed to its existing economic-binding gate. If incomplete, preserve the artifact and perform only the smallest evidence-driven repair required.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • LIVE PROVENANCE CHECKPOINT
+
+- Live branch HEAD at this checkpoint: `dfed255d8cbb0ef4b9d71edb35537668b7f47cf9`.
+- The current branch HEAD is documentation/continuity lineage above the code-bearing S5 hunt HEAD `dc2deb28cbffce2d48c41f5c124d347d84f649ca`. The S5 scanner implementation and workflow code used by run #29 have not changed since that code-bearing HEAD.
+- Phase-19 run #1026 / ID `35636734083` is **GREEN** on exact branch HEAD `dfed255d8cbb0ef4b9d71edb35537668b7f47cf9`.
+- S5 run #29 / ID `35635495324` remains the active read-only Curve ↔ Uniswap V3 hunt on exact code-bearing HEAD `dc2deb28...`; no S5 market conclusion is admissible until its terminal artifact is inspected.
+- First-Hunt #70 / ID `35633669932` is complete on repaired tree `aadf4979...`: **36/36 tiles complete, 1,280 exact observations, 0 gross-positive, 0 post-flash-positive**, pinned block `94204969`; economic certification `NOT_PERFORMED`, profit claim `NONE`.
+- Historical crawler #115 / ID `35634532899` is complete for canonical campaign `polygon-genesis-94135487`, slice `400000-499999`, next cursor `500000`; all six venue lanes were `ONCHAIN_UNAVAILABLE`, therefore no no-pool conclusion is drawn.
+- Historical crawler continuation #117 / ID `35636666790` is currently active on documentation lineage. Its evidence remains read-only and must be classified only after terminal slice certification.
+- Control-plane tree incident remains fully repaired and audited in `PHANTOMX_CONTROL_PLANE_TREE_REPAIR_EVIDENCE_2026-09-21.md`.
+- **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
+- Next admissible gate remains S5 #29 terminal artifact inspection. Preserve exact code-bearing HEAD provenance; do not relabel documentation-only HEAD movement as scanner-code change.
