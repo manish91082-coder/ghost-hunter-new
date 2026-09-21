@@ -1,7 +1,7 @@
 name: PHANTOMX S5A Curve MAI Forensic Probe
 
 on:
-  # Market-hunt execution is explicit/manual to prevent push-triggered RPC fan-out.
+  # Forensic market probe execution is explicit/manual to prevent push-triggered RPC fan-out.
   workflow_dispatch:
 
 permissions:

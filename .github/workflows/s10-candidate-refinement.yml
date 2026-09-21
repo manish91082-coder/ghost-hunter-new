@@ -1,7 +1,7 @@
 name: PHANTOMX S10 Candidate Refinement
 
 on:
-  # Market-hunt execution is explicit/manual to prevent push-triggered RPC fan-out.
+  # Candidate refinement is explicit/manual to prevent push-triggered RPC fan-out.
   workflow_dispatch:
 
 permissions:

@@ -1,7 +1,7 @@
 name: PHANTOMX Polygon Universe Inventory
 
 on:
-  # Market-hunt execution is explicit/manual to prevent push-triggered RPC fan-out.
+  # Market inventory execution is explicit/manual to prevent push-triggered RPC fan-out.
   workflow_dispatch:
 
 permissions:
