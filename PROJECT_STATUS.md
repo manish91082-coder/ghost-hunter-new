@@ -296,3 +296,13 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Exact-head Phase-19 run #960 / ID `35574659415` is active on the same HEAD; neither is yet terminal.
 - No S1 market conclusion is admissible until the exact-head CI result and S1 evidence artifact are both available.
 - Safety remains unchanged: LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • S1 COVERAGE REPAIR
+- S1 live-read run #40 / `35574659400` on scanner HEAD `af93d56...` completed at workflow level, but its artifact contained **28/36 successful tiles and 8 UNAVAILABLE_OR_FAILED tiles**. It is therefore incomplete evidence, not a market-negative certificate.
+- S1 was allowing a non-empty RPC result set to exit successfully even when tile coverage was unresolved. This violated fail-closed coverage semantics.
+- Surgical repair lineage: `3612cade...`, `a55827ff...`, `faf746cb...`, `ff922485...`, `39ea509...`, and `2269aaab...`.
+- Phase-19 run #969 / `35576798169` is **GREEN** on the final S1 repair head `2269aaab...`, including Solidity/EVM, Polygon fork probes, and the full unittest suite.
+- Corrected S1 run #45 / `35576798186` is queued/pending because older S1 run #41 still occupies the shared S1 concurrency group. #41 is from an older lineage and is not current evidence.
+- The corrected S1 scanner now classifies `COMPLETE`, `COMPLETE_NO_COMMON_ROUTE`, and `PARTIAL_INCOMPLETE` explicitly and returns a non-zero exit when any declared tile remains incomplete.
+- S0 First-Hunt #68 remains a complete bounded 36-cell certificate with 1,246 observations and zero gross-positive/post-flash-positive observations; this does not establish Polygon-wide exhaustion.
+- Production remains unchanged: profitability not proven; LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
