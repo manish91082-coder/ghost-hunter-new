@@ -400,3 +400,19 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - The preceding S5 current-head run #25 / `35613663393` was **CANCELLED** after reaching the read-only hunt step and produced no admissible market artifact. It is not a negative market result.
 - Current First-Hunt #69 remains the latest bounded complete current-head read-only hunt: 36/36 tiles complete, 1,280 observations, 0 gross-positive and 0 post-flash-positive; no profitability certificate.
 - Production state is unchanged: **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED**. Realized net profit > $0.20 remains unproven.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • CANONICAL TREE REPAIR + S5 CURRENT-HEAD RUN
+
+- Canonical branch HEAD at this status update: `b5719ba3a6583f2af2e90393744fbfef5b92feda`.
+- A control-plane tree-integrity incident was detected and fully repaired. The bad intermediate commit `68a52cc025b468d8d7f8f41886d4e6eab736fa73` had a partial tree and caused S5 #28 to fail because `requirements-phase19.txt` was absent. No market conclusion was taken from that run.
+- Canonical repair commit `aadf4979705ee0fe4e90a176608119b5a7a69a3b` restored the complete parent tree. Direct verification returned **338 tree entries**, with `requirements-phase19.txt` present; relative to the pre-incident canonical HEAD `b6be20f3764b58260ce1114be09052f6c04d52ff`, only the intended S5 workflow and S5 kick file were changed.
+- Dedicated audit record: `PHANTOMX_CONTROL_PLANE_TREE_REPAIR_EVIDENCE_2026-09-21.md`.
+- The repair temporarily caused path-addition-triggered read-only First-Hunt and History workflows because their dedicated kick files were restored from the canonical tree. Those runs remained read-only and did not grant execution authority.
+- First-Hunt #70 / ID `35633669932` completed **SUCCESS** on repaired tree `aadf4979...`: **36/36 tiles complete, 1,280 exact observations, 0 gross-positive, 0 post-flash-positive**, pinned Polygon block `94204969`. Artifact explicitly records `economic_certification=NOT_PERFORMED` and `profit_claim=NONE`. This is bounded current-block evidence only, not Polygon-wide exhaustion and not profitability proof.
+- Historical crawler #115 / ID `35634532899` completed **SUCCESS** for canonical campaign `polygon-genesis-94135487`, slice `400000-499999`, next cursor `500000`. All six venue lanes were `ONCHAIN_UNAVAILABLE`; this is historical availability evidence, not proof of no pools.
+- Clean S5 trigger commit: `dc2deb28cbffce2d48c41f5c124d347d84f649ca`. Relative to `aadf4979...` it changed only `.github/PHANTOMX_S5_KICK`; the live S5 workflow timeout is now **60 minutes** rather than 40.
+- Phase-19 run #1023 / ID `35635494123` completed **SUCCESS** on exact S5-head `dc2deb28...`.
+- S5 run #29 / ID `35635495324` is the current exact-head read-only Curve ↔ Uniswap V3 run on `dc2deb28...`; its scanner step is active. No S5 market conclusion is admissible until the run is terminal and its artifact coverage/economic fields are inspected.
+- Current canonical status commit is documentation-only relative to the repaired S5 control state; no scanner, route, economics, signer, broadcast, or live-capital implementation was changed by the tree-repair evidence update.
+- **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
+- Next admissible operating gate: inspect S5 #29 terminal artifact. If complete, record bounded S5 discovery evidence and proceed to its existing economic-binding gate. If incomplete, preserve the artifact and perform only the smallest evidence-driven repair required.
