@@ -54,3 +54,4 @@ jobs:
           name: phantomx-s3-ramses-uv3-live-scan
           path: artifacts/s3_ramses_uv3_live_scan.json
           if-no-files-found: error
+# current-head refresh trigger: 2026-09-21 after S1 coverage repair
