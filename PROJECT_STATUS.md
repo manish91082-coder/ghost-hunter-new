@@ -306,3 +306,11 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - The corrected S1 scanner now classifies `COMPLETE`, `COMPLETE_NO_COMMON_ROUTE`, and `PARTIAL_INCOMPLETE` explicitly and returns a non-zero exit when any declared tile remains incomplete.
 - S0 First-Hunt #68 remains a complete bounded 36-cell certificate with 1,246 observations and zero gross-positive/post-flash-positive observations; this does not establish Polygon-wide exhaustion.
 - Production remains unchanged: profitability not proven; LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • S1 COVERAGE REPAIR EVIDENCE RECORDED
+- Dedicated audit record: `PHANTOMX_S1_COVERAGE_REPAIR_EVIDENCE_2026-09-21.md`, documenting S1 #40's 28/36 successful versus 8 unresolved tiles, the root cause, surgical repair and verification.
+- The corrected S1 scanner is fail-closed on unresolved tile coverage.
+- Phase-19 #969 / `35576798169` is GREEN on repair HEAD `2269aaab...`.
+- Corrected S1 run #45 / `35576798186` targets `2269aaab...` and remains queued behind an older in-flight S1 run #41; #41 is not admissible current evidence.
+- S0 #68 remains complete only for its declared bounded 36-cell matrix, with no gross-positive or post-flash-positive observation.
+- Safety remains unchanged: LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
