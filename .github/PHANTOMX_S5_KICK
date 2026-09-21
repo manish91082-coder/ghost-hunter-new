@@ -1,0 +1,7 @@
+PHANTOMX S5 controlled read-only kick
+purpose=trigger one bounded Curve <-> Uniswap V3 current-head evidence run
+safety=read-only
+signing=false
+broadcast=false
+live_capital=false
+kick_id=2026-09-21-s5-optimized-v1

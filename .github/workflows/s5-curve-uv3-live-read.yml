@@ -1,7 +1,11 @@
 name: PHANTOMX S5 Curve Uniswap V3 Live Hunt
 
 on:
-  # Market-hunt execution is explicit/manual to prevent push-triggered RPC fan-out.
+  push:
+    branches:
+      - phase-19-e2e-harness
+    paths:
+      - ".github/PHANTOMX_S5_KICK"
   workflow_dispatch:
 
 permissions:

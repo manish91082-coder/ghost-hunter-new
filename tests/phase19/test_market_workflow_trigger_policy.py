@@ -9,7 +9,6 @@ MANUAL_ONLY_MARKET_WORKFLOWS = (
     ".github/workflows/s1-qsv3-live-read.yml",
     ".github/workflows/s2-uv4-uv3-live-read.yml",
     ".github/workflows/s3-ramses-uv3-live-read.yml",
-    ".github/workflows/s5-curve-uv3-live-read.yml",
     ".github/workflows/s5a-curve-mai-probe.yml",
     ".github/workflows/s6-triangular-live-read.yml",
     ".github/workflows/s9-qsv2-ramses-v3-live-read.yml",
@@ -25,6 +24,13 @@ class MarketWorkflowTriggerPolicyTests(unittest.TestCase):
             content = (ROOT / relative).read_text(encoding="utf-8")
             self.assertNotIn("\n  push:", content, relative)
             self.assertIn("\n  workflow_dispatch:", content, relative)
+
+    def test_s5_has_only_dedicated_kick_push_trigger(self):
+        content = (ROOT / ".github/workflows/s5-curve-uv3-live-read.yml").read_text(encoding="utf-8")
+        self.assertIn("\n  push:\n", content)
+        self.assertIn(".github/PHANTOMX_S5_KICK", content)
+        self.assertNotIn("phantomx/dynamic_", content)
+        self.assertNotIn("phantomx/uniswap_v3.py", content)
 
     def test_controlled_automatic_triggers_remain_narrow(self):
         first_hunt = (ROOT / ".github/workflows/first-hunt-live-read.yml").read_text(encoding="utf-8")
