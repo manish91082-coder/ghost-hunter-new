@@ -216,3 +216,17 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Production state remains unchanged: profitability not proven; external signer/provider/private-relay/shadow evidence not accepted; live signing blocked; public broadcast blocked; live capital locked.
 
 **Process gate reaffirmed:** inventory → dependency/reference judgment → evidence file → surgical mutation → `PROJECT_STATUS.md` update → post-mutation verification → report.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-21 • REPOSITORY STRUCTURE / NO-DRIFT AUDIT
+
+- Canonical repository and branch were re-verified: `manish91082-coder/ghost-hunter-new` / `phase-19-e2e-harness`.
+- Architecture drift audit against the resume manifest, `PROJECT_DETAILS.md`, strategy catalog and Polygon-wide hunt plan found **no mission-level drift**. The canonical tree still points to the same evidence-first Polygon/Aave V3/QuickSwap V2/Uniswap V3 MVP spine, with discovery-only expansion lanes separated from production authorization.
+- A documentation drift was found in `PHANTOMX_PROJECT_RESUME_MANIFEST.md`: it lagged the 2026-09-21 semantic-revert repair. It has now been resynchronized in commit `3cfc43ee2980e3c8f8cd0ddaa3b0b815223d404e`.
+- Canonical branch inventory contains **282 tracked files**. Top-level project directories are `.github/`, `contracts/`, `phantomx/`, `scripts/`, and `tests/`.
+- Legacy `v2/`, `v3/`, `agents/`, `common/`, notebook, training and historical runner material observed on the separate `master` baseline is absent from the canonical branch. `master` was deliberately left untouched because it is the declared base branch.
+- All canonical `phantomx/` modules are part of discovery, economics, execution-integrity, recovery, authority, settlement, strategy or evidence surfaces. `contracts/` and `tests/` map to the EVM/Phase-19 verification boundary. Workflows and scripts map to certification, current/historical discovery, registered strategy reads, evidence validators or operator safety.
+- Seven small control-room helper documents look repetitive, but their contents are directly tied to Phase-19 coordination/safety validation. Under the requested rule of deleting only **unrelated** files, they were retained. No unrelated file was proven.
+- **Deletion result: 0 files deleted.** This is deliberate surgical behavior, not a skipped cleanup.
+- Cleanup evidence file: `PHANTOMX_REPOSITORY_CLEANUP_AUDIT_2026-09-21.md`, committed as `90ab6f05ba8a0a4ffc5120e32cccd9ec7f235431`.
+- Current safety and mission gates remain unchanged: **LIVE SIGNING = BLOCKED. PUBLIC BROADCAST = BLOCKED. LIVE CAPITAL = LOCKED.**
+- CI for the semantic-revert repair lineage is still not claimed GREEN until an actual applicable workflow run is observed. Fresh First-Hunt must wait for that verification.
