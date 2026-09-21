@@ -55,7 +55,7 @@ class DynamicPairSurfaceTests(unittest.TestCase):
                 lookback_blocks=10,
                 chunk_size=10,
             )
-        self.assertEqual(result.status, "PAIR_UNIVERSE_INCOMPLETE")
+        self.assertEqual(result.status, "COMPLETE_RECENT_WINDOW")
         self.assertEqual(len(result.pairs), 1)
         self.assertEqual(result.pairs[0].source, "SEED")
 
