@@ -11,11 +11,11 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from phantomx.opportunity_discovery import _is_retryable_failure as _retryable_failure
-
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+from phantomx.opportunity_discovery import _is_retryable_failure as _retryable_failure
 
 from phantomx.aave_v3_dynamic import AaveV3PolygonDynamicReader
 from phantomx.cross_venue_qsv3_ramses_v3_route import (
