@@ -50,7 +50,7 @@ def discover_live_base_pairs(
     from_block = max(0, latest - lookback_blocks + 1)
     required = tuple(sorted(set(required_venues)))
     specs = {spec.venue_id: spec for spec in VENUE_SPECS}
-    missing = [venue for venue in required if venue not in specs]
+    missing = [venue for venue in required if venue != "curve" and venue not in specs]
     if missing:
         raise ValueError(f"unknown venue ids: {missing}")
 
