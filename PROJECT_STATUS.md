@@ -591,3 +591,12 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - The dedicated S5 kick has now been advanced to `2026-09-22-s5-runtime-reuse-v11` to obtain fresh current-head market evidence on the verified optimization lineage.
 - S5 #35 remains old-head evidence only until the controlled concurrency supersession completes. No result from #35 is used for certification of the optimized lineage.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-22 • S5 STALE WATCHDOG
+
+- A dedicated S5-only stale watchdog has been added at `.github/workflows/phantomx-s5-stale-watchdog.yml`.
+- It checks only the exact S5 workflow on `phase-19-e2e-harness`, and it will not cancel an active S5 run before 180 minutes from its recorded `run_started_at`.
+- After 180 minutes, it cancels only the stale in-progress S5 generation so the existing latest-only S5 concurrency policy can release the next queued verified generation.
+- The watchdog has no signing, broadcast, capital, market-trading, or code-execution authority beyond cancelling a stale GitHub Actions run.
+- A one-time watchdog kick is included now to verify the control path against the currently active S5 #35 without interrupting it.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.

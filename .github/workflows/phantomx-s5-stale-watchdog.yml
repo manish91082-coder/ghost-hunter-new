@@ -1,0 +1,60 @@
+name: PHANTOMX S5 Stale Watchdog
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  push:
+    branches:
+      - phase-19-e2e-harness
+    paths:
+      - ".github/PHANTOMX_S5_WATCHDOG_KICK"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  watchdog:
+    name: Cancel only truly stale S5 runs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Inspect and recover stale S5 runs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          repo="${GITHUB_REPOSITORY}"
+          now="$(date -u +%s)"
+          runs_json="$(gh api "/repos/${repo}/actions/runs?branch=phase-19-e2e-harness&per_page=100")"
+
+          found=0
+          while IFS=$'\t' read -r run_id run_number started_at head_sha; do
+            [[ -n "${run_id}" ]] || continue
+            found=1
+            started_epoch="$(date -d "${started_at}" +%s)"
+            age_seconds=$(( now - started_epoch ))
+
+            echo "S5 run #${run_number} id=${run_id} status=in_progress head=${head_sha} age_seconds=${age_seconds}"
+
+            # Never cancel before the configured 180-minute S5 envelope.
+            if (( age_seconds < 10800 )); then
+              echo "KEEP: S5 run #${run_number} is within the configured 180-minute envelope."
+              continue
+            fi
+
+            echo "CANCEL: S5 run #${run_number} exceeded the configured 180-minute envelope."
+            gh api --method POST "/repos/${repo}/actions/runs/${run_id}/cancel"
+          done < <(
+            printf '%s' "${runs_json}" |
+              jq -r '.workflow_runs[]
+                | select(.name == "PHANTOMX S5 Curve Uniswap V3 Live Hunt" and .status == "in_progress")
+                | [.id, .run_number, .run_started_at, .head_sha]
+                | @tsv'
+          )
+
+          if (( found == 0 )); then
+            echo "No active S5 run found."
+          fi
