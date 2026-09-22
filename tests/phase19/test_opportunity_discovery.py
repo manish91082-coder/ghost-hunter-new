@@ -98,6 +98,25 @@ class OpportunityDiscoveryTests(unittest.TestCase):
         self.assertEqual(len(result.retryable_failures), 1)
         self.assertEqual(len(result.terminal_failures), 0)
 
+    def test_exhausted_rpc_ambiguity_remains_retryable(self):
+        from phantomx.rpc_failover import RPCPoolError
+
+        def evaluate(a, b, amount):
+            raise RPCPoolError(
+                "all bounded Polygon RPC recovery passes failed: "
+                "round=1 p1: execution reverted | round=2 p2: execution reverted"
+            )
+
+        result = discover_exact_opportunities(
+            token_pairs=((A, B),),
+            loan_amounts=(100,),
+            venue_path="Curve→UniswapV3",
+            evaluate_route=evaluate,
+            continue_on_error=True,
+        )
+        self.assertEqual(len(result.retryable_failures), 1)
+        self.assertEqual(len(result.terminal_failures), 0)
+
     def test_duplicate_amounts_and_identity_errors_fail_closed(self):
         with self.assertRaises(OpportunityDiscoveryError):
             discover_exact_opportunities(
