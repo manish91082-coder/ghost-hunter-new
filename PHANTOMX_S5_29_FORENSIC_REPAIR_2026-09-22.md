@@ -74,3 +74,19 @@ Acceptance remains:
 LIVE SIGNING = BLOCKED
 PUBLIC BROADCAST = BLOCKED
 LIVE CAPITAL = LOCKED
+ 
+## 8. Scope correction after S5 #30
+S5 #30 / run 35686104122 was launched from commit 0093e895e5815d0a848d056e0ca5d9641cb9a317 after the first reason-less revert repair. It failed before route tiles were emitted because Curve pair-surface discovery for USDC.e/WBTC encountered a reason-less execution revert across the bounded provider fleet.
+
+Forensic conclusion: ambiguous-revert recovery cannot be enabled globally at the RPC transport boundary because Curve registry discovery legitimately uses some execution reverts as semantic no-match signals. The safe architecture is caller-scoped:
+- default PolygonRPCFailoverPool.call keeps execution reverts terminal
+- call_with_ambiguous_revert_failover is explicit and bounded
+- Curve quote_snapshot uses the explicit path
+- Uniswap V3 quote uses the explicit path
+- Curve registry discovery and pool resolution remain on the default fail-closed path
+
+This preserves semantic registry behavior while allowing quote reads to seek an independent provider result when revert data is missing.
+
+The scoped architecture was verified by Phase-19 #1036 / 35687011135, which completed SUCCESS on commit 6853229b9079e52231534247197c8935f08ed52f. The full Phase-19 job, including Solidity compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe and the unittest suite, completed successfully.
+
+S5 #30 remains evidence of an infrastructure/control-path failure and is not a market result. A fresh S5 run is required on the scoped architecture.

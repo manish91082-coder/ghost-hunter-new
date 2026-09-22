@@ -4,4 +4,4 @@ safety=read-only
 signing=false
 broadcast=false
 live_capital=false
-kick_id=2026-09-22-s5-post-rpc-semantic-repair-v5
+kick_id=2026-09-22-s5-scoped-ambiguous-revert-v6

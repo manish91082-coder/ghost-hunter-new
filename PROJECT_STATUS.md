@@ -456,3 +456,17 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
 - Dedicated forensic record: PHANTOMX_S5_29_FORENSIC_REPAIR_2026-09-22.md.
 - Next admissible gate: launch and inspect the fresh post-repair S5 run.
+ 
+## CURRENT AUTHORITATIVE SYNC • 2026-09-22 • S5 AMBIGUOUS-REVERT SCOPE CORRECTION
+
+- S5 #30 / ID 35686104122 on 0093e895e5815d0a848d056e0ca5d9641cb9a317 failed before route tiles were emitted. The artifact recorded a Curve pair-surface failure for USDC.e/WBTC after bounded provider recovery could not obtain a non-reverting answer.
+- The first repair was too broad at the transport boundary: enabling reason-less execution-revert recovery globally allowed Curve registry discovery to retry semantic registry reverts as though they were transport failures.
+- Final scoped design: default PolygonRPCFailoverPool.call remains fail-closed for execution reverts. A dedicated call_with_ambiguous_revert_failover path is exposed only for quote reads where a missing revert reason is ambiguous.
+- Curve quote_snapshot and Uniswap V3 quote are wired to the explicit ambiguous-revert path. Curve registry discovery, pool resolution, Aave reads and other default reads retain terminal execution-revert semantics.
+- Phase-19 #1036 / ID 35687011135 completed SUCCESS on 6853229b9079e52231534247197c8935f08ed52f, including the complete unittest suite and all EVM/fork stages.
+- S5 #29 artifact and S5 #30 artifact are both preserved. #29 proves partial discovery with 640 observations and 144 incomplete tiles; #30 proves the broader transport policy was unsafe for registry discovery. Neither is a complete market certificate.
+- A fresh isolated S5 rerun is now admissible from this scoped architecture. It must use the dedicated S5 kick path and exact-head verification.
+- economic_certification=NOT_PERFORMED and profit_claim=NONE remain unchanged.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+- Dedicated forensic record: PHANTOMX_S5_29_FORENSIC_REPAIR_2026-09-22.md.
+- Next admissible gate: fresh S5 run on the scoped ambiguous-revert architecture.
