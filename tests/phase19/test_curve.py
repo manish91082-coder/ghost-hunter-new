@@ -26,6 +26,11 @@ SNAP = MarketBlockSnapshot(chain_id=137, block_number=77, timestamp=1_700_000_00
 class FakeRpc:
     def __init__(self):
         self.calls = []
+        self.ambiguous_failover_calls = 0
+
+    def call_with_ambiguous_revert_failover(self, method, params):
+        self.ambiguous_failover_calls += 1
+        return self.call(method, params)
 
     def call(self, method, params):
         self.calls.append((method, params))
@@ -119,6 +124,7 @@ class CurveAdapterTests(unittest.TestCase):
         self.assertEqual(snap.amount_out, 99_900)
         self.assertEqual(snap.fee_raw, 4_000_000)
         self.assertEqual(snap.block_number, 77)
+        self.assertEqual(rpc.ambiguous_failover_calls, 1)
 
     def test_underlying_mode_uses_underlying_selector(self):
         class UnderlyingRpc(FakeRpc):
