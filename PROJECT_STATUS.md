@@ -583,3 +583,11 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - This change is now pushed to the canonical branch for deterministic CI verification. No S5 market run is authorized to treat this optimization as validated until Phase-19 is terminal SUCCESS.
 - Active S5 #35 remains on its older executable head and has not been relabeled. It will remain untouched until the optimized lineage is deterministically verified.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-22 • S5 OPTIMIZATION VERIFIED / RERUN TRIGGERED
+
+- Optimization commit `c464bc1698578cf173c58fcc40ef2117f9ce624f` passed Phase-19 #1047 / run `35723789109` with all workflow stages GREEN, including compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe and the full Phase-19 unittest suite.
+- The verified optimization reuses Curve pool references already discovered by the dynamic pair-surface stage, eliminating redundant Curve registry enumeration in the main S5 scan without changing declared coverage or fallback semantics.
+- The dedicated S5 kick has now been advanced to `2026-09-22-s5-runtime-reuse-v11` to obtain fresh current-head market evidence on the verified optimization lineage.
+- S5 #35 remains old-head evidence only until the controlled concurrency supersession completes. No result from #35 is used for certification of the optimized lineage.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.

@@ -4,4 +4,4 @@ safety=read-only
 signing=false
 broadcast=false
 live_capital=false
-kick_id=2026-09-22-s5-stale-recovery-v10
+kick_id=2026-09-22-s5-runtime-reuse-v11
