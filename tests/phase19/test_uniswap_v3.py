@@ -25,9 +25,14 @@ class FakeRpc:
         self.quote = quote
         self.pool = pool
         self.chain = chain
+        self.ambiguous_failover_calls = 0
         self.block = block
         self.timestamp = timestamp
         self.calls = []
+
+    def call_with_ambiguous_revert_failover(self, method, params):
+        self.ambiguous_failover_calls += 1
+        return self.call(method, params)
 
     def call(self, method, params):
         self.calls.append((method, params))
@@ -54,6 +59,7 @@ class UniswapV3Tests(unittest.TestCase):
         q = UniswapV3ExactQuoter(rpc, FACTORY, QUOTER)
         out = q.quote(100, A, B, 500, BlockSnapshot(137, 256, 4096))
         self.assertEqual(out.amount_out, 999)
+        self.assertEqual(rpc.ambiguous_failover_calls, 1)
         calls = [x for x in rpc.calls if x[0] == "eth_call"]
         self.assertEqual(calls[0][1][1], "0x100")
         self.assertEqual(calls[1][1][1], "0x100")
