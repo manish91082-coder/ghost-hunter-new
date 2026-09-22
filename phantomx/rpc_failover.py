@@ -177,27 +177,24 @@ class PolygonRPCFailoverPool:
         return response["result"]
 
     @staticmethod
-    def _recoverable(exc: BaseException) -> bool:
+    def _recoverable(exc: BaseException, *, allow_ambiguous_revert: bool = False) -> bool:
         message = str(exc).lower()
         if isinstance(exc, (TimeoutError, URLError, PolygonRPCHTTPError)):
             return True
-        # A provider returning a reasoned EVM execution revert is giving semantic
-        # route/call feedback, not a transport failure. Retrying the same call across
-        # the full fleet can turn one deterministic route rejection into an RPC storm.
-        # Preserve that fail-closed behavior. A bare "Unexpected error" revert reason
-        # is different: it is not an informative route verdict and has appeared as a
-        # provider-specific read anomaly on otherwise read-only factory discovery, so
-        # allow the bounded fleet failover to seek an independent answer.
+        # By default, an EVM execution revert remains terminal because callers such
+        # as Curve registry discovery use reverts as semantic "no match" signals.
+        # Quote execution can explicitly opt into bounded failover when the provider
+        # omitted a concrete revert reason.
         if "execution reverted" in message:
             # A revert with a concrete reason is semantic route/call evidence and
             # must remain terminal. A reason-less revert is ambiguous because the
-            # provider may have dropped the revert payload; allow bounded failover
-            # so an independent provider can establish the actual result.
+            # provider may have dropped the revert payload; only callers that
+            # explicitly opt into ambiguous-revert recovery may fail over.
             marker = "execution reverted"
             suffix = message.split(marker, 1)[1].strip()
             if suffix.startswith(":"):
                 suffix = suffix[1:].strip()
-            return suffix in {"", "unexpected error"}
+            return allow_ambiguous_revert and suffix in {"", "unexpected error"}
         markers = (
             "401", "402", "403", "408", "410", "429", "500", "502", "503", "504",
             "rate limit", "too many requests", "timeout",
@@ -224,7 +221,13 @@ class PolygonRPCFailoverPool:
         if recoverable and state.consecutive_failures >= self.failure_threshold:
             state.circuit_open_until = monotonic() + self.circuit_cooldown_seconds
 
-    def call(self, method: str, params: Sequence[Any] = ()) -> Any:
+    def _call_internal(
+        self,
+        method: str,
+        params: Sequence[Any] = (),
+        *,
+        allow_ambiguous_revert: bool = False,
+    ) -> Any:
         """Call one read, rotating providers with one bounded recovery pass."""
         if not isinstance(params, Sequence) or isinstance(params, (str, bytes, bytearray)):
             raise RPCPoolError("params must be a sequence")
@@ -254,7 +257,10 @@ class PolygonRPCFailoverPool:
                     return value
                 except Exception as exc:
                     latency_ms = (perf_counter() - started) * 1000
-                    recoverable = self._recoverable(exc)
+                    recoverable = self._recoverable(
+                        exc,
+                        allow_ambiguous_revert=allow_ambiguous_revert,
+                    )
                     self._record_failure(state, str(exc), recoverable)
                     self._history.append(RPCAttempt(state.record.provider_id, False, recoverable, latency_ms, str(exc)))
                     if self._preferred_provider_id == state.record.provider_id:
@@ -265,6 +271,22 @@ class PolygonRPCFailoverPool:
             if round_index == 0:
                 self.reset_circuits()
         raise RPCPoolError("all bounded Polygon RPC recovery passes failed: " + " | ".join(attempts))
+    def call(self, method: str, params: Sequence[Any] = ()) -> Any:
+        """Call one read using default fail-closed revert semantics."""
+        return self._call_internal(method, params)
+
+    def call_with_ambiguous_revert_failover(
+        self,
+        method: str,
+        params: Sequence[Any] = (),
+    ) -> Any:
+        """Call one read allowing bounded recovery for reason-less reverts."""
+        return self._call_internal(
+            method,
+            params,
+            allow_ambiguous_revert=True,
+        )
+
     def failure_history(self) -> tuple[RPCAttempt, ...]:
         return tuple(item for item in self._history if not item.success)
 
