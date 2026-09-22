@@ -563,3 +563,15 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Mission-complete economic invariant remains realized net profit strictly greater than $0.20 after all applicable costs.
 - Immediate admissible gate remains S5 #34 terminalization -> job/step check -> artifact forensic inspection -> certification/repair -> exact-head verification -> then S0 depth-first.
 
+## CURRENT AUTHORITATIVE SYNC • 2026-09-22 • S5 STALE-RUN RECOVERY V10
+
+- S5 #34 / run `35699186433` exceeded the configured 180-minute execution envelope without producing a terminal market artifact. At 16:40 IST its GitHub state remained stale `IN_PROGRESS`, with `updated_at` frozen at the original start window and no artifact published.
+- Recovery decision: supersede the stale generation using the dedicated `.github/PHANTOMX_S5_KICK` path and the workflow's `cancel-in-progress: true` concurrency guard. No overlapping S5 market execution was intentionally created.
+- Recovery commit: `28e3d81bb65d3f4b56a6bf7b12152e3b302feba5`.
+- S5 #34 is now terminal `CANCELLED`; its market step was cancelled and its publish step did not yield a usable evidence artifact. No market conclusion is inferred.
+- S5 #35 / run `35720177020` is now `IN_PROGRESS` on exact recovery HEAD `28e3d81bb65d3f4b56a6bf7b12152e3b302feba5`. Checkout, exact-head verification, Python setup and dependency installation are GREEN; the read-only hunt step is active.
+- Phase-19 #1046 / run `35720177026` is terminal `SUCCESS` on the same recovery HEAD, with compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe and the full Phase-19 unittest suite GREEN.
+- The recovery changes only the controlled S5 kick trigger; no scanner, route, economics, signing or broadcast logic was altered.
+- Immediate gate remains S5 #35 terminalization -> artifact forensic inspection -> coverage/economic classification -> surgical repair only if proven -> verification -> S5 certification -> then S0.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
