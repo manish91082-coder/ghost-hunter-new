@@ -635,3 +635,13 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - S5 #37 / run `35744168039` remains independently `IN_PROGRESS` on executable HEAD `757972bdc67eb4c7a7753087fd28fba92485259c`. This optimization does not retroactively alter #37 and must be used only for a future controlled S5 generation after the current run reaches a terminal state.
 - Immediate market gate remains S5 #37 terminalization -> artifact forensic inspection -> coverage/economic classification -> certification -> then S0.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-22 • S5 #38 VERIFIED CACHE-LINEAGE RECOVERY
+
+- S5 #37 / run `35744168039` is now terminal `CANCELLED` after the 180-minute execution envelope; its stale generation produced no usable market artifact and no market conclusion is inferred.
+- Controlled recovery commit `3d8b2479bfab56135e8f06530daf501436d1f6d1` changed only `.github/PHANTOMX_S5_KICK`, advancing the controlled kick to `2026-09-22-s5-cache-verified-stale-recovery-v13`. No scanner, route, economics, signing, broadcast or capital logic changed.
+- S5 #38 / run `35765744935` is active on exact executable HEAD `3d8b2479bfab56135e8f06530daf501436d1f6d1`. Checkout, exact-head verification, Python setup and dependency installation are GREEN; the read-only S5 hunt is IN_PROGRESS and no artifact is published yet.
+- Phase-19 #1055 / run `35765744955` is terminal `SUCCESS` on exact HEAD `3d8b2479bfab56135e8f06530daf501436d1f6d1`.
+- The optimized Curve quote-cache lineage is therefore now the executable basis for S5 #38. It remains market evidence only after S5 #38 produces a terminal artifact and passes the coverage/economic gates.
+- Immediate gate remains S5 #38 terminalization -> artifact forensic inspection -> coverage/economic classification -> certification/repair -> then S0.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
