@@ -495,3 +495,14 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - economic_certification=NOT_PERFORMED and profit_claim=NONE remain unchanged.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
 - Next admissible gate: wait for S5 #31 to terminalize, then let queued S5 #32 execute and inspect its artifact. Do not create another S5 kick while #32 is pending.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-22 • S5 STALE-RUN RECOVERY
+
+- Stale S5 #31 / ID 35687323027 on older scoped HEAD a3b0a393... was automatically **CANCELLED** after the latest-only S5 concurrency control was activated. The stale run had remained in the GitHub API as IN_PROGRESS far beyond the configured 60-minute timeout and had no retrievable live log/artifact.
+- Previously queued S5 #32 / ID 35687787705 on fa49e430... was **CANCELLED** when the new controlled kick superseded the stale market-hunt generation. It is not market evidence.
+- New S5 #33 / ID 35689764575 is **IN_PROGRESS** on exact current code/evidence HEAD 687aea9c963fcf67071dd977ad4f7807bfc2a6a9. Its checkout and dependency stages are GREEN and its read-only live-hunt step is active.
+- Phase-19 #1042 / ID 35689764576 is **GREEN** on the exact same HEAD 687aea9c963fcf67071dd977ad4f7807bfc2a6a9.
+- The S5 concurrency policy now uses latest-only cancellation so a stale/older S5 generation cannot block the current generation indefinitely. This policy does not authorize overlapping market execution.
+- S5 #29 and #30 remain forensic/incomplete evidence only. No profitability certificate exists.
+- **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
+- Next admissible gate: S5 #33 terminal artifact inspection. If the artifact is incomplete, classify its exact failure before any further code change.
