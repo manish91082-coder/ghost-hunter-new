@@ -32,7 +32,7 @@ class RPCFailoverTests(unittest.TestCase):
         self.assertFalse(pool.history[0].recoverable)
         pool._states["p2"].transport.call.assert_not_called()
 
-    def test_reasonless_rpc_execution_revert_switches_provider(self):
+    def test_reasonless_rpc_execution_revert_is_opt_in_failover(self):
         records = (
             PublicRPCRecord("p1", "https://p1.example", "f1"),
             PublicRPCRecord("p2", "https://p2.example", "f2"),
@@ -42,7 +42,7 @@ class RPCFailoverTests(unittest.TestCase):
             return_value={"error": {"code": 3, "message": "execution reverted"}}
         )
         pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
-        self.assertEqual(pool.call("eth_call", []), "0x89")
+        self.assertEqual(pool.call_with_ambiguous_revert_failover("eth_call", []), "0x89")
         self.assertEqual([item.provider_id for item in pool.history], ["p1", "p2"])
         self.assertTrue(pool.history[0].recoverable)
 
@@ -56,7 +56,7 @@ class RPCFailoverTests(unittest.TestCase):
             return_value={"error": {"code": 3, "message": "execution reverted: Unexpected error"}}
         )
         pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
-        self.assertEqual(pool.call("eth_call", []), "0x89")
+        self.assertEqual(pool.call_with_ambiguous_revert_failover("eth_call", []), "0x89")
         self.assertEqual([item.provider_id for item in pool.history], ["p1", "p2"])
         self.assertTrue(pool.history[0].recoverable)
 
@@ -102,11 +102,11 @@ class RPCFailoverTests(unittest.TestCase):
         pool._states["p1"].transport.call = Mock(return_value=response)
         pool._states["p2"].transport.call = Mock(return_value=response)
         with self.assertRaises(RPCPoolError):
-            pool.call("eth_call", [])
+            pool.call_with_ambiguous_revert_failover("eth_call", [])
         self.assertEqual(len(pool.history), 4)
         self.assertTrue(all(item.recoverable for item in pool.history))
 
-    def test_all_rpc_reverts_are_reported_after_provider_exhaustion(self):
+    def test_all_rpc_reverts_are_terminal_by_default(self):
         records = (
             PublicRPCRecord("p1", "https://p1.example", "f1"),
             PublicRPCRecord("p2", "https://p2.example", "f2"),
@@ -120,8 +120,9 @@ class RPCFailoverTests(unittest.TestCase):
         )
         with self.assertRaises(RPCPoolError):
             pool.call("eth_call", [{"to": "0x" + "11" * 20, "data": "0x"}, "latest"])
-        self.assertEqual(len(pool.history), 4)
-        self.assertTrue(all(item.recoverable for item in pool.history))
+        self.assertEqual(len(pool.history), 1)
+        self.assertFalse(pool.history[0].recoverable)
+        pool._states["p2"].transport.call.assert_not_called()
     def test_all_transport_failures_are_reported_after_exhaustion(self):
         records = (
             PublicRPCRecord("p1", "https://p1.example", "f1"),
