@@ -600,3 +600,14 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - The watchdog has no signing, broadcast, capital, market-trading, or code-execution authority beyond cancelling a stale GitHub Actions run.
 - A one-time watchdog kick is included now to verify the control path against the currently active S5 #35 without interrupting it.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-22 • S5 #36 OPTIMIZED LIVE HUNT ACTIVE
+
+- S5 #35 / run `35720177020` is terminal `CANCELLED`; it is non-certifying old-head evidence only and no market conclusion is inferred.
+- S5 #36 / run `35724075068` is the active controlled read-only market hunt on optimized executable HEAD `b6e1c2942bc993c302ff49ba59a71b43433de27c`.
+- S5 #36 exact-head checkout, exact-head verification, Python setup and dependencies are GREEN; the read-only hunt step remains IN_PROGRESS and no artifact is published yet.
+- Phase-19 #1048 / run `35724075235` is GREEN on the exact S5 #36 executable head `b6e1c2942bc993c302ff49ba59a71b43433de27c`.
+- The later watchdog/status HEAD `b0f12ebb682eaec91c7b9976d8f20c94d3fd458e` contains no S5 scanner logic change, so S5 #36 retains clean executable provenance on `b6e1c294...`.
+- The S5 watchdog verification run #1 / `35724756860` completed SUCCESS without cancelling #36 or any in-envelope run; its configured cancellation threshold is 180 minutes.
+- Immediate gate remains S5 #36 terminalization -> artifact forensic inspection -> coverage/economic classification -> surgical repair only if proven -> certification -> then S0.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
