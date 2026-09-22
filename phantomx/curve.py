@@ -343,7 +343,12 @@ class CurveRegistryExactQuoter:
         if amount_in <= 0:
             raise CurveError("amount_in must be positive")
         selector = GET_DY_UNDERLYING_SELECTOR if pool_ref.underlying else GET_DY_SELECTOR
-        result = self._rpc.call(
+        call = getattr(
+            self._rpc,
+            "call_with_ambiguous_revert_failover",
+            self._rpc.call,
+        )
+        result = call(
             "eth_call",
             [
                 {
