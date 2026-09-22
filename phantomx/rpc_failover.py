@@ -189,7 +189,15 @@ class PolygonRPCFailoverPool:
         # provider-specific read anomaly on otherwise read-only factory discovery, so
         # allow the bounded fleet failover to seek an independent answer.
         if "execution reverted" in message:
-            return "unexpected error" in message
+            # A revert with a concrete reason is semantic route/call evidence and
+            # must remain terminal. A reason-less revert is ambiguous because the
+            # provider may have dropped the revert payload; allow bounded failover
+            # so an independent provider can establish the actual result.
+            marker = "execution reverted"
+            suffix = message.split(marker, 1)[1].strip()
+            if suffix.startswith(":"):
+                suffix = suffix[1:].strip()
+            return suffix in {"", "unexpected error"}
         markers = (
             "401", "402", "403", "408", "410", "429", "500", "502", "503", "504",
             "rate limit", "too many requests", "timeout",
