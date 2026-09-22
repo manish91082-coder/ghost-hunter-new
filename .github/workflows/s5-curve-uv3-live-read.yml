@@ -21,7 +21,7 @@ jobs:
   s5-live-read:
     name: S5 Curve <-> Uniswap V3
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # The corrected scoped-revert hunt can exceed the old 60-minute envelope.\n    # Preserve the full bounded market domain rather than silently truncating it.\n    timeout-minutes: 180
     steps:
       - name: Checkout exact branch head
         uses: actions/checkout@v5
