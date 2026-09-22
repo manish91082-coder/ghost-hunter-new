@@ -624,3 +624,14 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - This watchdog limitation is a control-plane finding to be repaired only through a scoped, evidence-backed design; it does not change current market evidence and must not be used to infer S5 success/failure.
 - Immediate gate remains S5 #37 terminalization -> artifact forensic inspection -> coverage/economic classification -> surgical repair only if proven -> certification -> then S0.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-22 • S5 RUNTIME CACHE OPTIMIZATION CERTIFIED
+
+- Surgical runtime optimization commit `4c66211c481248997947a11a088f8170baddcc39` adds an exact-success Curve quote cache scoped to one quoter instance and keyed by pool, direction indices, underlying mode, amount and pinned block.
+- The cache never stores failures and cannot reuse a quote across a different amount or block. Coverage domain, route directions, pool universe, fee tiers and acceptance criteria are unchanged.
+- Regression test commit `4893e8224b240a2b1831ee51ff1d168e42fe6b10` proves same-key reuse and rejects cross-amount/cross-block reuse.
+- Phase-19 #1054 / run `35756238360` is terminal `SUCCESS` on exact optimized HEAD `4893e8224b240a2b1831ee51ff1d168e42fe6b10`; the full suite ran **927 tests, 0 failures, 0 errors**.
+- S5 #37 / run `35744168039` remains independently `IN_PROGRESS` on executable HEAD `757972bdc67eb4c7a7753087fd28fba92485259c`. This optimization does not retroactively alter #37 and must be used only for a future controlled S5 generation after the current run reaches a terminal state.
+- Immediate market gate remains S5 #37 terminalization -> artifact forensic inspection -> coverage/economic classification -> certification -> then S0.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
