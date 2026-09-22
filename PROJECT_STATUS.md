@@ -506,3 +506,15 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - S5 #29 and #30 remain forensic/incomplete evidence only. No profitability certificate exists.
 - **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
 - Next admissible gate: S5 #33 terminal artifact inspection. If the artifact is incomplete, classify its exact failure before any further code change.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-22 • S5 TIMEOUT-ENVELOPE REPAIR
+
+- S5 #33 / run ID 35689764575 is terminal **CANCELLED** on executable head 687aea9c963fcf67071dd977ad4f7807bfc2a6a9. It ran from 2026-09-22T05:11:52Z until 2026-09-22T06:12:49Z, reached no terminal market artifact, and published no usable evidence file.
+- The termination occurred at the old 60-minute workflow envelope; because the scanner writes its final artifact after the bounded scan, no partial market certificate exists and no market conclusion is inferred from the cancellation.
+- Engineering response: `.github/workflows/s5-curve-uv3-live-read.yml` now uses a **180-minute** bounded execution envelope so the corrected scoped-revert scanner can complete its declared domain instead of being truncated at 60 minutes.
+- Repair commit: 454adac939503972d99f34a5872b10cf37f4bee0. Phase-19 #1043 / ID 35698847324 completed **SUCCESS** on this exact HEAD, including compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Phase-19 unittest suite.
+- The 180-minute change preserves the declared pair/registry/fee coverage. No scanner logic, quote semantics, economics, signer, broadcast or live-capital authorization was changed by this timeout repair.
+- A fresh S5 kick is now admissible. It must run only from the dedicated `.github/PHANTOMX_S5_KICK` path and will be judged solely from its terminal artifact and coverage/economic fields.
+- S5 #29, #30 and #33 remain non-certifying forensic/incomplete evidence. No profitability certificate exists.
+- **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
