@@ -13,7 +13,9 @@ permissions:
 
 concurrency:
   group: phantomx-market-read-hunts-${{ github.workflow }}
-  cancel-in-progress: false
+  # Only one S5 market hunt may exist at a time. A newer controlled kick
+  # supersedes a stale/older hunt rather than remaining indefinitely queued.
+  cancel-in-progress: true
 
 jobs:
   s5-live-read:
