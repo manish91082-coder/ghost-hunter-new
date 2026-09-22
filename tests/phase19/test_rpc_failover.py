@@ -16,14 +16,14 @@ class RPCFailoverTests(unittest.TestCase):
         self.assertEqual(pool.call("eth_chainId", []), "0x89")
         self.assertEqual([item.provider_id for item in pool.history], ["p1", "p2"])
 
-    def test_rpc_execution_revert_is_not_retried_on_next_provider(self):
+    def test_reasoned_rpc_execution_revert_is_not_retried_on_next_provider(self):
         records = (
             PublicRPCRecord("p1", "https://p1.example", "f1"),
             PublicRPCRecord("p2", "https://p2.example", "f2"),
         )
         pool = PolygonRPCFailoverPool(records=records)
         pool._states["p1"].transport.call = Mock(
-            return_value={"error": {"code": -32000, "message": "execution reverted"}}
+            return_value={"error": {"code": -32000, "message": "execution reverted: PoolSwapFailed"}}
         )
         pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
         with self.assertRaises(RPCPoolError):
@@ -31,6 +31,20 @@ class RPCFailoverTests(unittest.TestCase):
         self.assertEqual([item.provider_id for item in pool.history], ["p1"])
         self.assertFalse(pool.history[0].recoverable)
         pool._states["p2"].transport.call.assert_not_called()
+
+    def test_reasonless_rpc_execution_revert_switches_provider(self):
+        records = (
+            PublicRPCRecord("p1", "https://p1.example", "f1"),
+            PublicRPCRecord("p2", "https://p2.example", "f2"),
+        )
+        pool = PolygonRPCFailoverPool(records=records)
+        pool._states["p1"].transport.call = Mock(
+            return_value={"error": {"code": 3, "message": "execution reverted"}}
+        )
+        pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
+        self.assertEqual(pool.call("eth_call", []), "0x89")
+        self.assertEqual([item.provider_id for item in pool.history], ["p1", "p2"])
+        self.assertTrue(pool.history[0].recoverable)
 
     def test_ambiguous_unexpected_revert_switches_to_next_provider(self):
         records = (
