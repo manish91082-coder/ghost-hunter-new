@@ -470,3 +470,16 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
 - Dedicated forensic record: PHANTOMX_S5_29_FORENSIC_REPAIR_2026-09-22.md.
 - Next admissible gate: fresh S5 run on the scoped ambiguous-revert architecture.
+ 
+## CURRENT AUTHORITATIVE SYNC • 2026-09-22 • DISCOVERY RETRY CLASSIFICATION CLOSED
+
+- Latest engineering HEAD: 18c849f50a60e1b138fc6492740b070ee8de7868.
+- Phase-19 #1039 / ID 35687559817 completed SUCCESS on that exact HEAD. All job stages, including the full unittest suite, are GREEN.
+- Final RPC architecture is caller-scoped: default RPC reads keep execution reverts terminal; Curve and Uniswap V3 quote reads explicitly use bounded ambiguous-revert failover.
+- A second-layer classifier correction is now GREEN: exhausted bounded Polygon RPC recovery is retained as retryable unresolved infrastructure evidence instead of being converted to a semantic execution-revert verdict by opportunity_discovery.py.
+- S5 #31 / ID 35687323027 was launched from older scoped HEAD a3b0a393310ab5a27a4488da1bd8c31de8a84d7c, before the discovery-layer correction. Its eventual artifact remains non-current-head evidence and will not certify the corrected lineage.
+- A new S5 kick is being queued from this latest verified engineering lineage. The workflow concurrency lock keeps it from overlapping the active stale #31 run; it must start only after #31 terminalizes.
+- S5 #29 and #30 remain preserved as forensic evidence and are not market-negative certificates. Current profitability proof remains absent.
+- economic_certification=NOT_PERFORMED and profit_claim=NONE remain unchanged.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+- Dedicated forensic record: PHANTOMX_S5_29_FORENSIC_REPAIR_2026-09-22.md.

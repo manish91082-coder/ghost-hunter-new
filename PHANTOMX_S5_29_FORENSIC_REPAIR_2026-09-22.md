@@ -90,3 +90,15 @@ This preserves semantic registry behavior while allowing quote reads to seek an 
 The scoped architecture was verified by Phase-19 #1036 / 35687011135, which completed SUCCESS on commit 6853229b9079e52231534247197c8935f08ed52f. The full Phase-19 job, including Solidity compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe and the unittest suite, completed successfully.
 
 S5 #30 remains evidence of an infrastructure/control-path failure and is not a market result. A fresh S5 run is required on the scoped architecture.
+ 
+## 9. Discovery-layer retry classification correction
+After the scoped RPC repair, the quote boundary correctly uses explicit ambiguous-revert failover. A second semantic gap was identified in phantomx/opportunity_discovery.py: an exhausted bounded provider recovery error contains the words execution reverted, and the previous classifier checked that phrase before recognizing that the RPC pool had already exhausted its recovery budget.
+
+The final discovery classification now gives precedence to:
+- all bounded Polygon RPC recovery passes failed: retryable unresolved infrastructure evidence
+- reasoned execution reverted: terminal semantic evidence
+- ordinary transport and rate-limit failures: retryable
+
+Phase-19 #1039 / 35687559817 completed SUCCESS on 18c849f50a60e1b138fc6492740b070ee8de7868, including the full deterministic test suite.
+
+S5 #31 / 35687323027 was started before this latest discovery-layer correction and remains evidence from the earlier scoped architecture only. It must not be relabeled as current-head evidence. A fresh S5 run is required after the correction.
