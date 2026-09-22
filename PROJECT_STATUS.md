@@ -518,3 +518,14 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - A fresh S5 kick is now admissible. It must run only from the dedicated `.github/PHANTOMX_S5_KICK` path and will be judged solely from its terminal artifact and coverage/economic fields.
 - S5 #29, #30 and #33 remain non-certifying forensic/incomplete evidence. No profitability certificate exists.
 - **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-22 • S5 #34 LIVE EXECUTION
+
+- Fresh S5 #34 / run ID `35699186433` is active on exact executable HEAD `855410b2096fc119eca09f75d3f2745edd47bf9c`. Checkout and exact-head verification are GREEN; the read-only live-hunt step remains IN_PROGRESS.
+- Phase-19 #1044 / ID `35699186442` is GREEN on the same exact HEAD.
+- The previous S5 #33 / `35689764575` was CANCELLED after the old 60-minute envelope and produced no usable artifact. The workflow is now bounded at 180 minutes; the current run is not being duplicated or interrupted.
+- Static audit of `phantomx/dynamic_pair_surface.py` confirms the current design intentionally expands from recent on-chain inventory plus seed tokens and has no arbitrary hard cap on eligible live pairs. Therefore the full declared recent-window domain must be evaluated; no silent pair truncation is allowed merely to meet runtime expectations.
+- This run remains strictly read-only: no signing, transaction submission, public broadcast, or live capital. Economic certification is separate and profitability is unproven.
+- Next gate: S5 #34 terminal state and artifact. If terminal incomplete, classify exact unresolved cells before changing search logic; if complete, perform full bounded coverage and economic-evidence inspection.
+- **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
