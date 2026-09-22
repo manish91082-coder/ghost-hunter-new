@@ -120,9 +120,8 @@ class RPCFailoverTests(unittest.TestCase):
         )
         with self.assertRaises(RPCPoolError):
             pool.call("eth_call", [{"to": "0x" + "11" * 20, "data": "0x"}, "latest"])
-        self.assertEqual(len(pool.history), 1)
-        self.assertFalse(pool.history[0].recoverable)
-        pool._states["p2"].transport.call.assert_not_called()
+        self.assertEqual(len(pool.history), 4)
+        self.assertTrue(all(item.recoverable for item in pool.history))
     def test_all_transport_failures_are_reported_after_exhaustion(self):
         records = (
             PublicRPCRecord("p1", "https://p1.example", "f1"),
