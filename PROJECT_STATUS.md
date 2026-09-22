@@ -440,3 +440,19 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Latest completed bounded current-block discovery remains First-Hunt #70: **36/36 tiles, 1,280 observations, 0 gross-positive, 0 post-flash-positive**, pinned block `94204969`; economic certification `NOT_PERFORMED`, profit claim `NONE`.
 - **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
 - Next admissible market gate remains **S5 #29 terminalization and artifact forensic inspection**. No new S5 run should be launched while #29 is active, because the workflow concurrency policy deliberately prevents overlapping market-hunt work.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-22 • S5 #29 FORENSIC REPAIR GATE
+
+- S5 #29 / run ID 35635495324 is terminal FAILURE, with preserved artifact 10658431661. The failure is treated as incomplete evidence, not a market-negative result.
+- Artifact digest: sha256:4abd04e03df1c4cff057c48ae3fb69f954877cc9bfbe837c806c0e392285cb3a. Extracted JSON SHA-256: 376dc6ddc766e1e201b214cf64bc3db38975bd0394053742ec225bb9fa44e846.
+- S5 #29 observed 164 tile records, of which 20 completed and 144 were incomplete. It produced 640 exact route observations, 0 gross-positive observations, and best gross -$5.019499 USDC. Pair-universe status was COMPLETE_RECENT_WINDOW, but overall S5 coverage was PARTIAL_INCOMPLETE.
+- Forensic root cause: reason-less execution reverted RPC errors were treated as terminal, preventing bounded provider failover from obtaining an independent response. This is an infrastructure/semantic ambiguity, not proof of route absence.
+- Repair: phantomx/rpc_failover.py now treats a reason-less execution revert as recoverable, while reasoned execution reverts remain terminal. The execution reverted: Unexpected error case remains recoverable.
+- Regression alignment commits: cbbcb34847813681016b136e92bc1a3031a83194, a24cb904b163c60490992124cd4df6f9474e5cee, and 92786f5aee2d5d397cf181fa685e0150bc6a7de3.
+- Phase-19 #1029 / ID 35685369858 completed SUCCESS on 92786f5aee2d5d397cf181fa685e0150bc6a7de3. The final deterministic verification passed compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the Phase-19 unittest suite.
+- A fresh isolated S5 rerun is now admissible. It must be triggered only through the dedicated .github/PHANTOMX_S5_KICK path, not by broad market-workflow fan-out. No new S5 run should overlap the terminal #29.
+- S5 acceptance remains evidence-first: complete declared coverage, unresolved retryable failures = zero, economic certification separate, and no profitability claim unless the complete economic gate is independently satisfied.
+- economic_certification=NOT_PERFORMED and profit_claim=NONE remain the current S5 state.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+- Dedicated forensic record: PHANTOMX_S5_29_FORENSIC_REPAIR_2026-09-22.md.
+- Next admissible gate: launch and inspect the fresh post-repair S5 run.
