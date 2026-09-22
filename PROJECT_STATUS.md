@@ -545,3 +545,21 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Recent historical evidence: S0 First-Hunt #70 completed 36/36 tiles and 1,280 observations with zero gross-positive observations, but it is bounded current-block evidence rather than Polygon-wide exhaustion. S6 run #43 and S9 run #20 completed on older heads; those results are not current-head profitability certificates. S3's latest observed run in that batch failed; S1 was cancelled before completion.
 - Pending expansion: S5 #34 terminal artifact; complete current-head coverage analysis across all declared dynamic pairs/routes; economic proof; final requote/state lock; gas/cost binding; EVM preflight; signer/private-relay evidence; staging; controlled execution; independent realized PnL > $0.20. Strategy-universe expansion remaining after the current S-series refresh includes X2-X13, while X1 has an explicit read-only workflow but is not production-authorized.
 - **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-22 • EXECUTION PLAN LOCKED
+
+- The master roadmap is now frozen in `PHANTOMX_EXECUTION_PLAN_LOCK.md` version 1.0.
+- Scope lock: Polygon PoS only, Chain ID 137. No multi-chain expansion until this roadmap reaches mission completion.
+- Operating sequence is frozen: INSPECT -> VERIFY -> DECIDE -> IMPLEMENT -> TEST -> PUSH -> GITHUB STATE CHECK -> CI TERMINAL RESULT -> VERIFIER -> ADVANCE.
+- Depth-first strategy order is frozen: S5 current terminal gate -> Polygon universe foundation -> S0 -> S1 -> S2 -> S3 -> S5/S5A -> S9 -> S10 -> S6 -> X1 -> X2-X13 -> global route saturation -> dynamic loan universe -> EconomicProof -> final state lock -> EVM preflight -> shadow -> external production evidence -> controlled execution -> error-correction -> continuous autonomous hunting.
+- No unrelated feature work, cleanup, scope expansion, or parallel market-hunt lane is permitted while the locked roadmap is active.
+- Speed is to come from bounded parallel engineering, batch verification, current-state polling and surgical repair only. Verification gates must never be skipped to save time.
+- Current branch: `phase-19-e2e-harness`.
+- Current branch HEAD after the lock commit: `ce304311a0467433dee98d665bfaf0d5a2d7de0a`.
+- Current S5 executable head remains `855410b2096fc119eca09f75d3f2745edd47bf9c`.
+- S5 #34 / run ID `35699186433` remains IN_PROGRESS on the exact executable head. Its read-only hunt step is running; no artifact/market conclusion is yet admissible.
+- Phase-19 #1045 / run ID `35719013413` is IN_PROGRESS on the roadmap-lock HEAD. It is not GREEN until terminal success is observed.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+- Mission-complete economic invariant remains realized net profit strictly greater than $0.20 after all applicable costs.
+- Immediate admissible gate remains S5 #34 terminalization -> job/step check -> artifact forensic inspection -> certification/repair -> exact-head verification -> then S0 depth-first.
+
