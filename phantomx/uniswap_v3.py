@@ -141,7 +141,12 @@ class UniswapV3ExactQuoter:
         if amount_in <= 0:
             raise UniswapV3Error("amount_in must be positive")
         pool = self.resolve_pool(token_in, token_out, fee, snapshot)
-        result = self._rpc.call("eth_call", [
+        call = getattr(
+            self._rpc,
+            "call_with_ambiguous_revert_failover",
+            self._rpc.call,
+        )
+        result = call("eth_call", [
             {"to": self.quoter_address,
              "data": _encode_quote_exact_input_single(token_in, token_out, fee, amount_in)},
             hex(snapshot.block_number),
