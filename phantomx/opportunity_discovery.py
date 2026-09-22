@@ -102,10 +102,16 @@ def _is_retryable_failure(exc: BaseException) -> bool:
     seen: set[int] = set()
     while current is not None and id(current) not in seen:
         seen.add(id(current))
-        # Semantic EVM execution reverts are deterministic market/call outcomes,
-        # even when wrapped by the RPC pool as an RPCPoolError. They must never be
-        # promoted back to transport-retry semantics by this higher discovery layer.
+        # An exhausted bounded RPC recovery pass is itself an unresolved
+        # infrastructure result, even if its collected provider errors mention
+        # execution reverted. Preserve that unresolved state for fail-closed
+        # coverage handling instead of converting it into a semantic market verdict.
         message = str(current).lower()
+        if "all bounded polygon rpc recovery passes failed" in message:
+            return True
+        # Semantic EVM execution reverts are deterministic market/call outcomes
+        # when they carry a concrete reason or occur on the default fail-closed
+        # RPC path. They are not blindly retried by this discovery layer.
         if "execution reverted" in message:
             return False
         if type(current).__name__ in infrastructure_types:
