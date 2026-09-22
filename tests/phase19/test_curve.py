@@ -126,6 +126,27 @@ class CurveAdapterTests(unittest.TestCase):
         self.assertEqual(snap.block_number, 77)
         self.assertEqual(rpc.ambiguous_failover_calls, 1)
 
+    def test_quote_snapshot_reuses_exact_read_cache(self):
+        rpc = FakeRpc()
+        q = CurveRegistryExactQuoter(rpc, (("factory", CURVE_FACTORY_REGISTRY),))
+        ref = CurvePoolRef("factory", CURVE_FACTORY_REGISTRY, POOL, A, B, 0, 1, False, 4_000_000)
+
+        first = q.quote_snapshot(100_000, ref, SNAP)
+        second = q.quote_snapshot(100_000, ref, SNAP)
+
+        self.assertEqual(first, second)
+        self.assertEqual(rpc.ambiguous_failover_calls, 1)
+        self.assertEqual(len(rpc.calls), 1)
+
+        other_amount = q.quote_snapshot(100_001, ref, SNAP)
+        self.assertEqual(other_amount.amount_in, 100_001)
+        self.assertEqual(rpc.ambiguous_failover_calls, 2)
+        self.assertEqual(len(rpc.calls), 2)
+
+        other_block = MarketBlockSnapshot(chain_id=137, block_number=78, timestamp=1_700_000_001)
+        with self.assertRaises(AssertionError):
+            q.quote_snapshot(100_000, ref, other_block)
+
     def test_underlying_mode_uses_underlying_selector(self):
         class UnderlyingRpc(FakeRpc):
             def call(self, method, params):
