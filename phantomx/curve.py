@@ -190,6 +190,8 @@ class CurveRegistryExactQuoter:
         self._rpc = rpc
         self.chain_id = chain_id
         self.registries = tuple(registries)
+        # Reuse only exact successful reads within this quoter instance.
+        self._quote_cache: dict[tuple[str, int, int, bool, int, int], QuoteSnapshot] = {}
 
     def _call(self, to: str, data: str, snapshot: BlockSnapshot) -> bytes:
         try:
@@ -342,6 +344,13 @@ class CurveRegistryExactQuoter:
             raise CurveError("snapshot chain identity mismatch")
         if amount_in <= 0:
             raise CurveError("amount_in must be positive")
+        cache_key = (
+            pool_ref.pool.lower(), pool_ref.i, pool_ref.j,
+            pool_ref.underlying, amount_in, snapshot.block_number,
+        )
+        cached = self._quote_cache.get(cache_key)
+        if cached is not None:
+            return cached
         selector = GET_DY_UNDERLYING_SELECTOR if pool_ref.underlying else GET_DY_SELECTOR
         call = getattr(
             self._rpc,
@@ -370,13 +379,15 @@ class CurveRegistryExactQuoter:
             snapshot.block_number,
             pool_ref.fee_raw,
         )
-        return QuoteSnapshot.from_exact_quote(
+        snapshot_result = QuoteSnapshot.from_exact_quote(
             quote,
             chain_id=self.chain_id,
             observed_at_unix=snapshot.timestamp,
             pool_or_router=pool_ref.pool,
             gas_estimate=None,
         )
+        self._quote_cache[cache_key] = snapshot_result
+        return snapshot_result
 
 
 __all__ = [
