@@ -5,4 +5,4 @@ safety=control-plane-only
 signing=false
 broadcast=false
 live_capital=false
-kick_id=2026-09-22-s5-watchdog-v1
+kick_id=2026-09-22-s5-watchdog-stale-recovery-v2
