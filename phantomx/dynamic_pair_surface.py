@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterable, Sequence
 
-from .curve import CurveRegistryExactQuoter
+from .curve import CurvePoolRef, CurveRegistryExactQuoter
 from .market_block import acquire_market_block, acquire_market_block_at
 from .polygon_pair_universe import PairUniverseRecord, build_pair_universe, base_pairs
 from .polygon_universe_inventory import InventoryTask, InventoryTaskResult
@@ -32,6 +32,7 @@ class DynamicPairDiscovery:
     from_block: int
     to_block: int
     inventory_results: tuple[InventoryTaskResult, ...]
+    curve_pool_refs: tuple[tuple[str, tuple[CurvePoolRef, ...]], ...] = ()
     error: str | None = None
 
 
@@ -79,6 +80,7 @@ def discover_live_base_pairs(
             pair_map[token.lower()] = DynamicPairSpec(name, token, "SEED", tuple())
 
     curve_lookup_complete = True
+    curve_pool_refs: dict[str, tuple[CurvePoolRef, ...]] = {}
     if "curve" in required:
         curve = CurveRegistryExactQuoter(rpc)
         market_block = acquire_market_block_at(rpc, latest)
@@ -98,6 +100,7 @@ def discover_live_base_pairs(
                     f"Curve pair-surface lookup failed for {base_token}/{token}: "
                     f"{type(exc).__name__}: {exc}"
                 ) from exc
+            curve_pool_refs[token.lower()] = tuple(refs)
             if refs:
                 name = next(
                     (seed_name for seed_name, seed_token in seed_pairs if seed_token.lower() == token.lower()),
@@ -135,4 +138,5 @@ def discover_live_base_pairs(
         from_block=from_block,
         to_block=latest,
         inventory_results=tuple(results),
+        curve_pool_refs=tuple(sorted(curve_pool_refs.items(), key=lambda item: item[0])),
     )

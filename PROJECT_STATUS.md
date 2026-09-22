@@ -575,3 +575,11 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Immediate gate remains S5 #35 terminalization -> artifact forensic inspection -> coverage/economic classification -> surgical repair only if proven -> verification -> S5 certification -> then S0.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
 
+## CURRENT AUTHORITATIVE SYNC • 2026-09-22 • S5 RUNTIME OPTIMIZATION PATCH
+
+- A surgical S5 runtime optimization has been prepared in the current Polygon-only locked lane: dynamic Curve pair discovery now retains the exact Curve pool references it already discovered, and the S5 scanner reuses those references instead of re-enumerating the same Curve registry surface for every active pair.
+- Coverage semantics are unchanged: no pair, pool, registry, fee tier, direction, loan amount, retry policy, or acceptance criterion is removed. When dynamic pair discovery fails, the scanner retains the previous fallback Curve lookup path.
+- Regression coverage was added to assert downstream Curve-pool-reference retention.
+- This change is now pushed to the canonical branch for deterministic CI verification. No S5 market run is authorized to treat this optimization as validated until Phase-19 is terminal SUCCESS.
+- Active S5 #35 remains on its older executable head and has not been relabeled. It will remain untouched until the optimized lineage is deterministically verified.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.

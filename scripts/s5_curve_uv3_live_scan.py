@@ -205,19 +205,27 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
     observations, tiles = [], []
     pair_surface_status = "SEED_ONLY"
     active_pairs = PAIRS
+    curve_refs_from_surface: dict[str, tuple[Any, ...]] = {}
+    pair_surface_ready = False
     try:
         pair_surface = discover_live_base_pairs(
             rpc, base_token=USDC_E, seed_pairs=tuple(PAIRS),
             required_venues=("curve", "uniswap_v3"), lookback_blocks=25_000, chunk_size=50,
         )
         active_pairs = tuple((p.name, p.token_b) for p in pair_surface.pairs)
+        curve_refs_from_surface = {token.lower(): refs for token, refs in pair_surface.curve_pool_refs}
+        pair_surface_ready = True
         pair_surface_status = pair_surface.status
     except Exception as exc:
         pair_surface_status = "PAIR_UNIVERSE_INCOMPLETE"
         print(f"PAIR_DISCOVERY_FALLBACK: {type(exc).__name__}: {exc}", flush=True)
 
     for pair_name, token_b in active_pairs:
-        refs = curve.find_pools_for_pair(USDC_E, token_b, context, max_pools_per_registry=4)
+        refs = (
+            list(curve_refs_from_surface.get(token_b.lower(), ()))
+            if pair_surface_ready
+            else curve.find_pools_for_pair(USDC_E, token_b, context, max_pools_per_registry=4)
+        )
         seed = CURVE_SEED_POOLS.get(pair_name)
         if seed is not None:
             try:
