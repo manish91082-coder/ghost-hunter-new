@@ -611,3 +611,16 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - The S5 watchdog verification run #1 / `35724756860` completed SUCCESS without cancelling #36 or any in-envelope run; its configured cancellation threshold is 180 minutes.
 - Immediate gate remains S5 #36 terminalization -> artifact forensic inspection -> coverage/economic classification -> surgical repair only if proven -> certification -> then S0.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-22 • S5 #36 STALE RECOVERY / #37 ACTIVE
+
+- S5 #36 / run `35724075068` is now terminal `CANCELLED` at `2026-09-22T14:59:57Z` after exceeding its 180-minute execution envelope with no published artifact. It is non-certifying evidence only; no market conclusion is inferred.
+- The stale condition was verified directly from GitHub run/job state: the S5 job remained `IN_PROGRESS`, step 6 remained `IN_PROGRESS`, and the artifact list remained empty after the envelope.
+- Controlled stale recovery commit `757972bdc67eb4c7a7753087fd28fba92485259c` changed only `.github/PHANTOMX_S5_KICK`, advancing the kick to `2026-09-22-s5-stale-recovery-v12`. No scanner, route, economics, signer, broadcast, or capital logic changed.
+- S5 #37 / run `35744168039` is now the active controlled read-only market hunt on exact branch HEAD `757972bdc67eb4c7a7753087fd28fba92485259c`; checkout, exact-head verification, Python setup and dependencies are GREEN; the read-only hunt step is IN_PROGRESS.
+- Phase-19 #1050 / run `35744168038` is terminal `SUCCESS` on exact HEAD `757972bdc67eb4c7a7753087fd28fba92485259c`, including compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe and full Phase-19 unittest suite.
+- Watchdog limitation identified: repository default branch is `master`, while the stale watchdog was added only on `phase-19-e2e-harness`. Therefore its `schedule` trigger cannot be treated as proven autonomous stale recovery for this feature branch. The current controlled recovery path is the dedicated S5 kick plus the workflow's `cancel-in-progress` behavior.
+- This watchdog limitation is a control-plane finding to be repaired only through a scoped, evidence-backed design; it does not change current market evidence and must not be used to infer S5 success/failure.
+- Immediate gate remains S5 #37 terminalization -> artifact forensic inspection -> coverage/economic classification -> surgical repair only if proven -> certification -> then S0.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
