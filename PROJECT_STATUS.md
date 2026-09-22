@@ -483,3 +483,15 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - economic_certification=NOT_PERFORMED and profit_claim=NONE remain unchanged.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
 - Dedicated forensic record: PHANTOMX_S5_29_FORENSIC_REPAIR_2026-09-22.md.
+ 
+## CURRENT AUTHORITATIVE SYNC • 2026-09-22 • FINAL S5 QUEUE STATE
+
+- Live branch HEAD: fa49e430366b97fdf9f156f36a9da8b760a6f72a.
+- Phase-19 #1040 / ID 35687787711 completed SUCCESS on the exact HEAD fa49e430...
+- S5 #31 / ID 35687323027 remains IN_PROGRESS on older scoped HEAD a3b0a393... and is not current-head evidence.
+- S5 #32 / ID 35687787705 is PENDING on exact current HEAD fa49e430... because the shared S5 concurrency group deliberately waits for #31 to terminalize. No overlapping market execution is being performed.
+- The current branch changes after the last verified engineering HEAD are documentation/status updates and the dedicated S5 kick only. The scoped RPC, Curve quote, Uniswap V3 quote, and discovery-layer retry corrections were already verified GREEN by Phase-19 #1039 on 18c849f... before this queue commit.
+- S5 #29 and #30 remain preserved forensic evidence. #29 was PARTIAL_INCOMPLETE; #30 exposed the unsafe global ambiguous-revert policy. Neither is a market-negative certificate.
+- economic_certification=NOT_PERFORMED and profit_claim=NONE remain unchanged.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+- Next admissible gate: wait for S5 #31 to terminalize, then let queued S5 #32 execute and inspect its artifact. Do not create another S5 kick while #32 is pending.
