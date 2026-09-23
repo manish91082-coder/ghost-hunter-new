@@ -484,3 +484,12 @@ Missing lane = BLOCKED.
 - S0 remains blocked until S5 complete declared-domain evidence is certified.
 - data-plane-ci remains absent and is not GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • S5 CLASSIFICATION PARITY VERIFIED
+- Surgical S5 tile-classification parity repair is committed at `ae31dced5aefe3bceb4ca9a29c531c486bcf1155`.
+- Exact-head Phase-19 #1075 / run `35881949251` is terminal SUCCESS.
+- Fresh S5 current-head evidence is now triggered from this verified repair lineage through `.github/PHANTOMX_S5_KICK` using kick `2026-09-23-s5-classification-parity-v22`.
+- Next admissible gate: S5 terminal artifact -> coverage forensic -> isolate remaining retryable RPC failures -> certify or apply one surgical repair.
+- S0 remains blocked until S5 complete declared-domain evidence is certified.
+- data-plane-ci remains absent and is not GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
