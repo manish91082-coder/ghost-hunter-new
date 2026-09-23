@@ -60,6 +60,7 @@ class _State:
     latency_ms: float = 0.0
     last_success_monotonic: float = 0.0
     in_flight: int = 0
+    quarantined_until: float = 0.0
     last_error: str | None = None
 
     @property
@@ -68,6 +69,7 @@ class _State:
             self.record.enabled
             and self.record.chain_id == POLYGON_CHAIN_ID
             and self.circuit_open_until <= monotonic()
+            and self.quarantined_until <= monotonic()
             and self.health_score > 0
             and self.in_flight < self.record.max_concurrency
         )
@@ -89,6 +91,7 @@ class PolygonRPCFailoverPool:
     records: tuple[PublicRPCRecord, ...] = DEFAULT_FREE_POLYGON_RPC_POOL
     failure_threshold: int = 2
     circuit_cooldown_seconds: float = 20.0
+    provider_fatal_cooldown_seconds: float = 3600.0
     _states: dict[str, _State] = field(default_factory=dict, init=False, repr=False)
     _preferred_provider_id: str | None = field(default=None, init=False, repr=False)
     _history: list[RPCAttempt] = field(default_factory=list, init=False, repr=False)
@@ -101,6 +104,8 @@ class PolygonRPCFailoverPool:
             raise RPCPoolError("failure_threshold must be positive")
         if self.circuit_cooldown_seconds <= 0:
             raise RPCPoolError("circuit cooldown must be positive")
+        if self.provider_fatal_cooldown_seconds <= 0:
+            raise RPCPoolError("provider fatal cooldown must be positive")
         seen: set[str] = set()
         for record in self.records:
             if record.provider_id in seen:
@@ -139,6 +144,7 @@ class PolygonRPCFailoverPool:
                     "health_score": round(state.health_score, 6),
                     "consecutive_failures": state.consecutive_failures,
                     "circuit_open": state.circuit_open_until > now,
+                    "quarantined": state.quarantined_until > now,
                     "latency_ms": round(state.latency_ms, 3),
                     "last_error": state.last_error,
                 }
@@ -187,6 +193,11 @@ class PolygonRPCFailoverPool:
         if "result" not in response:
             raise RPCPoolError(f"{method}: missing result")
         return response["result"]
+
+    @staticmethod
+    def _provider_fatal(exc: BaseException) -> bool:
+        message = str(exc).lower()
+        return "status=401" in message or "paid plans only" in message or "api key required" in message or "authentication required" in message
 
     @staticmethod
     def _recoverable(exc: BaseException, *, allow_ambiguous_revert: bool = False) -> bool:
@@ -277,6 +288,9 @@ class PolygonRPCFailoverPool:
                         exc,
                         allow_ambiguous_revert=allow_ambiguous_revert,
                     )
+                    if self._provider_fatal(exc):
+                        with self._lock:
+                            state.quarantined_until = max(state.quarantined_until, monotonic() + self.provider_fatal_cooldown_seconds)
                     self._record_failure(state, str(exc), recoverable)
                     with self._lock:
                         self._history.append(RPCAttempt(state.record.provider_id, False, recoverable, latency_ms, str(exc)))
