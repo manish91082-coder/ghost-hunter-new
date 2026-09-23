@@ -1,4 +1,5 @@
-PHANTOMX S5 controlled read-only kick
+2026-09-23-s5-rpc-fleet-refresh-v16
+
 purpose=trigger one bounded Curve <-> Uniswap V3 current-head evidence run
 safety=read-only
 signing=false
