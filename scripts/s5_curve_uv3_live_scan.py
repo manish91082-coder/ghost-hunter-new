@@ -444,7 +444,7 @@ def main() -> int:
         "successful_endpoints": results,
         "pair_universe": {"status": results[0].get("pair_universe", {}).get("status", "PAIR_UNIVERSE_INCOMPLETE") if results else "PAIR_UNIVERSE_INCOMPLETE", "active_count": results[0].get("pair_universe", {}).get("active_count", 0) if results else 0},
         "execution": {
-            "max_workers": worker_count,
+            "max_workers": _configured_s5_worker_count(len(rpc_pool.records)),
             "parallelism": "bounded_tile",
         },
         "rpc_pool": {
