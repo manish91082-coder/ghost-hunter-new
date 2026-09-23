@@ -162,5 +162,56 @@ class RPCFailoverTests(unittest.TestCase):
         self.assertGreater(pool._states["p1"].circuit_open_until, 10.0)
 
 
+    def test_threaded_requests_respect_per_provider_concurrency_limit(self):
+        import threading
+        import time
+
+        records = tuple(
+            PublicRPCRecord(f"p{i}", f"https://p{i}.example", f"f{i}", max_concurrency=1)
+            for i in range(4)
+        )
+        pool = PolygonRPCFailoverPool(records=records)
+
+        lock = threading.Lock()
+        barrier = threading.Barrier(4)
+        active = 0
+        max_active = 0
+
+        def call(provider_transport):
+            nonlocal active, max_active
+            with lock:
+                active += 1
+                max_active = max(max_active, active)
+            time.sleep(0.03)
+            with lock:
+                active -= 1
+            return {"result": "0x89"}
+
+        for state in pool._states.values():
+            state.transport.call = Mock(side_effect=lambda method, params, _state=state: call(_state.transport))
+
+        results = [None] * 4
+        errors = []
+
+        def worker(index):
+            try:
+                barrier.wait(timeout=2)
+                results[index] = pool.call("eth_chainId", [])
+            except Exception as exc:
+                errors.append(exc)
+
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(4)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=2)
+
+        self.assertEqual(errors, [])
+        self.assertEqual(results, ["0x89"] * 4)
+        self.assertGreaterEqual(max_active, 2)
+        for state in pool._states.values():
+            self.assertLessEqual(state.transport.call.call_count, 1)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
