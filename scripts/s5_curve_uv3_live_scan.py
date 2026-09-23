@@ -6,6 +6,7 @@ import json
 import os
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from decimal import Decimal
 from pathlib import Path
@@ -189,6 +190,110 @@ def summarize_s5_coverage(
     }
 
 
+def _configured_s5_worker_count(provider_count: int) -> int:
+    if provider_count < 1:
+        raise ValueError("S5 requires at least one RPC provider")
+    raw = os.environ.get("PHANTOMX_S5_WORKERS", "8").strip()
+    try:
+        requested = int(raw)
+    except ValueError as exc:
+        raise ValueError("PHANTOMX_S5_WORKERS must be an integer") from exc
+    if requested < 1:
+        raise ValueError("PHANTOMX_S5_WORKERS must be positive")
+    return min(requested, provider_count)
+
+
+def _evaluate_s5_tile(
+    *,
+    rpc: Any,
+    curve: CurveRegistryExactQuoter,
+    uv3: UniswapV3ExactQuoter,
+    context: Any,
+    premium_bps: int,
+    pair_name: str,
+    token_b: str,
+    ref: Any,
+    ufee: int,
+    amounts: tuple[int, ...],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    forward_result = discover_exact_opportunities(
+        token_pairs=((USDC_E, token_b),),
+        loan_amounts=amounts,
+        evaluate_route=lambda token_a, token_out, amount: build_curve_to_uniswap_v3_route(
+            rpc, curve, uv3, amount_in=amount, token_a=token_a, token_b=token_out,
+            curve_pool=ref, uniswap_fee=ufee, block=context
+        ),
+        venue_path="curve->uniswap_v3",
+        continue_on_error=True,
+    )
+    reverse_result = discover_exact_opportunities(
+        token_pairs=((USDC_E, token_b),),
+        loan_amounts=amounts,
+        evaluate_route=lambda token_a, token_out, amount: build_uniswap_v3_to_curve_route(
+            rpc, curve, uv3, amount_in=amount, token_a=token_a, token_b=token_out,
+            curve_pool=ref, uniswap_fee=ufee, block=context
+        ),
+        venue_path="uniswap_v3->curve",
+        continue_on_error=True,
+    )
+    combined = OpportunityDiscoveryResult(
+        evaluated=forward_result.evaluated + reverse_result.evaluated,
+        failures=forward_result.failures + reverse_result.failures,
+    )
+    coverage_status = classify_s5_tile_results(
+        forward_result,
+        reverse_result,
+        expected_evaluations_per_direction=len(amounts),
+    )
+    tile = {
+        "pair": pair_name,
+        "registry": ref.registry_name,
+        "pool": ref.pool,
+        "curve_fee_raw": ref.fee_raw,
+        "curve_i": ref.i,
+        "curve_j": ref.j,
+        "underlying": ref.underlying,
+        "uniswap_fee": ufee,
+        "status": "SUCCESS" if coverage_status in {"COMPLETE", "COMPLETE_NO_COMMON_ROUTE"} else "UNAVAILABLE_OR_FAILED",
+        "coverage_status": coverage_status,
+        "expected_direction_evaluations": len(amounts) * 2,
+        "accounted_direction_evaluations": len(combined.evaluated) + len(combined.failures),
+        "retryable_failure_count": len(combined.retryable_failures),
+        "terminal_failure_count": len(combined.terminal_failures),
+        "failure_diagnostics": _failure_diagnostics(combined),
+        "observation_count": 0,
+    }
+    if coverage_status != "COMPLETE":
+        return tile, []
+
+    tile_observations: list[dict[str, Any]] = []
+    try:
+        forward = tuple(item.simulation for item in forward_result.evaluated)
+        reverse = tuple(item.simulation for item in reverse_result.evaluated)
+        guard = evaluate_simulation_domain(
+            forward=forward,
+            reverse=reverse,
+            max_degradation_bps=100,
+        )
+        for item in guard.evaluated:
+            if item.forward is not None:
+                tile_observations.append(
+                    _record("curve->uniswap_v3", item.amount, ref, item.forward, premium_bps)
+                )
+            if item.reverse is not None:
+                tile_observations.append(
+                    _record("uniswap_v3->curve", item.amount, ref, item.reverse, premium_bps)
+                )
+        tile["observation_count"] = len(guard.evaluated) * 2
+    except Exception as exc:
+        tile["status"] = "UNAVAILABLE_OR_FAILED"
+        tile["coverage_status"] = "PARTIAL_INCOMPLETE"
+        tile["error_type"] = type(exc).__name__
+        tile["error"] = str(exc)
+        tile_observations = []
+    return tile, tile_observations
+
+
 def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
     curve = CurveRegistryExactQuoter(rpc)
     uv3 = UniswapV3ExactQuoter(rpc, UNISWAP_V3_FACTORY, UNISWAP_V3_QUOTER)
@@ -220,6 +325,7 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
         pair_surface_status = "PAIR_UNIVERSE_INCOMPLETE"
         print(f"PAIR_DISCOVERY_FALLBACK: {type(exc).__name__}: {exc}", flush=True)
 
+    tile_tasks: list[tuple[str, str, Any, int]] = []
     for pair_name, token_b in active_pairs:
         refs = (
             list(curve_refs_from_surface.get(token_b.lower(), ()))
@@ -236,76 +342,35 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
                 pass
         for ref in refs:
             for ufee in UNISWAP_V3_FEE_TIERS:
-                forward_result = discover_exact_opportunities(
-                    token_pairs=((USDC_E, token_b),),
-                    loan_amounts=amounts,
-                    evaluate_route=lambda token_a, token_out, amount: build_curve_to_uniswap_v3_route(
-                        rpc, curve, uv3, amount_in=amount, token_a=token_a, token_b=token_out,
-                        curve_pool=ref, uniswap_fee=ufee, block=context
-                    ),
-                    venue_path="curve->uniswap_v3",
-                    continue_on_error=True,
-                )
-                reverse_result = discover_exact_opportunities(
-                    token_pairs=((USDC_E, token_b),),
-                    loan_amounts=amounts,
-                    evaluate_route=lambda token_a, token_out, amount: build_uniswap_v3_to_curve_route(
-                        rpc, curve, uv3, amount_in=amount, token_a=token_a, token_b=token_out,
-                        curve_pool=ref, uniswap_fee=ufee, block=context
-                    ),
-                    venue_path="uniswap_v3->curve",
-                    continue_on_error=True,
-                )
-                combined = OpportunityDiscoveryResult(
-                    evaluated=forward_result.evaluated + reverse_result.evaluated,
-                    failures=forward_result.failures + reverse_result.failures,
-                )
-                coverage_status = classify_s5_tile_results(
-                    forward_result,
-                    reverse_result,
-                    expected_evaluations_per_direction=len(amounts),
-                )
-                tile = {
-                    "pair": pair_name,
-                    "registry": ref.registry_name,
-                    "pool": ref.pool,
-                    "curve_fee_raw": ref.fee_raw,
-                    "curve_i": ref.i,
-                    "curve_j": ref.j,
-                    "underlying": ref.underlying,
-                    "uniswap_fee": ufee,
-                    "status": "SUCCESS" if coverage_status in {"COMPLETE", "COMPLETE_NO_COMMON_ROUTE"} else "UNAVAILABLE_OR_FAILED",
-                    "coverage_status": coverage_status,
-                    "expected_direction_evaluations": len(amounts) * 2,
-                    "accounted_direction_evaluations": len(combined.evaluated) + len(combined.failures),
-                    "retryable_failure_count": len(combined.retryable_failures),
-                    "terminal_failure_count": len(combined.terminal_failures),
-                    "failure_diagnostics": _failure_diagnostics(combined),
-                    "observation_count": 0,
-                }
-                if coverage_status != "COMPLETE":
-                    tiles.append(tile)
-                    continue
-                try:
-                    forward = tuple(item.simulation for item in forward_result.evaluated)
-                    reverse = tuple(item.simulation for item in reverse_result.evaluated)
-                    guard = evaluate_simulation_domain(
-                        forward=forward,
-                        reverse=reverse,
-                        max_degradation_bps=100,
-                    )
-                    for item in guard.evaluated:
-                        if item.forward is not None:
-                            observations.append(_record("curve->uniswap_v3", item.amount, ref, item.forward, aave.flash_loan_premium_bps))
-                        if item.reverse is not None:
-                            observations.append(_record("uniswap_v3->curve", item.amount, ref, item.reverse, aave.flash_loan_premium_bps))
-                    tile["observation_count"] = len(guard.evaluated) * 2
-                except Exception as exc:
-                    tile["status"] = "UNAVAILABLE_OR_FAILED"
-                    tile["coverage_status"] = "PARTIAL_INCOMPLETE"
-                    tile["error_type"] = type(exc).__name__
-                    tile["error"] = str(exc)
-                tiles.append(tile)
+                tile_tasks.append((pair_name, token_b, ref, ufee))
+
+    worker_count = _configured_s5_worker_count(len(rpc.records))
+    print(
+        f"S5 bounded parallel tile execution: tiles={len(tile_tasks)} workers={worker_count} providers={len(rpc.records)}",
+        flush=True,
+    )
+    task_args = (
+        {
+            "rpc": rpc,
+            "curve": curve,
+            "uv3": uv3,
+            "context": context,
+            "premium_bps": aave.flash_loan_premium_bps,
+            "pair_name": pair_name,
+            "token_b": token_b,
+            "ref": ref,
+            "ufee": ufee,
+            "amounts": amounts,
+        }
+        for pair_name, token_b, ref, ufee in tile_tasks
+    )
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        for tile, tile_observations in executor.map(
+            lambda kwargs: _evaluate_s5_tile(**kwargs),
+            task_args,
+        ):
+            tiles.append(tile)
+            observations.extend(tile_observations)
     ranked = sorted(observations, key=lambda x: x["gross_delta_raw"], reverse=True)
     coverage = summarize_s5_coverage(tiles, pair_universe_status=pair_surface_status)
     return {
@@ -378,6 +443,10 @@ def main() -> int:
         "pairs": [name for name, _ in PAIRS],
         "successful_endpoints": results,
         "pair_universe": {"status": results[0].get("pair_universe", {}).get("status", "PAIR_UNIVERSE_INCOMPLETE") if results else "PAIR_UNIVERSE_INCOMPLETE", "active_count": results[0].get("pair_universe", {}).get("active_count", 0) if results else 0},
+        "execution": {
+            "max_workers": worker_count,
+            "parallelism": "bounded_tile",
+        },
         "rpc_pool": {
             "mode": "task_preserving_failover",
             "provider_count": len(rpc_pool.records),
