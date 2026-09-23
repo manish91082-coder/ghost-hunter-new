@@ -687,3 +687,14 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Immediate admissible gate remains: S5 #41 terminalization -> artifact forensic inspection -> coverage classification -> economic classification -> certification or surgical repair -> exact-head verification -> next locked roadmap step (S0 only after S5 certification).
 - `data-plane-ci` is not present in the repository and is not reported as GREEN.
 - **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • RPC QUARANTINE REPAIR VERIFIED
+
+- Surgical commit `1f6817762dad2219d6e6ee448f0d88aa7906b0c3` adds provider-local quarantine for explicit authentication/paid-plan failures (`401`, paid-plan-only, API-key-required, authentication-required). Quarantined providers are excluded from subsequent bounded recovery attempts for the configured cooldown; the logical market task remains eligible for other providers.
+- Regression commit `171b59c83c72704f279ecb123120b9854d3ec1ba` adds deterministic tests proving paid-plan and `401` failures quarantine the offending provider without weakening ambiguous-revert recovery. Phase-19 #1065 / run `35835488472` is terminal `SUCCESS` on exact HEAD `171b59c83c72704f279ecb123120b9854d3ec1ba`; all substantive jobs are GREEN.
+- S5 #41 / run `35832928044` remains historical non-certifying evidence: terminal `FAILURE`, artifact published, but coverage incomplete. It is superseded as a market-data generation by the current verified quarantine lineage.
+- Current branch HEAD is `171b59c83c72704f279ecb123120b9854d3ec1ba`. The next market gate is a fresh controlled S5 read-only hunt from this exact verified HEAD, not reuse of the earlier S5 #41 evidence.
+- S5 worker count remains unchanged at the existing bounded default; no unverified throughput tuning is being introduced merely to mask coverage failures.
+- `data-plane-ci` is not present in the repository and is not reported as GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
