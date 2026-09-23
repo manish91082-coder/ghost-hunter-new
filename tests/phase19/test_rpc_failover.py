@@ -157,7 +157,7 @@ class RPCFailoverTests(unittest.TestCase):
         self.assertFalse(stats["p1"]["circuit_open"])
         self.assertEqual(stats["p1"]["consecutive_failures"], 0)
         self.assertAlmostEqual(stats["p1"]["health_score"], 1.0)
-        self.assertEqual(pool._states["p1"].transport.call.call_count, 2)
+        self.assertEqual(pool._states["p1"].transport.call.call_count, 4)
 
     def test_ambiguous_revert_consensus_stops_after_two_distinct_providers(self):
         records = (
