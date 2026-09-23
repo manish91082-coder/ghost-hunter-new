@@ -213,6 +213,40 @@ class RPCFailoverTests(unittest.TestCase):
             self.assertLessEqual(state.transport.call.call_count, 1)
 
 
+    def test_recovery_waits_for_a_different_provider_before_reusing_failed_one(self):
+        import threading
+        import time
+
+        records = (
+            PublicRPCRecord("p1", "https://p1.example", "f1", max_concurrency=1),
+            PublicRPCRecord("p2", "https://p2.example", "f2", max_concurrency=1),
+        )
+        pool = PolygonRPCFailoverPool(
+            records=records,
+            provider_admission_wait_seconds=1.0,
+        )
+        pool._states["p2"].in_flight = 1
+        pool._states["p1"].transport.call = Mock(side_effect=TimeoutError("timeout"))
+        pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
+
+        def release_provider():
+            time.sleep(0.05)
+            with pool._lock:
+                pool._states["p2"].in_flight = 0
+
+        releaser = threading.Thread(target=release_provider)
+        releaser.start()
+        self.assertEqual(pool.call("eth_chainId", []), "0x89")
+        releaser.join(timeout=1)
+
+        self.assertEqual(
+            [item.provider_id for item in pool.history if not item.success],
+            ["p1"],
+        )
+        self.assertEqual([item.provider_id for item in pool.history if item.success], ["p2"])
+        self.assertEqual(pool._states["p1"].transport.call.call_count, 1)
+        self.assertEqual(pool._states["p2"].transport.call.call_count, 1)
+
     def test_saturated_provider_pool_waits_for_capacity_without_zero_attempt_failure(self):
         import threading
         import time

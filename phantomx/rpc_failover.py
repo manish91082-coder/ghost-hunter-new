@@ -154,9 +154,14 @@ class PolygonRPCFailoverPool:
                 for state in states
             )
 
-    def _ordered_eligible(self) -> list[_State]:
+    def _ordered_eligible(self, exclude_provider_ids: Sequence[str] = ()) -> list[_State]:
+        excluded = set(exclude_provider_ids)
         with self._lock:
-            states = [state for state in self._states.values() if state.eligible]
+            states = [
+                state
+                for state in self._states.values()
+                if state.record.provider_id not in excluded and state.eligible
+            ]
             states.sort(
                 key=lambda state: (
                     state.latency_ms if state.latency_ms > 0 else 10_000,
@@ -249,12 +254,14 @@ class PolygonRPCFailoverPool:
             if recoverable and state.consecutive_failures >= self.failure_threshold:
                 state.circuit_open_until = monotonic() + self.circuit_cooldown_seconds
 
-    def _has_busy_usable_provider(self) -> bool:
-        """Return whether a healthy provider is temporarily saturated rather than unusable."""
+    def _has_busy_usable_provider(self, exclude_provider_ids: Sequence[str] = ()) -> bool:
+        """Return whether a healthy non-excluded provider is temporarily saturated."""
+        excluded = set(exclude_provider_ids)
         now = monotonic()
         with self._lock:
             return any(
-                state.record.enabled
+                state.record.provider_id not in excluded
+                and state.record.enabled
                 and state.record.chain_id == POLYGON_CHAIN_ID
                 and state.circuit_open_until <= now
                 and state.quarantined_until <= now
@@ -263,13 +270,13 @@ class PolygonRPCFailoverPool:
                 for state in self._states.values()
             )
 
-    def _wait_for_provider_capacity(self) -> bool:
-        """Wait a bounded interval for a provider slot; never spin or retry indefinitely."""
+    def _wait_for_provider_capacity(self, exclude_provider_ids: Sequence[str] = ()) -> bool:
+        """Wait boundedly for a non-excluded provider slot; never spin indefinitely."""
         deadline = monotonic() + self.provider_admission_wait_seconds
         while True:
-            if self._ordered_eligible():
+            if self._ordered_eligible(exclude_provider_ids):
                 return True
-            if not self._has_busy_usable_provider():
+            if not self._has_busy_usable_provider(exclude_provider_ids):
                 return False
             remaining = deadline - monotonic()
             if remaining <= 0:
@@ -288,18 +295,34 @@ class PolygonRPCFailoverPool:
             raise RPCPoolError("params must be a sequence")
 
         attempts: list[str] = []
+        excluded_provider_ids: set[str] = set()
         for round_index in range(2):
-            if not self._ordered_eligible():
-                self._wait_for_provider_capacity()
-            eligible = self._ordered_eligible()
-            if not eligible:
+            while True:
+                eligible = self._ordered_eligible(excluded_provider_ids)
+                if eligible:
+                    break
+                if self._wait_for_provider_capacity(excluded_provider_ids):
+                    continue
                 if round_index == 0:
                     self.reset_circuits()
-                    if not self._ordered_eligible():
-                        self._wait_for_provider_capacity()
+                    if self._ordered_eligible(excluded_provider_ids):
+                        continue
+                    if self._wait_for_provider_capacity(excluded_provider_ids):
+                        continue
+                elif excluded_provider_ids:
+                    # A bounded second pass may reuse a provider only after every
+                    # previously attempted provider is excluded and no different
+                    # provider can become available within the admission window.
+                    excluded_provider_ids.clear()
+                    if self._wait_for_provider_capacity():
+                        continue
                     eligible = self._ordered_eligible()
-                if not eligible:
-                    break
+                    if eligible:
+                        break
+                break
+
+            if not eligible:
+                break
 
             reserved_any = False
             for state in eligible:
@@ -331,6 +354,7 @@ class PolygonRPCFailoverPool:
                                 monotonic() + self.provider_fatal_cooldown_seconds,
                             )
                     self._record_failure(state, str(exc), recoverable)
+                    excluded_provider_ids.add(state.record.provider_id)
                     with self._lock:
                         self._history.append(
                             RPCAttempt(
@@ -353,7 +377,7 @@ class PolygonRPCFailoverPool:
             # A concurrent caller may claim every provider between eligibility
             # discovery and reservation. Wait once for a bounded release rather
             # than creating a false zero-attempt infrastructure failure.
-            if not reserved_any and self._wait_for_provider_capacity():
+            if not reserved_any and self._wait_for_provider_capacity(excluded_provider_ids):
                 continue
             if round_index == 0:
                 self.reset_circuits()
