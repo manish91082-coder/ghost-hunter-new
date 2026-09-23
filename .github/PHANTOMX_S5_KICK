@@ -1,8 +1,8 @@
-2026-09-23-s5-rpc-fleet-refresh-v16
+2026-09-23-s5-rpc-quarantine-verified-v17
 
 purpose=trigger one bounded Curve <-> Uniswap V3 current-head evidence run
 safety=read-only
 signing=false
 broadcast=false
 live_capital=false
-kick_id=2026-09-23-s5-artifact-fix-v15
+kick_id=2026-09-23-s5-rpc-quarantine-verified-v17
