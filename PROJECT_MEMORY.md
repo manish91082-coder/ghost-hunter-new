@@ -197,3 +197,7 @@ LIVE CAPITAL = LOCKED
 - S0 remains blocked until S5 produces terminal, complete declared-domain evidence and passes the separate economic certification gate.
 - data-plane-ci is absent and is not reported as GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## S5 #45 RPC REPAIR VERIFIED • 2026-09-23
+The ambiguous-revert/provider-reuse repair is committed at the verified HEAD and Phase-19 #1073 is GREEN. The next controlled action is a single fresh S5 read-only evidence run on this exact lineage. S5 certification remains blocked until coverage is complete.
+

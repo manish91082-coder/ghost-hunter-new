@@ -464,3 +464,12 @@ Missing lane = BLOCKED.
 - S0 remains blocked until S5 produces terminal, complete declared-domain evidence and passes the separate economic certification gate.
 - data-plane-ci is absent and is not reported as GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## LATEST AUTHORITATIVE SYNC • 2026-09-23 • FRESH S5 AFTER RPC REPAIR
+- Current branch: `phase-19-e2e-harness`.
+- Verified engineering HEAD before this kick: `fe3ecb1c1382fc900fb01ce166aa864b0c02a598`.
+- Phase-19 #1073 / 35874255822 is terminal GREEN.
+- Next active gate: one fresh S5 read-only run triggered from this exact verified lineage, followed by artifact forensic coverage/economic decision.
+- S0 remains blocked until S5 complete declared-domain evidence is certified.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+

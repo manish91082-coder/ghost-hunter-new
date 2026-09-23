@@ -206,3 +206,10 @@ No legacy v2/v3 runtime, obsolete configuration, generated trading logs, credent
 - S0 remains blocked until S5 produces terminal, complete declared-domain evidence and passes the separate economic certification gate.
 - data-plane-ci is absent and is not reported as GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT ENGINEERING STATE • 2026-09-23 • POST-REPAIR S5 KICK
+- Verified repair HEAD: fe3ecb1c1382fc900fb01ce166aa864b0c02a598.
+- Phase-19 #1073 is GREEN on exact HEAD.
+- Fresh S5 v21 is the sole admissible market-hunt generation from this lineage.
+- No search-space, loan frontier, economics, signing, broadcast or capital changes are introduced by the kick.
+

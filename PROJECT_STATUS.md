@@ -744,3 +744,14 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - S0 remains BLOCKED until S5 complete declared-domain evidence is certified.
 - data-plane-ci is absent and is not GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • S5 #45 RPC REPAIR VERIFIED
+- Current engineering HEAD: `fe3ecb1c1382fc900fb01ce166aa864b0c02a598` (`fix: close ambiguous RPC reuse gap`).
+- Phase-19 #1073 / run 35874255822 is terminal SUCCESS on this exact HEAD. All substantive jobs and the full Phase-19 unittest suite are GREEN.
+- S5 #45 / run 35867296643 on the parent HEAD remains non-certifying: 14 COMPLETE, 4 COMPLETE_NO_COMMON_ROUTE, 146 PARTIAL_INCOMPLETE, 532 observations, 0 gross-positive, best gross -4.452314 USDC, 5,339 retryable diagnostics.
+- The repair is CI-verified: ambiguous reason-less/Unexpected-error reverts require distinct-provider evidence for semantic consensus, and a failed provider is not reused on a second pass when only one provider was attempted.
+- Fresh S5 evidence is now triggered by this dedicated kick. No overlapping S5 generation is authorized.
+- S0 remains BLOCKED until S5 yields complete declared-domain evidence and separate economic certification.
+- data-plane-ci is absent and is not GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
