@@ -11,7 +11,7 @@ this module.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from time import monotonic, perf_counter
+from time import monotonic, perf_counter, sleep
 from threading import RLock
 from typing import Any, Mapping, Sequence
 from urllib.error import URLError
@@ -92,6 +92,7 @@ class PolygonRPCFailoverPool:
     failure_threshold: int = 2
     circuit_cooldown_seconds: float = 20.0
     provider_fatal_cooldown_seconds: float = 3600.0
+    provider_admission_wait_seconds: float = 5.0
     _states: dict[str, _State] = field(default_factory=dict, init=False, repr=False)
     _preferred_provider_id: str | None = field(default=None, init=False, repr=False)
     _history: list[RPCAttempt] = field(default_factory=list, init=False, repr=False)
@@ -106,6 +107,8 @@ class PolygonRPCFailoverPool:
             raise RPCPoolError("circuit cooldown must be positive")
         if self.provider_fatal_cooldown_seconds <= 0:
             raise RPCPoolError("provider fatal cooldown must be positive")
+        if self.provider_admission_wait_seconds <= 0:
+            raise RPCPoolError("provider admission wait must be positive")
         seen: set[str] = set()
         for record in self.records:
             if record.provider_id in seen:
@@ -246,6 +249,33 @@ class PolygonRPCFailoverPool:
             if recoverable and state.consecutive_failures >= self.failure_threshold:
                 state.circuit_open_until = monotonic() + self.circuit_cooldown_seconds
 
+    def _has_busy_usable_provider(self) -> bool:
+        """Return whether a healthy provider is temporarily saturated rather than unusable."""
+        now = monotonic()
+        with self._lock:
+            return any(
+                state.record.enabled
+                and state.record.chain_id == POLYGON_CHAIN_ID
+                and state.circuit_open_until <= now
+                and state.quarantined_until <= now
+                and state.health_score > 0
+                and state.in_flight >= state.record.max_concurrency
+                for state in self._states.values()
+            )
+
+    def _wait_for_provider_capacity(self) -> bool:
+        """Wait a bounded interval for a provider slot; never spin or retry indefinitely."""
+        deadline = monotonic() + self.provider_admission_wait_seconds
+        while True:
+            if self._ordered_eligible():
+                return True
+            if not self._has_busy_usable_provider():
+                return False
+            remaining = deadline - monotonic()
+            if remaining <= 0:
+                return False
+            sleep(min(0.05, remaining))
+
     def _call_internal(
         self,
         method: str,
@@ -259,17 +289,23 @@ class PolygonRPCFailoverPool:
 
         attempts: list[str] = []
         for round_index in range(2):
+            if not self._ordered_eligible():
+                self._wait_for_provider_capacity()
             eligible = self._ordered_eligible()
             if not eligible:
                 if round_index == 0:
                     self.reset_circuits()
+                    if not self._ordered_eligible():
+                        self._wait_for_provider_capacity()
                     eligible = self._ordered_eligible()
                 if not eligible:
                     break
 
+            reserved_any = False
             for state in eligible:
                 if not self._try_reserve(state):
                     continue
+                reserved_any = True
                 started = perf_counter()
                 try:
                     response = state.transport.call(method, params)
@@ -290,18 +326,46 @@ class PolygonRPCFailoverPool:
                     )
                     if self._provider_fatal(exc):
                         with self._lock:
-                            state.quarantined_until = max(state.quarantined_until, monotonic() + self.provider_fatal_cooldown_seconds)
+                            state.quarantined_until = max(
+                                state.quarantined_until,
+                                monotonic() + self.provider_fatal_cooldown_seconds,
+                            )
                     self._record_failure(state, str(exc), recoverable)
                     with self._lock:
-                        self._history.append(RPCAttempt(state.record.provider_id, False, recoverable, latency_ms, str(exc)))
+                        self._history.append(
+                            RPCAttempt(
+                                state.record.provider_id,
+                                False,
+                                recoverable,
+                                latency_ms,
+                                str(exc),
+                            )
+                        )
                         if self._preferred_provider_id == state.record.provider_id:
                             self._preferred_provider_id = None
-                    attempts.append(f"round={round_index + 1} {state.record.provider_id}: {type(exc).__name__}: {exc}")
+                    attempts.append(
+                        f"round={round_index + 1} {state.record.provider_id}: "
+                        f"{type(exc).__name__}: {exc}"
+                    )
                     if not recoverable:
                         raise
+
+            # A concurrent caller may claim every provider between eligibility
+            # discovery and reservation. Wait once for a bounded release rather
+            # than creating a false zero-attempt infrastructure failure.
+            if not reserved_any and self._wait_for_provider_capacity():
+                continue
             if round_index == 0:
                 self.reset_circuits()
-        raise RPCPoolError("all bounded Polygon RPC recovery passes failed: " + " | ".join(attempts))
+
+        if attempts:
+            raise RPCPoolError(
+                "all bounded Polygon RPC recovery passes failed: " + " | ".join(attempts)
+            )
+        raise RPCPoolError(
+            "all bounded Polygon RPC recovery passes failed: "
+            "provider admission wait exhausted"
+        )
     def call(self, method: str, params: Sequence[Any] = ()) -> Any:
         """Call one read using default fail-closed revert semantics."""
         return self._call_internal(method, params)

@@ -213,6 +213,52 @@ class RPCFailoverTests(unittest.TestCase):
             self.assertLessEqual(state.transport.call.call_count, 1)
 
 
+    def test_saturated_provider_pool_waits_for_capacity_without_zero_attempt_failure(self):
+        import threading
+        import time
+
+        records = (
+            PublicRPCRecord("p1", "https://p1.example", "f1", max_concurrency=1),
+        )
+        pool = PolygonRPCFailoverPool(
+            records=records,
+            provider_admission_wait_seconds=1.0,
+        )
+        started = threading.Event()
+        release = threading.Event()
+
+        def blocked_call(method, params):
+            started.set()
+            self.assertTrue(release.wait(timeout=1.0))
+            return {"result": "0x89"}
+
+        pool._states["p1"].transport.call = Mock(side_effect=blocked_call)
+        first_result, second_result, errors = [], [], []
+
+        def worker(target):
+            try:
+                target.append(pool.call("eth_chainId", []))
+            except Exception as exc:
+                errors.append(exc)
+
+        first = threading.Thread(target=worker, args=(first_result,))
+        first.start()
+        self.assertTrue(started.wait(timeout=1.0))
+
+        second = threading.Thread(target=worker, args=(second_result,))
+        second.start()
+        time.sleep(0.05)
+        release.set()
+
+        first.join(timeout=2)
+        second.join(timeout=2)
+
+        self.assertEqual(errors, [])
+        self.assertEqual(first_result, ["0x89"])
+        self.assertEqual(second_result, ["0x89"])
+        self.assertEqual(pool._states["p1"].transport.call.call_count, 2)
+
+
     def test_auth_or_paid_plan_failure_quarantines_provider(self):
         records = (
             PublicRPCRecord("p1", "https://p1.example", "f1"),
