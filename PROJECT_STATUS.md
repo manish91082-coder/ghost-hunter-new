@@ -806,3 +806,9 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - S0 remains blocked until S5 produces complete declared-domain evidence and passes the separate economic-certification gate.
 - data-plane-ci remains absent and is not GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • S5 #49 WORKFLOW-CHECK REPAIR
+- S5 #49 / run `35894615418` did not execute market scanning: exact-head verification failed because the newly added S5 workflow contained literal escaped shell variables.
+- No S5 market evidence was produced from #49; no coverage or market conclusion is inferred.
+- Surgical workflow correction is now pushed: shell variables are restored to runtime expansion semantics, and a fresh S5 kick v25 is included in the same repair push.
+- S0 remains blocked. LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.

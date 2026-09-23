@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: phantomx-market-read-hunts-\${{ github.workflow }}
+  group: phantomx-market-read-hunts-${{ github.workflow }}
   cancel-in-progress: true
 
 jobs:
@@ -30,11 +30,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "\${GITHUB_REPOSITORY}" = "manish91082-coder/ghost-hunter-new"
-          test "\${GITHUB_REF_NAME}" = "phase-19-e2e-harness"
-          test -n "\${GITHUB_SHA}"
-          test "\$(git rev-parse HEAD)" = "\${GITHUB_SHA}"
-          echo "EXACT_HEAD=\${GITHUB_SHA}"
+          test "${GITHUB_REPOSITORY}" = "manish91082-coder/ghost-hunter-new"
+          test "${GITHUB_REF_NAME}" = "phase-19-e2e-harness"
+          test -n "${GITHUB_SHA}"
+          test "\$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          echo "EXACT_HEAD=${GITHUB_SHA}"
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -55,7 +55,7 @@ jobs:
 
   advance-s0:
     name: Advance S5 -> S0 only on certified same-head completion
-    if: \${{ needs.s5-live-read.result == 'success' }}
+    if: ${{ needs.s5-live-read.result == 'success' }}
     needs:
       - s5-live-read
     runs-on: ubuntu-latest
@@ -64,19 +64,19 @@ jobs:
       - name: Checkout exact S5 head
         uses: actions/checkout@v5
         with:
-          ref: \${{ github.sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - name: Verify exact S5 head is still the current branch head
         shell: bash
         run: |
           set -euo pipefail
-          test "\${GITHUB_REPOSITORY}" = "manish91082-coder/ghost-hunter-new"
-          test "\${GITHUB_REF_NAME}" = "phase-19-e2e-harness"
-          test "\$(git rev-parse HEAD)" = "\${GITHUB_SHA}"
+          test "${GITHUB_REPOSITORY}" = "manish91082-coder/ghost-hunter-new"
+          test "${GITHUB_REF_NAME}" = "phase-19-e2e-harness"
+          test "\$(git rev-parse HEAD)" = "${GITHUB_SHA}"
           git fetch --no-tags origin phase-19-e2e-harness
-          test "\$(git rev-parse origin/phase-19-e2e-harness)" = "\${GITHUB_SHA}"
-          echo "SAME_HEAD_CERTIFICATION=\${GITHUB_SHA}"
+          test "\$(git rev-parse origin/phase-19-e2e-harness)" = "${GITHUB_SHA}"
+          echo "SAME_HEAD_CERTIFICATION=${GITHUB_SHA}"
 
       - name: Download same-run S5 evidence
         uses: actions/download-artifact@v4
@@ -93,10 +93,10 @@ jobs:
       - name: Verify S5 artifact provenance
         shell: bash
         env:
-          S5_HEAD_SHA: \${{ github.sha }}
+          S5_HEAD_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          python - "\${S5_HEAD_SHA}" <<'PY'
+          python - "${S5_HEAD_SHA}" <<'PY'
           import json
           import sys
           from pathlib import Path
@@ -112,16 +112,16 @@ jobs:
       - name: Check that no First-Hunt is already active
         shell: bash
         env:
-          GH_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           for status in in_progress queued; do
             count="\$(gh api \
               -H "Accept: application/vnd.github+json" \
-              "repos/\${GITHUB_REPOSITORY}/actions/workflows/first-hunt-live-read.yml/runs?branch=phase-19-e2e-harness&status=\${status}&per_page=100" \
+              "repos/${GITHUB_REPOSITORY}/actions/workflows/first-hunt-live-read.yml/runs?branch=phase-19-e2e-harness&status=${status}&per_page=100" \
               --jq '.total_count')"
-            echo "FIRST_HUNT_\${status^^}_COUNT=\${count}"
-            if [ "\${count}" != "0" ]; then
+            echo "FIRST_HUNT_${status^^}_COUNT=${count}"
+            if [ "${count}" != "0" ]; then
               echo "BLOCKED: an existing First-Hunt run is active; no overlapping S0 hunt will be dispatched."
               exit 2
             fi
@@ -130,12 +130,12 @@ jobs:
       - name: Dispatch S0 First-Hunt from the certified branch head
         shell: bash
         env:
-          GH_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           gh api --method POST \
             -H "Accept: application/vnd.github+json" \
-            "repos/\${GITHUB_REPOSITORY}/actions/workflows/first-hunt-live-read.yml/dispatches" \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/first-hunt-live-read.yml/dispatches" \
             -f ref=phase-19-e2e-harness
           echo "S0_FIRST_HUNT_DISPATCH=SUCCESS"
           echo "ADVANCEMENT=S5 certified -> S0 live-read dispatched"

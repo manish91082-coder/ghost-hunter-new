@@ -259,3 +259,9 @@ No legacy v2/v3 runtime, obsolete configuration, generated trading logs, credent
 - The zero-cost Polygon read fleet now uses the current official public QuickNode endpoint in place of deprecated keyless `polygon-rpc.com`.
 - Historical-state availability failures remain recoverable and task-local; they no longer poison provider-wide health/circuit state.
 - Existing bounded concurrency, two-provider ambiguous-revert consensus, fail-closed coverage, and read-only execution posture are unchanged.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • S5 #49 WORKFLOW-CHECK REPAIR
+- S5 #49 / run `35894615418` did not execute market scanning: exact-head verification failed because the newly added S5 workflow contained literal escaped shell variables.
+- No S5 market evidence was produced from #49; no coverage or market conclusion is inferred.
+- Surgical workflow correction is now pushed: shell variables are restored to runtime expansion semantics, and a fresh S5 kick v25 is included in the same repair push.
+- S0 remains blocked. LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
