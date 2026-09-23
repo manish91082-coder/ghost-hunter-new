@@ -660,3 +660,14 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Immediate gate is now a fresh controlled S5 read-only hunt from this exact verified HEAD using the dedicated `.github/PHANTOMX_S5_KICK` trigger. No S0 advance is permitted until S5 produces a terminal artifact and its coverage/economic evidence is forensically classified.
 - `data-plane-ci` is not present in this repository/workflow inventory and is therefore not reported as GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • S5 #39 FAILURE CLASSIFIED / ARTIFACT FIX VERIFIED
+
+- S5 #39 / run `35825969596` is terminal `FAILURE` on HEAD `4461122699180f5e839679cfe2706c95da079aa9`. The S5 job `107067636579` failed in the read-only hunt step and the publish step; no artifact was produced, so no market or profitability conclusion is accepted.
+- Static source inspection of the exact executable commit identified the deterministic failure: `main()` referenced the local `worker_count` variable from `_scan_rpc()` when constructing the final artifact. That name is out of scope in `main()`, so the process could fail after the scan work but before writing `artifacts/s5_curve_uv3_live_scan.json`.
+- Repair commit `0386af2e98e7d3ec6e6e7511c1fcfa2adc0b9aee` replaces that out-of-scope reference with a fresh bounded worker-count derivation from the actual 12-provider RPC fleet. No search-domain or economic acceptance rule changed.
+- Phase-19 #1060 / run `35828321870` is terminal `SUCCESS` on exact repair HEAD `0386af2e98e7d3ec6e6e7511c1fcfa2adc0b9aee`; compile, EVM integration, Polygon fork smoke, Polygon fork execution probe and full Phase-19 unittest suite are GREEN.
+- The current controlled market action is a fresh S5 run from this verified repair lineage. S0 remains locked behind S5 terminal artifact + coverage/economic forensic classification.
+- `data-plane-ci` is not present in the repository and is not reported as GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
