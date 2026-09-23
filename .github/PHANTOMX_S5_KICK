@@ -1,8 +1,9 @@
-2026-09-23-s5-rpc-health-repair-v23
+id="p6r4k2"
+2026-09-23-s5-rpc-capacity-repair-v24
 
-purpose=trigger one bounded Curve <-> Uniswap V3 current-head evidence run after verified ambiguous-revert provider-health repair
+purpose=trigger one bounded Curve <-> Uniswap V3 current-head evidence run after official QuickNode lane addition and task-local historical-state repair
 safety=read-only
 signing=false
 broadcast=false
 live_capital=false
-kick_id=2026-09-23-s5-rpc-health-repair-v23
+kick_id=2026-09-23-s5-rpc-capacity-repair-v24

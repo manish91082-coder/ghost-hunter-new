@@ -514,3 +514,13 @@ Missing lane = BLOCKED.
 - S0 remains blocked until S5 complete declared-domain evidence is certified.
 - data-plane-ci remains absent and is not GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • S5 #48 FORENSIC + RPC CAPACITY REPAIR
+- S5 #48 / run `35888656857` on `f645f6ce7bf0e14784437970cb3a758e4590b289` is terminal FAILURE with artifact `10765085719`.
+- Coverage improved materially versus #47: 45/164 terminal-complete tiles, 119 incomplete; retryable evaluations fell from 1,339 to 344. This remains incomplete evidence, not market-negative evidence.
+- Dominant residual: 257 single-provider ambiguous reason-less reverts became retryable because the remaining provider fleet was unavailable or quarantined at that instant.
+- Surgical repair pushed now: current official public QuickNode lane replaces deprecated keyless `polygon-rpc.com`; historical-state errors are task-local instead of provider-wide temporary quarantine. Regression coverage added.
+- Fresh S5 kick is now `2026-09-23-s5-rpc-capacity-repair-v24` on the repaired current HEAD.
+- S0 remains blocked until S5 produces complete declared-domain evidence and passes the separate economic-certification gate.
+- data-plane-ci remains absent and is not GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.

@@ -41,7 +41,7 @@ DEFAULT_FREE_POLYGON_RPC_POOL: tuple[PublicRPCRecord, ...] = (
     PublicRPCRecord("nodies-public", "https://polygon-public.nodies.app/", "nodies"),
     PublicRPCRecord("one-rpc-public", "https://1rpc.io/matic", "1rpc"),
     PublicRPCRecord("onfinality-public", "https://polygon.api.onfinality.io/public", "onfinality"),
-    PublicRPCRecord("polygon-public", "https://polygon-rpc.com", "polygon"),
+    # Polygon current official public list: use the public QuickNode lane; keyless polygon-rpc.com is deprecated.\n    PublicRPCRecord("quicknode-public", "https://rpc-mainnet.matic.quiknode.pro", "quicknode"),
     PublicRPCRecord("tatum-public", "https://polygon-mainnet.gateway.tatum.io/", "tatum"),
 )
 
@@ -227,7 +227,7 @@ class PolygonRPCFailoverPool:
 
     @staticmethod
     def _provider_temporary_failure(exc: BaseException) -> bool:
-        """Identify provider-local overload/capability failures that should be quarantined briefly."""
+        """Identify provider-local overload/access failures that should be quarantined briefly.\n\n        Historical-state availability is task-local because a provider may still serve\n        current/latest reads even when it cannot serve one pinned block.\n        """
         message = str(exc).lower()
         markers = (
             "status=403",

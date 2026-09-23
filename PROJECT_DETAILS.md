@@ -254,3 +254,8 @@ No legacy v2/v3 runtime, obsolete configuration, generated trading logs, credent
 - S0 remains blocked until S5 complete declared-domain evidence is certified.
 - data-plane-ci remains absent and is not GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE ARCHITECTURE SYNC • 2026-09-23 • RPC CAPACITY REPAIR
+- The zero-cost Polygon read fleet now uses the current official public QuickNode endpoint in place of deprecated keyless `polygon-rpc.com`.
+- Historical-state availability failures remain recoverable and task-local; they no longer poison provider-wide health/circuit state.
+- Existing bounded concurrency, two-provider ambiguous-revert consensus, fail-closed coverage, and read-only execution posture are unchanged.
