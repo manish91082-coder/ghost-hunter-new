@@ -97,6 +97,28 @@ class RPCFailoverTests(unittest.TestCase):
         pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
         self.assertEqual(pool.call("eth_chainId", []), "0x89")
         self.assertEqual(pool.history[-1].provider_id, "p2")
+    def test_ambiguous_revert_does_not_poison_provider_health(self):
+        records = (
+            PublicRPCRecord("p1", "https://p1.example", "f1"),
+        )
+        pool = PolygonRPCFailoverPool(
+            records=records,
+            failure_threshold=1,
+            circuit_cooldown_seconds=100,
+        )
+        response = {"error": {"code": 3, "message": "execution reverted"}}
+        pool._states["p1"].transport.call = Mock(return_value=response)
+
+        for _ in range(2):
+            with self.assertRaises(RPCPoolError):
+                pool.call_with_ambiguous_revert_failover("eth_call", [])
+
+        stats = {item["provider_id"]: item for item in pool.provider_stats()}
+        self.assertFalse(stats["p1"]["circuit_open"])
+        self.assertEqual(stats["p1"]["consecutive_failures"], 0)
+        self.assertAlmostEqual(stats["p1"]["health_score"], 1.0)
+        self.assertEqual(pool._states["p1"].transport.call.call_count, 2)
+
     def test_ambiguous_revert_consensus_stops_after_two_distinct_providers(self):
         records = (
             PublicRPCRecord("p1", "https://p1.example", "f1"),

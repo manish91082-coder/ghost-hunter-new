@@ -221,3 +221,14 @@ The ambiguous-revert/provider-reuse repair is committed at the verified HEAD and
 - S0 remains blocked until S5 complete declared-domain evidence is certified.
 - data-plane-ci remains absent and is not GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • S5 #47 AMBIGUOUS-REVERT PROVIDER-HEALTH ROOT CAUSE
+- S5 #47 / run 35882243231 on exact HEAD 183785170bdd7f96f2fc23d61eca557c1c754bb2 is terminal FAILURE with artifact 10762506820 (ZIP SHA256 945fb591777ad0d4991e681749f85dba03927f35cf7b926ab28c7f3e3b301f61).
+- Artifact: 164 tiles accounted; 30 complete (14 COMPLETE + 16 COMPLETE_NO_COMMON_ROUTE), 134 incomplete, 532 observations, 0 gross-positive, best gross -$4.452314 USDC, pair universe COMPLETE_RECENT_WINDOW.
+- Retryable failures: 1,339; terminal failures: 4,266. This is incomplete infrastructure evidence, not market-negative evidence.
+- Root cause isolated: ambiguous semantic execution reverts were being treated as recoverable provider-health failures, opening circuits/degrading health under concurrent S5 load and causing many single-provider recovery-exhaustion diagnostics.
+- Forensic slice: 1,194 retryable failures contain a single-provider generic execution reverted diagnostic. This is the target of the surgical repair.
+- Repair: ambiguous semantic reverts are now recorded for evidence but do not poison provider health/circuit state; they remain excluded only from the current bounded logical recovery pass and still require two distinct-provider consensus before terminal classification.
+- Dedicated forensic record: PHANTOMX_S5_47_FORENSIC_RPC_HEALTH_REPAIR_2026-09-23.md.
+- S0 remains blocked until S5 complete declared-domain evidence is certified.
+- data-plane-ci remains absent and is not GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.

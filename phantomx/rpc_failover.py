@@ -277,6 +277,13 @@ class PolygonRPCFailoverPool:
             state.last_success_monotonic = monotonic()
             state.last_error = None
 
+    def _record_ambiguous_revert(self, state: _State, message: str, latency_ms: float) -> None:
+        """Record ambiguous semantic evidence without poisoning provider health."""
+        with self._lock:
+            state.in_flight = max(0, state.in_flight - 1)
+            state.last_error = message
+            state.latency_ms = latency_ms
+
     def _record_failure(self, state: _State, message: str, recoverable: bool) -> None:
         with self._lock:
             state.in_flight = max(0, state.in_flight - 1)
@@ -381,6 +388,11 @@ class PolygonRPCFailoverPool:
                         exc,
                         allow_ambiguous_revert=allow_ambiguous_revert,
                     )
+                    ambiguous_revert = (
+                        recoverable
+                        and allow_ambiguous_revert
+                        and self._ambiguous_execution_revert(exc)
+                    )
                     if self._provider_fatal(exc):
                         with self._lock:
                             state.quarantined_until = max(
@@ -393,7 +405,13 @@ class PolygonRPCFailoverPool:
                                 state.quarantined_until,
                                 monotonic() + self.provider_temporary_cooldown_seconds,
                             )
-                    self._record_failure(state, str(exc), recoverable)
+                    if ambiguous_revert:
+                        # Ambiguous EVM reverts are route/call evidence, not proof
+                        # that the serving provider is unhealthy. Exclude this provider
+                        # only from this logical recovery pass.
+                        self._record_ambiguous_revert(state, str(exc), latency_ms)
+                    else:
+                        self._record_failure(state, str(exc), recoverable)
                     excluded_provider_ids.add(state.record.provider_id)
                     with self._lock:
                         self._history.append(
