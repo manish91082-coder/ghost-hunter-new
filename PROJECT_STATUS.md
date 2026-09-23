@@ -671,3 +671,19 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - The current controlled market action is a fresh S5 run from this verified repair lineage. S0 remains locked behind S5 terminal artifact + coverage/economic forensic classification.
 - `data-plane-ci` is not present in the repository and is not reported as GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • S5 #40 FORENSIC + RPC FLEET REFRESH / #41 ACTIVE
+
+- S5 #40 / run `35828560221` is terminal `FAILURE` on executable HEAD `0ffbead92163e0b23c9307e2979ee20344b78e18`, but it produced the required artifact successfully. Its scanner log shows the full declared dynamic tile set was enumerated as **164 tiles**, with **114 observations**, **0 gross-positive observations**, and best gross delta **-5.099125 USDC**. The scanner exited with code 2 because coverage remained incomplete; this is not a profitability certificate.
+- S5 #40 artifact publication is therefore repaired and proven: artifact `phantomx-s5-curve-uv3-live-scan` exists (artifact ID `10736628548`). No EconomicProof or production profitability claim was made.
+- The run evidence identified the current bottleneck as read-side provider exhaustion during the 164-tile scan, not artifact serialization. The scanner reached `S5 bounded parallel tile execution: tiles=164 workers=8 providers=12`, then completed with only 114 observations before the fail-closed incomplete-coverage exit.
+- Surgical RPC fleet refresh commit `45de5b1cc9229f5504b09e316d13bcf808ebb920` replaced the stale public-provider set with a refreshed Polygon public RPC fleet while preserving read-only, no-credential operation.
+- Phase-19 #1062 / run `35832773508` is terminal `SUCCESS` on exact RPC-refresh HEAD `45de5b1cc9229f5504b09e316d13bcf808ebb920`, including compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the full Phase-19 unittest suite.
+- Controlled S5 kick commit `c7fa452030d1a1f80568ee2e8f2071c1dea4e3ec` changed only `.github/PHANTOMX_S5_KICK` to `2026-09-23-s5-rpc-fleet-refresh-v16` and started S5 #41 from that verified executable lineage.
+- **S5 #41 / run `35832928044` is currently IN_PROGRESS** on exact executable HEAD `c7fa452030d1a1f80568ee2e8f2071c1dea4e3ec`. Setup, exact checkout, exact-head verification, Python, and Phase-19 dependencies are GREEN; the read-only market hunt step remains active and no artifact is yet available.
+- S5 #41 started at `2026-09-23T07:40:15Z`; it has not reached the configured 180-minute stale threshold and must not be cancelled or superseded merely because it is still running.
+- Phase-19 #1063 / run `35832927853` on the S5-kick HEAD is terminal `SUCCESS`.
+- Immediate admissible gate remains: S5 #41 terminalization -> artifact forensic inspection -> coverage classification -> economic classification -> certification or surgical repair -> exact-head verification -> next locked roadmap step (S0 only after S5 certification).
+- `data-plane-ci` is not present in the repository and is not reported as GREEN.
+- **LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.**
