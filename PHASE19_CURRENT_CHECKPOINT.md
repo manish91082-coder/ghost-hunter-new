@@ -63,3 +63,13 @@ No live Polygon RPC execution, private-key signing, transaction broadcast, priva
 `FAIL → FREEZE → FORENSIC → PATCH → REGRESSION → VERIFY → STATUS → NEXT`
 
 Implementation commit ≠ test proof ≠ fork proof ≠ production proof.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • S5 #43 FAILOVER FORENSIC + DISTINCT-PROVIDER REPAIR
+
+- S5 #43 / run 35855005029 on HEAD 4684559582686e5dd85722f1bed3b30687e50daf is terminal FAILURE with artifact 10747067711.
+- Artifact accounting: 164/164 tiles observed; 1 tile COMPLETE_NO_COMMON_ROUTE; 163 tiles PARTIAL_INCOMPLETE; 6,032 retryable failures; 6,232/6,232 evaluations accounted; 0 observations; 0 gross-positive; economic_certification=NOT_PERFORMED; profit_claim=NONE.
+- Forensic root cause after the prior admission repair: under concurrent tile load, a failed provider could be selected again in the next bounded recovery round while alternate healthy providers were temporarily saturated. This preserved request state but did not guarantee distinct-provider recovery.
+- Repair commit c372b7a22feba1207f1c19b0c948feadf86ff96c excludes already-attempted providers while another provider can become available, retains the bounded 5-second admission window, and only permits a second-pass reuse after the distinct-provider set is exhausted or unavailable for that bounded window. Regression coverage was added and Phase-19 #1069 / run 35863458425 is terminal SUCCESS with all jobs/steps GREEN.
+- Fresh S5 #44 is now the only admissible market-evidence gate. No S0 advancement and no economic/profitability conclusion until that run terminalizes with internally complete evidence.
+- data-plane-ci remains absent and is not GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
