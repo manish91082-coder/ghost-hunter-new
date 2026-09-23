@@ -232,3 +232,13 @@ The ambiguous-revert/provider-reuse repair is committed at the verified HEAD and
 - S0 remains blocked until S5 complete declared-domain evidence is certified.
 - data-plane-ci remains absent and is not GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • S5 RPC-HEALTH REPAIR VERIFIED
+- Repair commit `ceef15274b8c0765ad81383af054742bd116b51b` is the current engineering HEAD.
+- Phase-19 deterministic tests on this exact HEAD are GREEN (`35886670918`).
+- The verified repair prevents ambiguous reason-less reverts from degrading provider health/circuit state; consensus semantics and fail-closed coverage remain unchanged.
+- Fresh S5 trigger is committed through `.github/PHANTOMX_S5_KICK` as `2026-09-23-s5-rpc-health-repair-v23`.
+- Next admissible gate: fresh S5 terminal artifact -> coverage forensic -> retryable-failure comparison against #47 -> certification or one surgical repair.
+- S0 remains blocked until S5 complete declared-domain evidence is certified.
+- data-plane-ci remains absent and is not GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
