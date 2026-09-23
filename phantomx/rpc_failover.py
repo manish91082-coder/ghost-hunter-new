@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from time import monotonic, perf_counter
+from threading import RLock
 from typing import Any, Mapping, Sequence
 from urllib.error import URLError
 
@@ -92,6 +93,7 @@ class PolygonRPCFailoverPool:
     _states: dict[str, _State] = field(default_factory=dict, init=False, repr=False)
     _preferred_provider_id: str | None = field(default=None, init=False, repr=False)
     _history: list[RPCAttempt] = field(default_factory=list, init=False, repr=False)
+    _lock: RLock = field(default_factory=RLock, init=False, repr=False)
 
     def __post_init__(self) -> None:
         if not self.records:
@@ -124,42 +126,53 @@ class PolygonRPCFailoverPool:
 
     @property
     def history(self) -> tuple[RPCAttempt, ...]:
-        return tuple(self._history)
+        with self._lock:
+            return tuple(self._history)
 
     def provider_stats(self) -> tuple[dict[str, Any], ...]:
-        now = monotonic()
-        return tuple(
-            {
-                "provider_id": state.record.provider_id,
-                "family": state.record.family,
-                "health_score": round(state.health_score, 6),
-                "consecutive_failures": state.consecutive_failures,
-                "circuit_open": state.circuit_open_until > now,
-                "latency_ms": round(state.latency_ms, 3),
-                "last_error": state.last_error,
-            }
-            for state in sorted(self._states.values(), key=lambda item: item.record.provider_id)
-        )
+        with self._lock:
+            now = monotonic()
+            states = sorted(self._states.values(), key=lambda item: item.record.provider_id)
+            return tuple(
+                {
+                    "provider_id": state.record.provider_id,
+                    "family": state.record.family,
+                    "health_score": round(state.health_score, 6),
+                    "consecutive_failures": state.consecutive_failures,
+                    "circuit_open": state.circuit_open_until > now,
+                    "latency_ms": round(state.latency_ms, 3),
+                    "last_error": state.last_error,
+                }
+                for state in states
+            )
 
     def _ordered_eligible(self) -> list[_State]:
-        states = [state for state in self._states.values() if state.eligible]
-        states.sort(
-            key=lambda state: (
-                state.latency_ms if state.latency_ms > 0 else 10_000,
-                -state.health_score,
-                state.consecutive_failures,
-                state.record.provider_id,
+        with self._lock:
+            states = [state for state in self._states.values() if state.eligible]
+            states.sort(
+                key=lambda state: (
+                    state.latency_ms if state.latency_ms > 0 else 10_000,
+                    -state.health_score,
+                    state.consecutive_failures,
+                    state.record.provider_id,
+                )
             )
-        )
-        if self._preferred_provider_id is None:
-            return states
-        preferred = next(
-            (state for state in states if state.record.provider_id == self._preferred_provider_id),
-            None,
-        )
-        if preferred is None:
-            return states
-        return [preferred, *[state for state in states if state is not preferred]]
+            if self._preferred_provider_id is None:
+                return states
+            preferred = next(
+                (state for state in states if state.record.provider_id == self._preferred_provider_id),
+                None,
+            )
+            if preferred is None:
+                return states
+            return [preferred, *[state for state in states if state is not preferred]]
+
+    def _try_reserve(self, state: _State) -> bool:
+        with self._lock:
+            if not state.eligible:
+                return False
+            state.in_flight += 1
+            return True
 
     @staticmethod
     def _extract_result(response: Mapping[str, Any], method: str) -> Any:
@@ -206,20 +219,22 @@ class PolygonRPCFailoverPool:
         return any(marker in message for marker in markers)
 
     def _record_success(self, state: _State, latency_ms: float) -> None:
-        state.in_flight = max(0, state.in_flight - 1)
-        state.consecutive_failures = 0
-        state.health_score = min(1.0, state.health_score * 0.85 + 0.15)
-        state.latency_ms = latency_ms
-        state.last_success_monotonic = monotonic()
-        state.last_error = None
+        with self._lock:
+            state.in_flight = max(0, state.in_flight - 1)
+            state.consecutive_failures = 0
+            state.health_score = min(1.0, state.health_score * 0.85 + 0.15)
+            state.latency_ms = latency_ms
+            state.last_success_monotonic = monotonic()
+            state.last_error = None
 
     def _record_failure(self, state: _State, message: str, recoverable: bool) -> None:
-        state.in_flight = max(0, state.in_flight - 1)
-        state.consecutive_failures += 1
-        state.last_error = message
-        state.health_score = max(0.0, state.health_score * (0.65 if recoverable else 0.4))
-        if recoverable and state.consecutive_failures >= self.failure_threshold:
-            state.circuit_open_until = monotonic() + self.circuit_cooldown_seconds
+        with self._lock:
+            state.in_flight = max(0, state.in_flight - 1)
+            state.consecutive_failures += 1
+            state.last_error = message
+            state.health_score = max(0.0, state.health_score * (0.65 if recoverable else 0.4))
+            if recoverable and state.consecutive_failures >= self.failure_threshold:
+                state.circuit_open_until = monotonic() + self.circuit_cooldown_seconds
 
     def _call_internal(
         self,
@@ -243,7 +258,8 @@ class PolygonRPCFailoverPool:
                     break
 
             for state in eligible:
-                state.in_flight += 1
+                if not self._try_reserve(state):
+                    continue
                 started = perf_counter()
                 try:
                     response = state.transport.call(method, params)
@@ -252,8 +268,9 @@ class PolygonRPCFailoverPool:
                         raise RPCPoolError(f"eth_chainId: unexpected provider chain id {value}")
                     latency_ms = (perf_counter() - started) * 1000
                     self._record_success(state, latency_ms)
-                    self._preferred_provider_id = state.record.provider_id
-                    self._history.append(RPCAttempt(state.record.provider_id, True, False, latency_ms))
+                    with self._lock:
+                        self._preferred_provider_id = state.record.provider_id
+                        self._history.append(RPCAttempt(state.record.provider_id, True, False, latency_ms))
                     return value
                 except Exception as exc:
                     latency_ms = (perf_counter() - started) * 1000
@@ -262,9 +279,10 @@ class PolygonRPCFailoverPool:
                         allow_ambiguous_revert=allow_ambiguous_revert,
                     )
                     self._record_failure(state, str(exc), recoverable)
-                    self._history.append(RPCAttempt(state.record.provider_id, False, recoverable, latency_ms, str(exc)))
-                    if self._preferred_provider_id == state.record.provider_id:
-                        self._preferred_provider_id = None
+                    with self._lock:
+                        self._history.append(RPCAttempt(state.record.provider_id, False, recoverable, latency_ms, str(exc)))
+                        if self._preferred_provider_id == state.record.provider_id:
+                            self._preferred_provider_id = None
                     attempts.append(f"round={round_index + 1} {state.record.provider_id}: {type(exc).__name__}: {exc}")
                     if not recoverable:
                         raise
@@ -288,13 +306,15 @@ class PolygonRPCFailoverPool:
         )
 
     def failure_history(self) -> tuple[RPCAttempt, ...]:
-        return tuple(item for item in self._history if not item.success)
+        with self._lock:
+            return tuple(item for item in self._history if not item.success)
 
     def reset_circuits(self) -> None:
-        for state in self._states.values():
-            state.circuit_open_until = 0.0
-            state.consecutive_failures = 0
-        self._preferred_provider_id = None
+        with self._lock:
+            for state in self._states.values():
+                state.circuit_open_until = 0.0
+                state.consecutive_failures = 0
+            self._preferred_provider_id = None
 
 
 def build_free_polygon_rpc_pool() -> PolygonRPCFailoverPool:
