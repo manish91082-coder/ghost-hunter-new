@@ -12,13 +12,18 @@ from phantomx.rpc_failover import (
 
 class RPCFailoverTests(unittest.TestCase):
 
-    def test_current_free_pool_uses_official_quicknode_public_lane(self):
+    def test_current_free_pool_matches_declared_public_registry(self):
         providers = {record.provider_id: record for record in DEFAULT_FREE_POLYGON_RPC_POOL}
-        self.assertIn("quicknode-public", providers)
-        self.assertEqual(
-            providers["quicknode-public"].endpoint_url,
-            "https://rpc-mainnet.matic.quiknode.pro",
-        )
+        required = {
+            "drpc-public",
+            "tenderly-public",
+            "publicnode-public",
+            "nodies-public",
+            "one-rpc-public",
+            "onfinality-public",
+            "tatum-public",
+        }
+        self.assertTrue(required.issubset(providers))
         self.assertNotIn("polygon-public", providers)
 
     def test_first_provider_failure_switches_same_logical_request(self):
@@ -31,6 +36,30 @@ class RPCFailoverTests(unittest.TestCase):
         pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
         self.assertEqual(pool.call("eth_chainId", []), "0x89")
         self.assertEqual([item.provider_id for item in pool.history], ["p1", "p2"])
+
+    def test_single_ambiguous_revert_gets_one_bounded_same_provider_retry(self):
+        records = (
+            PublicRPCRecord("p1", "https://p1.example", "f1"),
+            PublicRPCRecord("p2", "https://p2.example", "f2"),
+        )
+        pool = PolygonRPCFailoverPool(
+            records=records,
+            provider_admission_wait_seconds=0.01,
+            ambiguous_revert_retry_delay_seconds=0.001,
+        )
+        response = {"error": {"code": 3, "message": "execution reverted"}}
+        pool._states["p1"].transport.call = Mock(side_effect=[
+            response,
+            {"result": "0x89"},
+        ])
+        pool._states["p2"].in_flight = 1
+
+        self.assertEqual(
+            pool.call_with_ambiguous_revert_failover("eth_call", []),
+            "0x89",
+        )
+        self.assertEqual(pool._states["p1"].transport.call.call_count, 2)
+        self.assertEqual(pool._states["p2"].transport.call.call_count, 0)
 
     def test_reasoned_rpc_execution_revert_is_not_retried_on_next_provider(self):
         records = (

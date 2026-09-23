@@ -272,3 +272,7 @@ No legacy v2/v3 runtime, obsolete configuration, generated trading logs, credent
 - No new S5 hunt is kicked until the exact repair HEAD receives GREEN Phase-19 verification.
 - S0 remains blocked until S5 complete declared-domain evidence is certified.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE ARCHITECTURE SYNC • 2026-09-23 • BOUNDED RPC SCARCITY RETRY
+- Provider registry tests are now tied to the active declared free-public pool rather than a single optional provider.
+- Ambiguous reason-less revert scarcity recovery uses one delayed same-provider retry only after alternate-provider capacity is exhausted; it remains non-terminal unless two distinct providers independently reproduce the ambiguity.

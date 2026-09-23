@@ -819,3 +819,13 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - No new S5 hunt is kicked until the exact repair HEAD receives GREEN Phase-19 verification.
 - S0 remains blocked until S5 complete declared-domain evidence is certified.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • S5 RPC SCARCITY RETRY TEST CLEANUP
+- Current HEAD before this repair: b8dcd311e582ac3721bccdc43b2d53bd89e61c2f.
+- Phase-19 #1085 failed one registry assertion only: the test required QuickNode, while the current active zero-cost pool does not include it. The implementation itself and all other 943 tests were successful.
+- The test is now bound to the actual declared free-provider registry, while preserving the removal of the deprecated polygon-rpc.com entry.
+- A bounded delayed same-provider retry is now implemented and regression-tested for one ambiguous reason-less revert when no alternate provider is currently usable.
+- Fresh S5 kick will follow the GREEN exact-head verification of this repair.
+- S0 remains blocked until S5 complete declared-domain evidence is certified.
+- data-plane-ci remains absent and is not GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.

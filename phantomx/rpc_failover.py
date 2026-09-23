@@ -98,6 +98,7 @@ class PolygonRPCFailoverPool:
     provider_fatal_cooldown_seconds: float = 3600.0
     provider_temporary_cooldown_seconds: float = 60.0
     provider_admission_wait_seconds: float = 5.0
+    ambiguous_revert_retry_delay_seconds: float = 1.0
     _states: dict[str, _State] = field(default_factory=dict, init=False, repr=False)
     _preferred_provider_id: str | None = field(default=None, init=False, repr=False)
     _history: list[RPCAttempt] = field(default_factory=list, init=False, repr=False)
@@ -116,6 +117,8 @@ class PolygonRPCFailoverPool:
             raise RPCPoolError("provider temporary cooldown must be positive")
         if self.provider_admission_wait_seconds <= 0:
             raise RPCPoolError("provider admission wait must be positive")
+        if self.ambiguous_revert_retry_delay_seconds <= 0:
+            raise RPCPoolError("ambiguous revert retry delay must be positive")
         seen: set[str] = set()
         for record in self.records:
             if record.provider_id in seen:
@@ -337,6 +340,7 @@ class PolygonRPCFailoverPool:
         attempts: list[str] = []
         excluded_provider_ids: set[str] = set()
         ambiguous_revert_providers: set[str] = set()
+        ambiguous_revert_retries: set[str] = set()
         for round_index in range(2):
             while True:
                 eligible = self._ordered_eligible(excluded_provider_ids)
@@ -351,9 +355,20 @@ class PolygonRPCFailoverPool:
                     if self._wait_for_provider_capacity(excluded_provider_ids):
                         continue
                 elif excluded_provider_ids:
-                    # Only retry the fleet after at least two distinct providers were
-                    # exercised. Never reuse a lone failed provider because alternates
-                    # are temporarily unavailable.
+                    # A lone ambiguous-revert provider is still healthy. When every
+                    # alternate is unavailable, allow exactly one delayed retry before
+                    # declaring bounded recovery exhausted.
+                    if (
+                        len(excluded_provider_ids) == 1
+                        and excluded_provider_ids == ambiguous_revert_providers
+                        and not ambiguous_revert_retries
+                    ):
+                        sleep(self.ambiguous_revert_retry_delay_seconds)
+                        ambiguous_revert_retries.update(excluded_provider_ids)
+                        excluded_provider_ids.clear()
+                        eligible = self._ordered_eligible()
+                        if eligible:
+                            continue
                     if len(excluded_provider_ids) >= 2:
                         excluded_provider_ids.clear()
                         if self._wait_for_provider_capacity():
