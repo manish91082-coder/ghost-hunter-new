@@ -645,3 +645,18 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - The optimized Curve quote-cache lineage is therefore now the executable basis for S5 #38. It remains market evidence only after S5 #38 produces a terminal artifact and passes the coverage/economic gates.
 - Immediate gate remains S5 #38 terminalization -> artifact forensic inspection -> coverage/economic classification -> certification/repair -> then S0.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • S5 PARALLEL EXECUTION REPAIR
+
+- S5 #38 / run `35765744935` is terminal `CANCELLED` after exceeding the bounded 180-minute envelope by a wide margin. GitHub job `106875057392` reached cancellation in the read-only hunt step; the artifact remained absent, so no market/economic conclusion is inferred.
+- The S5 #38 log evidence contained only the initial RPC-pool startup line before cancellation. This identifies the stall as occurring before the scanner produced a completed market artifact; it does not establish profitability or market coverage.
+- Surgical performance repair commit `d8ff7f568388e8587b8aa095091179518edbb6cd` makes the shared Polygon RPC failover pool thread-safe while preserving each provider's configured concurrency limit.
+- Phase-19 #1056 / run `35825024238` is terminal `SUCCESS` on `d8ff7f568388e8587b8aa095091179518edbb6cd`.
+- Surgical S5 scan repair commit `ece85458edf7935e7d977abb38f510b883a0e144` moves the exact existing S5 tile domain to bounded parallel tile evaluation, defaulting to 8 workers and capping workers at the 12-provider RPC fleet. Coverage, route, loan frontier, retry classification, economics and safety semantics are unchanged.
+- Phase-19 #1057 / run `35825507801` is terminal `SUCCESS` on `ece85458edf7935e7d977abb38f510b883a0e144`.
+- Regression commit `edcd32fc7a669ac1595c2cccb65d6e2143bec875` adds a concurrency test proving concurrent requests can overlap while each provider remains within its `max_concurrency=1` boundary. Phase-19 #1058 / run `35825727213` is terminal `SUCCESS`; all substantive Phase-19 job steps are GREEN.
+- Current branch HEAD is `edcd32fc7a669ac1595c2cccb65d6e2143bec875`.
+- Immediate gate is now a fresh controlled S5 read-only hunt from this exact verified HEAD using the dedicated `.github/PHANTOMX_S5_KICK` trigger. No S0 advance is permitted until S5 produces a terminal artifact and its coverage/economic evidence is forensically classified.
+- `data-plane-ci` is not present in this repository/workflow inventory and is therefore not reported as GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
