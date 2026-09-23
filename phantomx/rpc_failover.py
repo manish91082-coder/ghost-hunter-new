@@ -227,7 +227,11 @@ class PolygonRPCFailoverPool:
 
     @staticmethod
     def _provider_temporary_failure(exc: BaseException) -> bool:
-        """Identify provider-local overload/access failures that should be quarantined briefly.\n\n        Historical-state availability is task-local because a provider may still serve\n        current/latest reads even when it cannot serve one pinned block.\n        """
+        """Identify provider-local overload/access failures that should be quarantined briefly.
+
+        Historical-state availability is task-local because a provider may still serve
+        current/latest reads even when it cannot serve one pinned block.
+        """
         message = str(exc).lower()
         markers = (
             "status=403",
@@ -237,9 +241,6 @@ class PolygonRPCFailoverPool:
             "too many requests",
             "temporarily unavailable",
             "service unavailable",
-            "historical state",
-            "missing trie",
-            "pruned",
         )
         return any(marker in message for marker in markers)
 

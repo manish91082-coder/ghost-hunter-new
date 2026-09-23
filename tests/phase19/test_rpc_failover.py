@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from phantomx.rpc_failover import (
+    DEFAULT_FREE_POLYGON_RPC_POOL,
     PolygonRPCFailoverPool,
     PublicRPCRecord,
     RPCPoolError,

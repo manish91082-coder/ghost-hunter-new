@@ -812,3 +812,10 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - No S5 market evidence was produced from #49; no coverage or market conclusion is inferred.
 - Surgical workflow correction is now pushed: shell variables are restored to runtime expansion semantics, and a fresh S5 kick v25 is included in the same repair push.
 - S0 remains blocked. LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • RPC REPAIR CI CORRECTION
+- Phase-19 #1082 on `00f84b50...` exposed two self-inflicted regression assertions in the new RPC capacity repair: missing public-pool import in the test and historical-state quarantine behavior not yet removed from the implementation.
+- These are now surgically corrected. No scanner, strategy, economic, signer, broadcast, or capital semantics are changed.
+- No new S5 hunt is kicked until the exact repair HEAD receives GREEN Phase-19 verification.
+- S0 remains blocked until S5 complete declared-domain evidence is certified.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
