@@ -1,8 +1,8 @@
-2026-09-23-s5-rpc-quarantine-verified-v17
+2026-09-23-s5-bounded-admission-repair-v18
 
-purpose=trigger one bounded Curve <-> Uniswap V3 current-head evidence run
+purpose=trigger one bounded Curve <-> Uniswap V3 current-head evidence run after verified RPC admission repair
 safety=read-only
 signing=false
 broadcast=false
 live_capital=false
-kick_id=2026-09-23-s5-rpc-quarantine-verified-v17
+kick_id=2026-09-23-s5-bounded-admission-repair-v18

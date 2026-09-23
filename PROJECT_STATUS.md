@@ -698,3 +698,14 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - S5 worker count remains unchanged at the existing bounded default; no unverified throughput tuning is being introduced merely to mask coverage failures.
 - `data-plane-ci` is not present in the repository and is not reported as GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • S5 BOUNDED RPC ADMISSION REPAIR VERIFIED
+
+- Forensic inspection of S5 #42 artifact 10739953188 on exact scanner HEAD f0454f36d2a5c20742dbb02506072d061d221b22 showed 164/164 declared tiles accounted, but 0 completed, 164 incomplete, and 6,232/6,232 retryable evaluations. The artifact explicitly records economic_certification=NOT_PERFORMED and profit_claim=NONE. This was infrastructure/evidence failure, not market-negative evidence.
+- The dominant failure pattern was a concurrent RPC-pool admission race: 6,002 tile evaluations ended with an empty all-bounded-recovery error and zero provider attempts. With bounded tile parallelism, all healthy provider slots could be temporarily occupied by other workers, and the prior pool immediately converted temporary saturation into a false exhaustion result.
+- Surgical repair commit 3e84ff7e2ce2cb83701729a79c62a3f6dd9a03ca adds a bounded provider-admission wait (default 5 seconds) and explicitly distinguishes temporary provider-slot saturation from actual provider exhaustion. It cannot increase per-provider concurrency, cannot create unbounded retries, and remains fail-closed when the bounded admission window is exhausted.
+- Regression coverage adds a deterministic single-provider saturation test proving a second logical read waits for the bounded slot release and does not produce a zero-attempt false failure.
+- Exact-head Phase-19 run #1067 / 35854419968 is terminal SUCCESS on 3e84ff7e... Compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe, and the complete Phase-19 unittest job are GREEN.
+- The next admissible action is a fresh controlled S5 read-only hunt from this exact verified repair HEAD. No S0 advancement occurs until that S5 artifact is terminal, internally consistent, and complete for its declared domain.
+- data-plane-ci is absent from the repository and is not reported as GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.

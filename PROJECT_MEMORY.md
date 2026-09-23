@@ -164,3 +164,13 @@ LIVE CAPITAL = LOCKED
 - Phase-19 #1023 is GREEN on `dc2deb28...`. S5 #29 / `35635495324` is active on that exact HEAD.
 - Evidence record: `PHANTOMX_CONTROL_PLANE_TREE_REPAIR_EVIDENCE_2026-09-21.md`.
 - Production remains locked: LIVE SIGNING BLOCKED; PUBLIC BROADCAST BLOCKED; LIVE CAPITAL LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • BOUNDED RPC ADMISSION REPAIR
+
+- Verified engineering HEAD: 3e84ff7e2ce2cb83701729a79c62a3f6dd9a03ca.
+- S5 #42 forensic finding: complete tile/evaluation accounting existed, but 6,002 evaluations produced a zero-attempt bounded-RPC exhaustion message caused by temporary provider-slot saturation under concurrent tile execution.
+- Surgical repair adds bounded provider admission waiting without increasing provider concurrency or allowing unbounded retry/fan-out.
+- Phase-19 #1067 / run 35854419968 is GREEN on the repair HEAD.
+- A fresh S5 controlled kick from this verified HEAD is the immediate next market action.
+- No profitability, EconomicProof, or production authorization is inferred.
+- Safety locks remain: LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.

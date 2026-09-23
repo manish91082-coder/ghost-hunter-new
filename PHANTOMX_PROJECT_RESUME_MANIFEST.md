@@ -440,3 +440,16 @@ Missing lane = BLOCKED.
 - Dedicated incident evidence: `PHANTOMX_CONTROL_PLANE_TREE_REPAIR_EVIDENCE_2026-09-21.md`.
 - Safety invariant unchanged: LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
 - Next gate is S5 #29 terminal artifact inspection. Never promote read-only scan output directly to execution authorization.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • S5 RPC ADMISSION ROOT-CAUSE REPAIR
+
+- Canonical branch: phase-19-e2e-harness.
+- Verified engineering HEAD: 3e84ff7e2ce2cb83701729a79c62a3f6dd9a03ca.
+- S5 #42 / run 35837830127 is terminal FAILURE with a published artifact. Artifact forensic classification: 164/164 tiles accounted, 0 complete, 164 incomplete, 6,232 retryable evaluations, 0 observations. This is not market-negative evidence.
+- Root cause isolated to bounded concurrent RPC admission: 6,002 evaluations reached an exhaustion error with no recorded provider attempt because all temporarily healthy provider slots were occupied by sibling workers.
+- Repair 3e84ff7e... adds bounded provider-admission waiting and regression coverage; no provider max-concurrency increase, search-space reduction, or retry-bound expansion was introduced.
+- Exact-head Phase-19 #1067 / 35854419968 is terminal SUCCESS with all substantive jobs GREEN.
+- Fresh controlled S5 v18 is now admissible from the verified repair HEAD.
+- Immediate gate: S5 terminal artifact -> full coverage/evidence forensic -> certification or surgical repair -> only then S0.
+- data-plane-ci remains absent and is not GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
