@@ -174,3 +174,15 @@ LIVE CAPITAL = LOCKED
 - A fresh S5 controlled kick from this verified HEAD is the immediate next market action.
 - No profitability, EconomicProof, or production authorization is inferred.
 - Safety locks remain: LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • S5 #44 PROVIDER-POISONING FORENSIC REPAIR
+
+- S5 #44 / run 35863910575 on HEAD c2d93c28ee58c553516b0d067c5476069ebb4183 is terminal FAILURE with published artifact 10751961217.
+- Artifact: 164/164 tiles accounted; 3 complete; 161 incomplete; pair surface COMPLETE_RECENT_WINDOW; 5,636 retryable evaluations; 76 observations; 0 gross-positive; best gross -4.452314 USDC; economic_certification=NOT_PERFORMED; profit_claim=NONE.
+- Provider-diversity repair is verified as functioning; remaining dominant failure classes are provider-local 429/rate-limit and historical-state/capability failures.
+- Surgical repair adds 60-second temporary provider quarantine for those local conditions, while retaining long quarantine for authentication/paid-plan failures.
+- No search-domain, loan-frontier, concurrency-limit, retry-envelope, economics, signing, broadcast or capital change.
+- Exact-head Phase-19 #1070 / 35863910697 is GREEN on the pre-repair HEAD; post-repair verification is required before a fresh market hunt.
+- S0 remains blocked behind complete S5 evidence.
+- data-plane-ci absent and not GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.

@@ -342,5 +342,40 @@ class RPCFailoverTests(unittest.TestCase):
         self.assertTrue(stats["p1"]["quarantined"])
 
 
+    def test_rate_limited_provider_is_temporarily_quarantined(self):
+        records = (
+            PublicRPCRecord("p1", "https://p1.example", "f1"),
+            PublicRPCRecord("p2", "https://p2.example", "f2"),
+        )
+        pool = PolygonRPCFailoverPool(records=records, provider_temporary_cooldown_seconds=60)
+        pool._states["p1"].transport.call = Mock(
+            side_effect=Exception("HTTP transport failure status=429")
+        )
+        pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
+
+        self.assertEqual(pool.call("eth_chainId", []), "0x89")
+        stats = {item["provider_id"]: item for item in pool.provider_stats()}
+        self.assertTrue(stats["p1"]["quarantined"])
+        self.assertEqual(pool._states["p1"].transport.call.call_count, 1)
+        self.assertEqual(pool._states["p2"].transport.call.call_count, 1)
+
+    def test_historical_state_provider_is_temporarily_quarantined(self):
+        records = (
+            PublicRPCRecord("p1", "https://p1.example", "f1"),
+            PublicRPCRecord("p2", "https://p2.example", "f2"),
+        )
+        pool = PolygonRPCFailoverPool(records=records)
+        pool._states["p1"].transport.call = Mock(
+            side_effect=Exception("eth_call: RPC error historical state unavailable")
+        )
+        pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
+
+        self.assertEqual(pool.call("eth_call", []), "0x89")
+        stats = {item["provider_id"]: item for item in pool.provider_stats()}
+        self.assertTrue(stats["p1"]["quarantined"])
+        self.assertEqual(pool._states["p1"].transport.call.call_count, 1)
+        self.assertEqual(pool._states["p2"].transport.call.call_count, 1)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

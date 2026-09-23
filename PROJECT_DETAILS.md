@@ -183,3 +183,15 @@ No legacy v2/v3 runtime, obsolete configuration, generated trading logs, credent
 - S5 Curve ↔ Uniswap V3 has a dedicated `.github/PHANTOMX_S5_KICK` automatic trigger and no longer fires on general Curve, dynamic-pair, or Uniswap implementation changes.
 - This preserves zero-cost RPC discipline and avoids simultaneous unrelated hunters consuming the same public provider fleet.
 - No execution authorization, signer path, public broadcast path, or live-capital access is added by this control-plane change.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • S5 #44 PROVIDER-POISONING FORENSIC REPAIR
+
+- S5 #44 / run 35863910575 on HEAD c2d93c28ee58c553516b0d067c5476069ebb4183 is terminal FAILURE with published artifact 10751961217.
+- Artifact: 164/164 tiles accounted; 3 complete; 161 incomplete; pair surface COMPLETE_RECENT_WINDOW; 5,636 retryable evaluations; 76 observations; 0 gross-positive; best gross -4.452314 USDC; economic_certification=NOT_PERFORMED; profit_claim=NONE.
+- Provider-diversity repair is verified as functioning; remaining dominant failure classes are provider-local 429/rate-limit and historical-state/capability failures.
+- Surgical repair adds 60-second temporary provider quarantine for those local conditions, while retaining long quarantine for authentication/paid-plan failures.
+- No search-domain, loan-frontier, concurrency-limit, retry-envelope, economics, signing, broadcast or capital change.
+- Exact-head Phase-19 #1070 / 35863910697 is GREEN on the pre-repair HEAD; post-repair verification is required before a fresh market hunt.
+- S0 remains blocked behind complete S5 evidence.
+- data-plane-ci absent and not GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.

@@ -92,6 +92,7 @@ class PolygonRPCFailoverPool:
     failure_threshold: int = 2
     circuit_cooldown_seconds: float = 20.0
     provider_fatal_cooldown_seconds: float = 3600.0
+    provider_temporary_cooldown_seconds: float = 60.0
     provider_admission_wait_seconds: float = 5.0
     _states: dict[str, _State] = field(default_factory=dict, init=False, repr=False)
     _preferred_provider_id: str | None = field(default=None, init=False, repr=False)
@@ -107,6 +108,8 @@ class PolygonRPCFailoverPool:
             raise RPCPoolError("circuit cooldown must be positive")
         if self.provider_fatal_cooldown_seconds <= 0:
             raise RPCPoolError("provider fatal cooldown must be positive")
+        if self.provider_temporary_cooldown_seconds <= 0:
+            raise RPCPoolError("provider temporary cooldown must be positive")
         if self.provider_admission_wait_seconds <= 0:
             raise RPCPoolError("provider admission wait must be positive")
         seen: set[str] = set()
@@ -206,6 +209,24 @@ class PolygonRPCFailoverPool:
     def _provider_fatal(exc: BaseException) -> bool:
         message = str(exc).lower()
         return "status=401" in message or "paid plans only" in message or "api key required" in message or "authentication required" in message
+
+    @staticmethod
+    def _provider_temporary_failure(exc: BaseException) -> bool:
+        """Identify provider-local overload/capability failures that should be quarantined briefly."""
+        message = str(exc).lower()
+        markers = (
+            "status=403",
+            "status=408",
+            "status=429",
+            "rate limit",
+            "too many requests",
+            "temporarily unavailable",
+            "service unavailable",
+            "historical state",
+            "missing trie",
+            "pruned",
+        )
+        return any(marker in message for marker in markers)
 
     @staticmethod
     def _recoverable(exc: BaseException, *, allow_ambiguous_revert: bool = False) -> bool:
@@ -352,6 +373,12 @@ class PolygonRPCFailoverPool:
                             state.quarantined_until = max(
                                 state.quarantined_until,
                                 monotonic() + self.provider_fatal_cooldown_seconds,
+                            )
+                    elif self._provider_temporary_failure(exc):
+                        with self._lock:
+                            state.quarantined_until = max(
+                                state.quarantined_until,
+                                monotonic() + self.provider_temporary_cooldown_seconds,
                             )
                     self._record_failure(state, str(exc), recoverable)
                     excluded_provider_ids.add(state.record.provider_id)
