@@ -732,3 +732,15 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - S0 remains blocked until S5 produces terminal, complete declared-domain evidence and passes the separate economic certification gate.
 - data-plane-ci is absent and is not reported as GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • S5 #45 FORENSIC RPC REPAIR
+- Pre-repair HEAD: `25681ab5f2d13708575852aee560ad4df6c103c1`.
+- S5 #45 / run 35867296643 is terminal FAILURE; artifact 10755205451.
+- Artifact: 164 tiles, 14 COMPLETE, 4 COMPLETE_NO_COMMON_ROUTE, 146 PARTIAL_INCOMPLETE, 532 observations, 0 gross-positive, best gross -4.452314 USDC, 5,339 retryable diagnostics, economic_certification=NOT_PERFORMED, profit_claim=NONE.
+- Root cause: bounded second-pass provider exclusions could be cleared when only one provider had actually been exercised, enabling failed-provider reuse after alternates became unavailable.
+- Repair: explicit distinct-provider ambiguous-revert consensus plus no second-pass reuse when fewer than two providers were attempted. Regression tests added.
+- No search-space, Aave loan frontier, economics, signing, broadcast or capital controls changed.
+- Next gate: exact-head Phase-19 terminal GREEN, then one fresh S5 read-only run on that exact verified HEAD.
+- S0 remains BLOCKED until S5 complete declared-domain evidence is certified.
+- data-plane-ci is absent and is not GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.

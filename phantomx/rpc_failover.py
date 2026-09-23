@@ -50,6 +50,10 @@ class RPCPoolError(RuntimeError):
     """Raised when no remaining provider can satisfy a read request."""
 
 
+class RPCSemanticRevertConsensusError(RPCPoolError):
+    """Raised when distinct providers independently reproduce an ambiguous revert."""
+
+
 @dataclass
 class _State:
     record: PublicRPCRecord
@@ -206,6 +210,17 @@ class PolygonRPCFailoverPool:
         return response["result"]
 
     @staticmethod
+    def _ambiguous_execution_revert(exc: BaseException) -> bool:
+        """Return True only for a reason-less/"Unexpected error" EVM revert."""
+        message = str(exc).lower()
+        if "execution reverted" not in message:
+            return False
+        suffix = message.split("execution reverted", 1)[1].strip()
+        if suffix.startswith(":"):
+            suffix = suffix[1:].strip()
+        return suffix in {"", "unexpected error"}
+
+    @staticmethod
     def _provider_fatal(exc: BaseException) -> bool:
         message = str(exc).lower()
         return "status=401" in message or "paid plans only" in message or "api key required" in message or "authentication required" in message
@@ -242,11 +257,7 @@ class PolygonRPCFailoverPool:
             # must remain terminal. A reason-less revert is ambiguous because the
             # provider may have dropped the revert payload; only callers that
             # explicitly opt into ambiguous-revert recovery may fail over.
-            marker = "execution reverted"
-            suffix = message.split(marker, 1)[1].strip()
-            if suffix.startswith(":"):
-                suffix = suffix[1:].strip()
-            return allow_ambiguous_revert and suffix in {"", "unexpected error"}
+            return allow_ambiguous_revert and PolygonRPCFailoverPool._ambiguous_execution_revert(exc)
         markers = (
             "401", "402", "403", "408", "410", "429", "500", "502", "503", "504",
             "rate limit", "too many requests", "timeout",
@@ -317,6 +328,7 @@ class PolygonRPCFailoverPool:
 
         attempts: list[str] = []
         excluded_provider_ids: set[str] = set()
+        ambiguous_revert_providers: set[str] = set()
         for round_index in range(2):
             while True:
                 eligible = self._ordered_eligible(excluded_provider_ids)
@@ -331,15 +343,16 @@ class PolygonRPCFailoverPool:
                     if self._wait_for_provider_capacity(excluded_provider_ids):
                         continue
                 elif excluded_provider_ids:
-                    # A bounded second pass may reuse a provider only after every
-                    # previously attempted provider is excluded and no different
-                    # provider can become available within the admission window.
-                    excluded_provider_ids.clear()
-                    if self._wait_for_provider_capacity():
-                        continue
-                    eligible = self._ordered_eligible()
-                    if eligible:
-                        break
+                    # Only retry the fleet after at least two distinct providers were
+                    # exercised. Never reuse a lone failed provider because alternates
+                    # are temporarily unavailable.
+                    if len(excluded_provider_ids) >= 2:
+                        excluded_provider_ids.clear()
+                        if self._wait_for_provider_capacity():
+                            continue
+                        eligible = self._ordered_eligible()
+                        if eligible:
+                            break
                 break
 
             if not eligible:
@@ -398,6 +411,14 @@ class PolygonRPCFailoverPool:
                         f"round={round_index + 1} {state.record.provider_id}: "
                         f"{type(exc).__name__}: {exc}"
                     )
+                    if recoverable and self._ambiguous_execution_revert(exc):
+                        ambiguous_revert_providers.add(state.record.provider_id)
+                        if len(ambiguous_revert_providers) >= 2:
+                            providers = ", ".join(sorted(ambiguous_revert_providers))
+                            raise RPCSemanticRevertConsensusError(
+                                "ambiguous execution revert consensus across distinct "
+                                f"Polygon RPC providers: {providers}"
+                            )
                     if not recoverable:
                         raise
 

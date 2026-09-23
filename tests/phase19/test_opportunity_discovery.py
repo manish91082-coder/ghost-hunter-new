@@ -82,6 +82,20 @@ class OpportunityDiscoveryTests(unittest.TestCase):
         self.assertEqual(len(result.terminal_failures), 2)
         self.assertTrue(all(item.error_type == "RPCPoolError" for item in result.failures))
 
+    def test_ambiguous_revert_consensus_is_terminal(self):
+        from phantomx.rpc_failover import RPCSemanticRevertConsensusError
+        def evaluate(a, b, amount):
+            raise RPCSemanticRevertConsensusError(
+                "ambiguous execution revert consensus across distinct Polygon RPC providers: p1, p2"
+            )
+        result = discover_exact_opportunities(
+            token_pairs=((A, B),), loan_amounts=(100,), venue_path="Curve→UniswapV3",
+            evaluate_route=evaluate, continue_on_error=True,
+        )
+        self.assertEqual(len(result.retryable_failures), 0)
+        self.assertEqual(len(result.terminal_failures), 1)
+        self.assertEqual(result.terminal_failures[0].error_type, "RPCSemanticRevertConsensusError")
+
     def test_transport_rpc_pool_error_remains_retryable(self):
         from phantomx.rpc_failover import RPCPoolError
 

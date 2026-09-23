@@ -107,6 +107,8 @@ def _is_retryable_failure(exc: BaseException) -> bool:
         # execution reverted. Preserve that unresolved state for fail-closed
         # coverage handling instead of converting it into a semantic market verdict.
         message = str(current).lower()
+        if type(current).__name__ == "RPCSemanticRevertConsensusError":
+            return False
         if "all bounded polygon rpc recovery passes failed" in message:
             return True
         # Semantic EVM execution reverts are deterministic market/call outcomes

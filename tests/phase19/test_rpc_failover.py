@@ -1,7 +1,12 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from phantomx.rpc_failover import PolygonRPCFailoverPool, PublicRPCRecord, RPCPoolError
+from phantomx.rpc_failover import (
+    PolygonRPCFailoverPool,
+    PublicRPCRecord,
+    RPCPoolError,
+    RPCSemanticRevertConsensusError,
+)
 
 
 class RPCFailoverTests(unittest.TestCase):
@@ -92,7 +97,7 @@ class RPCFailoverTests(unittest.TestCase):
         pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
         self.assertEqual(pool.call("eth_chainId", []), "0x89")
         self.assertEqual(pool.history[-1].provider_id, "p2")
-    def test_all_ambiguous_reverts_are_reported_after_provider_exhaustion(self):
+    def test_ambiguous_revert_consensus_stops_after_two_distinct_providers(self):
         records = (
             PublicRPCRecord("p1", "https://p1.example", "f1"),
             PublicRPCRecord("p2", "https://p2.example", "f2"),
@@ -101,10 +106,26 @@ class RPCFailoverTests(unittest.TestCase):
         response = {"error": {"code": 3, "message": "execution reverted: Unexpected error"}}
         pool._states["p1"].transport.call = Mock(return_value=response)
         pool._states["p2"].transport.call = Mock(return_value=response)
-        with self.assertRaises(RPCPoolError):
+        with self.assertRaises(RPCSemanticRevertConsensusError):
             pool.call_with_ambiguous_revert_failover("eth_call", [])
-        self.assertEqual(len(pool.history), 4)
+        self.assertEqual([item.provider_id for item in pool.history], ["p1", "p2"])
         self.assertTrue(all(item.recoverable for item in pool.history))
+        pool._states["p1"].transport.call.assert_called_once()
+        pool._states["p2"].transport.call.assert_called_once()
+
+    def test_failed_provider_is_not_reused_when_alternates_are_unavailable(self):
+        records = (
+            PublicRPCRecord("p1", "https://p1.example", "f1"),
+            PublicRPCRecord("p2", "https://p2.example", "f2"),
+        )
+        pool = PolygonRPCFailoverPool(records=records, provider_admission_wait_seconds=0.01)
+        pool._states["p2"].in_flight = 1
+        pool._states["p1"].transport.call = Mock(side_effect=TimeoutError("timeout"))
+        pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
+        with self.assertRaises(RPCPoolError):
+            pool.call("eth_chainId", [])
+        self.assertEqual(pool._states["p1"].transport.call.call_count, 1)
+        self.assertEqual(pool._states["p2"].transport.call.call_count, 0)
 
     def test_all_rpc_reverts_are_terminal_by_default(self):
         records = (
