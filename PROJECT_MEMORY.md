@@ -186,3 +186,14 @@ LIVE CAPITAL = LOCKED
 - S0 remains blocked behind complete S5 evidence.
 - data-plane-ci absent and not GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • S5 #45 FRESH GENERATION LAUNCHED
+
+- Post-repair deterministic verification is complete: Phase-19 #1071 / run 35866369537 is terminal SUCCESS on exact engineering HEAD caae9895cabbbf1a93bc6112f4475842cb852f7b. Compile, EVM integration, Polygon fork protocol smoke, Polygon fork execution probe and the full unittest suite are GREEN.
+- S5 #44 / run 35863910575 is terminal FAILURE with artifact 10751961217. Its 164-tile scan produced 76 observations, 0 gross-positive observations and best gross -4.452314 USDC, but coverage was incomplete: 3 complete and 161 incomplete tiles with 5,636 retryable failures. economic_certification=NOT_PERFORMED and profit_claim=NONE. This is not a complete market certificate.
+- The #44 forensic repair added bounded 60-second provider-local quarantine for rate-limit/service-unavailable and historical-state/pruned provider failures while preserving distinct-provider failover, per-provider concurrency, bounded recovery, search domain, loan frontier and economic gates.
+- Controlled S5 #45 has now been triggered from the exact verified post-repair lineage through .github/PHANTOMX_S5_KICK.
+- S5 #45 is the sole active market-hunt lane; no overlapping S5 generation is authorized.
+- S0 remains blocked until S5 produces terminal, complete declared-domain evidence and passes the separate economic certification gate.
+- data-plane-ci is absent and is not reported as GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
