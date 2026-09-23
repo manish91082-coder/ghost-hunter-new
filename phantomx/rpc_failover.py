@@ -31,19 +31,18 @@ class PublicRPCRecord:
     chain_id: int = POLYGON_CHAIN_ID
 
 
+# Public Polygon PoS endpoints verified against the current Polygon RPC endpoint
+# documentation/static registry on 2026-09-23. No API keys or credentials are embedded.
+# Public endpoints remain best-effort and may impose rate/traffic limits.
 DEFAULT_FREE_POLYGON_RPC_POOL: tuple[PublicRPCRecord, ...] = (
     PublicRPCRecord("drpc-public", "https://polygon.drpc.org/", "drpc"),
-    PublicRPCRecord("publicnode-bor", "https://polygon-bor-rpc.publicnode.com", "publicnode"),
-    PublicRPCRecord("one-rpc-public", "https://public.1rpc.io/matic", "1rpc"),
-    PublicRPCRecord("blast-public", "https://polygon-mainnet.public.blastapi.io", "blast"),
-    PublicRPCRecord("blockpi-public", "https://polygon.blockpi.network/v1/rpc/public", "blockpi"),
+    PublicRPCRecord("tenderly-public", "https://tenderly.rpc.polygon.community", "tenderly"),
+    PublicRPCRecord("publicnode-public", "https://polygon.publicnode.com", "publicnode"),
+    PublicRPCRecord("nodies-public", "https://polygon-public.nodies.app/", "nodies"),
+    PublicRPCRecord("one-rpc-public", "https://1rpc.io/matic", "1rpc"),
     PublicRPCRecord("onfinality-public", "https://polygon.api.onfinality.io/public", "onfinality"),
-    PublicRPCRecord("omnia-public", "https://endpoints.omniatech.io/v1/matic/mainnet/public", "omnia"),
-    PublicRPCRecord("subquery-public", "https://polygon.rpc.subquery.network/public", "subquery"),
-    PublicRPCRecord("llamanodes-public", "https://polygon.llamarpc.com", "llamanodes"),
-    PublicRPCRecord("polkachu-public", "https://polygon-rpc.polkachu.com", "polkachu"),
-    PublicRPCRecord("unifra-public", "https://polygon-mainnet-public.unifra.io", "unifra"),
-    PublicRPCRecord("croswap-public", "https://polygon.croswap.com/rpc", "croswap"),
+    PublicRPCRecord("polygon-public", "https://polygon-rpc.com", "polygon"),
+    PublicRPCRecord("tatum-public", "https://polygon-mainnet.gateway.tatum.io/", "tatum"),
 )
 
 
