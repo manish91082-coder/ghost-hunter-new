@@ -9,19 +9,18 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: write
   contents: read
 
 concurrency:
-  group: phantomx-market-read-hunts-${{ github.workflow }}
-  # Only one S5 market hunt may exist at a time. A newer controlled kick
-  # supersedes a stale/older hunt rather than remaining indefinitely queued.
+  group: phantomx-market-read-hunts-\${{ github.workflow }}
   cancel-in-progress: true
 
 jobs:
   s5-live-read:
     name: S5 Curve <-> Uniswap V3
     runs-on: ubuntu-latest
-    # The corrected scoped-revert hunt can exceed the old 60-minute envelope.\n    # Preserve the full bounded market domain rather than silently truncating it.\n    timeout-minutes: 180
+    timeout-minutes: 180
     steps:
       - name: Checkout exact branch head
         uses: actions/checkout@v5
@@ -31,11 +30,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "${GITHUB_REPOSITORY}" = "manish91082-coder/ghost-hunter-new"
-          test "${GITHUB_REF_NAME}" = "phase-19-e2e-harness"
-          test -n "${GITHUB_SHA}"
-          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
-          echo "EXACT_HEAD=${GITHUB_SHA}"
+          test "\${GITHUB_REPOSITORY}" = "manish91082-coder/ghost-hunter-new"
+          test "\${GITHUB_REF_NAME}" = "phase-19-e2e-harness"
+          test -n "\${GITHUB_SHA}"
+          test "\$(git rev-parse HEAD)" = "\${GITHUB_SHA}"
+          echo "EXACT_HEAD=\${GITHUB_SHA}"
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -53,7 +52,90 @@ jobs:
           name: phantomx-s5-curve-uv3-live-scan
           path: artifacts/s5_curve_uv3_live_scan.json
           if-no-files-found: error
-# current-head refresh trigger: 2026-09-21 after S3 completion
-# current-head clean rerun trigger: 2026-09-21 after Curve pair-surface repair
-# current-head bounded proof rerun: 2026-09-21 after S9/S10 evidence sync
-# current-head tree-integrity correction rerun: 2026-09-21 after atomic tree repair
+
+  advance-s0:
+    name: Advance S5 -> S0 only on certified same-head completion
+    if: \${{ needs.s5-live-read.result == 'success' }}
+    needs:
+      - s5-live-read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact S5 head
+        uses: actions/checkout@v5
+        with:
+          ref: \${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Verify exact S5 head is still the current branch head
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "\${GITHUB_REPOSITORY}" = "manish91082-coder/ghost-hunter-new"
+          test "\${GITHUB_REF_NAME}" = "phase-19-e2e-harness"
+          test "\$(git rev-parse HEAD)" = "\${GITHUB_SHA}"
+          git fetch --no-tags origin phase-19-e2e-harness
+          test "\$(git rev-parse origin/phase-19-e2e-harness)" = "\${GITHUB_SHA}"
+          echo "SAME_HEAD_CERTIFICATION=\${GITHUB_SHA}"
+
+      - name: Download same-run S5 evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: phantomx-s5-curve-uv3-live-scan
+          path: artifacts/s5
+
+      - name: Validate S5 completion contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/validate_s5_gate.py artifacts/s5/s5_curve_uv3_live_scan.json
+
+      - name: Verify S5 artifact provenance
+        shell: bash
+        env:
+          S5_HEAD_SHA: \${{ github.sha }}
+        run: |
+          set -euo pipefail
+          python - "\${S5_HEAD_SHA}" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          expected = sys.argv[1]
+          payload = json.loads(Path("artifacts/s5/s5_curve_uv3_live_scan.json").read_text(encoding="utf-8"))
+          actual = payload["provenance"]["git_commit_sha"]
+          if actual != expected:
+              raise SystemExit(f"BLOCKED: artifact provenance {actual} != current S5 head {expected}")
+          print(f"S5_ARTIFACT_HEAD={actual}")
+          PY
+
+      - name: Check that no First-Hunt is already active
+        shell: bash
+        env:
+          GH_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          for status in in_progress queued; do
+            count="\$(gh api \
+              -H "Accept: application/vnd.github+json" \
+              "repos/\${GITHUB_REPOSITORY}/actions/workflows/first-hunt-live-read.yml/runs?branch=phase-19-e2e-harness&status=\${status}&per_page=100" \
+              --jq '.total_count')"
+            echo "FIRST_HUNT_\${status^^}_COUNT=\${count}"
+            if [ "\${count}" != "0" ]; then
+              echo "BLOCKED: an existing First-Hunt run is active; no overlapping S0 hunt will be dispatched."
+              exit 2
+            fi
+          done
+
+      - name: Dispatch S0 First-Hunt from the certified branch head
+        shell: bash
+        env:
+          GH_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh api --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "repos/\${GITHUB_REPOSITORY}/actions/workflows/first-hunt-live-read.yml/dispatches" \
+            -f ref=phase-19-e2e-harness
+          echo "S0_FIRST_HUNT_DISPATCH=SUCCESS"
+          echo "ADVANCEMENT=S5 certified -> S0 live-read dispatched"
