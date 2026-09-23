@@ -15,6 +15,16 @@ class S5CoverageClassificationTests(unittest.TestCase):
         exc = RuntimeError("Curve returned zero output")
         self.assertEqual(classify_s5_tile_failure(exc), "COMPLETE_NO_COMMON_ROUTE")
 
+    def test_ambiguous_revert_consensus_is_terminal_no_route(self) -> None:
+        exc = RuntimeError(
+            "ambiguous execution revert consensus across distinct Polygon RPC providers: drpc-public, tenderly-public"
+        )
+        self.assertEqual(classify_s5_tile_failure(exc), "COMPLETE_NO_COMMON_ROUTE")
+
+    def test_spl_execution_revert_is_terminal_no_route(self) -> None:
+        exc = RuntimeError("eth_call: RPC error code=3 message=execution reverted: SPL")
+        self.assertEqual(classify_s5_tile_failure(exc), "COMPLETE_NO_COMMON_ROUTE")
+
     def test_generic_execution_revert_is_incomplete(self) -> None:
         exc = RuntimeError("eth_call: RPC error code=3 message=execution reverted")
         self.assertEqual(classify_s5_tile_failure(exc), "PARTIAL_INCOMPLETE")

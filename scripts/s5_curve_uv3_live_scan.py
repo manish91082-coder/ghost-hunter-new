@@ -123,6 +123,8 @@ def classify_s5_tile_failure(exc: BaseException) -> str:
         "seeded curve pool does not contain requested token pair",
         "no pair",
         "required route pool is unavailable",
+        "ambiguous execution revert consensus across distinct polygon rpc providers",
+        "rpc error code=3 message=execution reverted: spl",
     )
     return "COMPLETE_NO_COMMON_ROUTE" if any(marker in message for marker in terminal_markers) else "PARTIAL_INCOMPLETE"
 

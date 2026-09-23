@@ -755,3 +755,14 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - data-plane-ci is absent and is not GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
 
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-23 • S5 #46 FORENSIC CLASSIFICATION PARITY
+- S5 #46 / run 35875307284 on exact HEAD `acf96579c03ef05dcc1457ac66573e3fc8f50b09` is terminal FAILURE with artifact `10759348462` (ZIP SHA256 `520478e6d1dc2d292d38535177fe1ce5993fe65ee02e212adc4766ed9756ff40`).
+- Artifact forensic result: 164 tiles accounted; 14 COMPLETE + 2 COMPLETE_NO_COMMON_ROUTE = 16 complete; 148 incomplete; 532 observations; 0 gross-positive; best gross `-$4.452314` USDC; pair universe `COMPLETE_RECENT_WINDOW`; economic_certification=`NOT_PERFORMED`; profit_claim=`NONE`.
+- The scan recorded 1,319 retryable and 4,288 terminal failures. This is incomplete infrastructure evidence, not market-negative evidence.
+- Root cause isolated for the surgical next repair: `RPCSemanticRevertConsensusError` is terminal in OpportunityDiscovery but its message was missing from the S5 tile classifier terminal-marker set. One 38/38 terminal-consensus tile was therefore misclassified PARTIAL_INCOMPLETE; `execution reverted: SPL` also lacked explicit parity.
+- Repair is limited to S5 classification parity plus deterministic regression tests. Remaining retryable RPC failures are deliberately left unresolved for separate evidence.
+- Dedicated forensic record: `PHANTOMX_S5_46_FORENSIC_CLASSIFICATION_REPAIR_2026-09-23.md`.
+- S0 remains blocked until S5 complete declared-domain evidence is certified.
+- data-plane-ci remains absent and is not GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
