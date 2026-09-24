@@ -888,3 +888,13 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - S0 remains blocked until S5 complete declared-domain evidence and the separate economic-certification gate both pass.
 - data-plane-ci remains absent and is not GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-24 • S5 V32 FORENSIC + SCOPED-RPC REFERENCE REPAIR
+- S5 v32 / run `35972840689` on `57f671aaae65215837d484c2792849db8f518200` failed before market evidence because the scanner crashed with `NameError: name 'selected_block' is not defined`; no S5 artifact was produced.
+- Exact v32 Phase-19 run `35972840695` was GREEN, proving the failure was in the live scanner path rather than deterministic tests.
+- The v32 failure exposed stale references introduced by the recent historical-scope refactor: `selected_block` / `selected_lag` were not carried into artifact scope, and the scanner lacked scoped `curve`/`uv3` objects after rebuilding the failover pool.
+- Surgical repair commit `fc7126c6f44fe1b13680386843c1a280bc35edd1` fixes the scoped scanner references and binds pair-surface discovery plus quote clients to the selected historical RPC scope. Exact-head Phase-19 run `35973356615` is GREEN.
+- Fresh S5 v33 kick is now issued from the repaired head. v33 will be the first clean market-evidence run combining the bounded historical-provider scope selection with the dual-lane RPC concurrency.
+- S0 remains blocked until S5 produces complete declared-domain evidence and the separate economic-certification gate passes.
+- data-plane-ci remains absent and is not GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.

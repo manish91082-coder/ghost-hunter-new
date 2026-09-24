@@ -296,3 +296,9 @@ The ambiguous-revert/provider-reuse repair is committed at the verified HEAD and
 - v31 continued to show historical-state and ambiguous-revert scarcity despite the historical-health repair. Provider telemetry showed dRPC, PublicNode and Tenderly carrying the usable workload while Nodies/1RPC/OnFinality/Tatum were quarantined or paid-only.
 - Production pool default max_concurrency is now 2, providing two bounded lanes per public provider. Exact-head Phase-19 `35972538279` is GREEN.
 - v32 must be evaluated as a controlled concurrency-only experiment; do not interpret its result until the terminal artifact is forensically compared with v31.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-24 • S5 V32 FORENSIC + SCOPED-RPC REFERENCE REPAIR
+- S5 v32 run `35972840689` produced no artifact because the scanner crashed with `NameError: selected_block is not defined` after setup; this is not market evidence.
+- The deterministic Phase-19 lane remained GREEN at `35972840695`.
+- Repair `fc7126c6f44fe1b13680386843c1a280bc35edd1` creates the scoped Curve/Uniswap V3 quote clients on the selected RPC pool, routes pair-surface discovery through that same pool, and sources artifact block metadata from the scan result.
+- v33 is the first admissible market run after this repair and still carries the v32 dual-lane provider concurrency change.

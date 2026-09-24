@@ -1,9 +1,9 @@
-id="r7q1x5"
-2026-09-24-s5-dual-rpc-lane-v32
+id="r8s2z6"
+2026-09-24-s5-scoped-rpc-reference-repair-v33
 
-purpose=retry S5 after bounded dual-lane public RPC repair; isolate provider-admission scarcity while preserving v30 recent-block pin and read-only fail-closed evidence
+purpose=fresh S5 market-evidence run after repairing the scoped historical-RPC refactor; preserve dual-lane provider concurrency and fail-closed read-only certification
 safety=read-only
 signing=false
 broadcast=false
 live_capital=false
-kick_id=2026-09-24-s5-dual-rpc-lane-v32
+kick_id=2026-09-24-s5-scoped-rpc-reference-repair-v33
