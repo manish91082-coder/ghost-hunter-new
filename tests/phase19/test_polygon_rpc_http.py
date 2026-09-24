@@ -87,6 +87,41 @@ class PolygonRPCHTTPTests(unittest.TestCase):
         self.assertNotIn("secret endpoint detail", str(ctx.exception))
         self.assertNotIn("example.invalid", str(ctx.exception))
 
+    def test_concurrent_calls_validate_their_own_response_ids(self):
+        import threading
+        import time
+
+        transport = self._transport()
+        barrier = threading.Barrier(2)
+
+        def fake_urlopen(request, timeout):
+            payload = json.loads(request.data.decode("utf-8"))
+            barrier.wait(timeout=2)
+            time.sleep(0.01)
+            return _FakeResponse({
+                "jsonrpc": "2.0",
+                "id": payload["id"],
+                "result": payload["method"],
+            })
+
+        results, errors = [], []
+        with patch("phantomx.polygon_rpc_http.urlopen", side_effect=fake_urlopen):
+            def worker(method):
+                try:
+                    results.append(transport(method)["result"])
+                except Exception as exc:
+                    errors.append(exc)
+
+            first = threading.Thread(target=worker, args=("eth_chainId",))
+            second = threading.Thread(target=worker, args=("eth_blockNumber",))
+            first.start()
+            second.start()
+            first.join(timeout=2)
+            second.join(timeout=2)
+
+        self.assertEqual(errors, [])
+        self.assertCountEqual(results, ["eth_chainId", "eth_blockNumber"])
+
     def test_response_id_mismatch_is_rejected(self):
         transport = self._transport()
         with patch("phantomx.polygon_rpc_http.urlopen", return_value=_FakeResponse({"jsonrpc": "2.0", "id": 2, "result": "0x89"})):
