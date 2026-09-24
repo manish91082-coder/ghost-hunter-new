@@ -53,6 +53,7 @@ class RPCFailoverTests(unittest.TestCase):
             {"result": "0x89"},
         ])
         pool._states["p2"].in_flight = 1
+        pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
 
         self.assertEqual(
             pool.call_with_ambiguous_revert_failover("eth_call", []),
