@@ -1,9 +1,9 @@
-id="r5n9v3"
-2026-09-24-s5-historical-rpc-health-repair-v29
+id="r6p0w4"
+2026-09-24-s5-recent-block-pin-v31
 
-purpose=retry S5 after surgical isolation of historical-state RPC failures from provider-wide health/circuit degradation; preserve read-only evidence and fail-closed coverage certification
+purpose=retry S5 after bounded recent market-block pin repair to reduce free-RPC historical-state scarcity while preserving one canonical Polygon block per hunt
 safety=read-only
 signing=false
 broadcast=false
 live_capital=false
-kick_id=2026-09-24-s5-historical-rpc-health-repair-v29
+kick_id=2026-09-24-s5-recent-block-pin-v31

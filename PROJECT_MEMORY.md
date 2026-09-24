@@ -282,3 +282,11 @@ The ambiguous-revert/provider-reuse repair is committed at the verified HEAD and
 - Surgical fix committed in `6c2c2f6e9690dd034429176bc4cd5f31cdd87073` with regression lock in `a57e0c09b8919407e8b65a539df14de963c85fbe`.
 - Exact-head Phase-19 run `35958921517` is GREEN.
 - The next admissible gate is a fresh S5 v29 artifact. Incomplete S5 evidence must never be interpreted as market-negative evidence.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-24 • S5 V29 FORENSIC + V30 BLOCK PIN POLICY
+- S5 v29 exact artifact `10792550440`: 164/164 observed, 21 complete, 143 incomplete, pair universe `COMPLETE_RECENT_WINDOW`, 418 observations, gross-positive 0, best gross `-0.196604 USDC`, economic certification `NOT_PERFORMED`, profit claim `NONE`.
+- v29 infrastructure evidence: 3,414 retryable failures and 2,159 terminal semantic-consensus failures; PublicNode remained health 1.0 and circuit closed after the historical-state health repair.
+- Residual blocker is free-RPC historical/pinned-block scarcity plus generic reason-less reverts, not provider-wide health poisoning.
+- V30 changes S5 only to use `acquire_market_block_at(rpc, head_block - 32)`; core market-block semantics remain unchanged and every tile still shares one canonical block.
+- Exact-head Phase-19 run `35966075039` is GREEN on `ddb08bc59c02b64d16b03c78199fda438244ea62`.
+- Fresh S5 v31 is the next admissible market-evidence gate.

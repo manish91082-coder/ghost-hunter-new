@@ -865,3 +865,15 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Fresh S5 v29 kick is now issued from the verified repair lineage. S0 remains blocked until S5 produces complete declared-domain evidence and passes the separate economic-certification gate.
 - data-plane-ci remains absent and is not GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-24 • S5 V29 FORENSIC + V30 BLOCK PIN POLICY
+- S5 v29 / run `35959533031` on `d9190ae4c91e8e27235b8c250337175a22f1b49c` terminated with artifact `10792550440`; artifact ZIP SHA-256 `506635ff4877dbb63a6d26669f95c08192eb9d5744509d9704e8680c976b4c4f`.
+- Exact artifact counters: 164/164 tiles observed; 11 COMPLETE + 10 COMPLETE_NO_COMMON_ROUTE = 21 complete; 143 incomplete.
+- Pair universe was `COMPLETE_RECENT_WINDOW`; 418 observations; gross-positive 0; best gross delta `-0.196604 USDC`; economic certification `NOT_PERFORMED`; profit claim `NONE`.
+- Infrastructure breakdown: 3,414 retryable failures and 2,159 terminal semantic-consensus failures. PublicNode remained health 1.0 / circuit closed, confirming the historical-state health-isolation repair is effective. Remaining bottleneck is pinned-block RPC availability plus generic reason-less execution-revert scarcity across the public pool.
+- No market-negative conclusion is admissible because 143/164 tiles are incomplete.
+- V30 surgical policy: S5 market context is now pinned to `head_block - 32` through `acquire_market_block_at`, preserving one canonical block while allowing a bounded recent propagation window for free public RPC historical reads. Policy is recorded in the S5 artifact.
+- Exact-head Phase-19 v30 run `35966075039` is GREEN on `ddb08bc59c02b64d16b03c78199fda438244ea62`.
+- Fresh S5 v31 kick is now issued from the GREEN v30 lineage. S0 remains blocked until complete declared-domain evidence and the separate economic-certification gate both pass.
+- data-plane-ci remains absent and is not GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
