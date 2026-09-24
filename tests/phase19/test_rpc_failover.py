@@ -45,8 +45,8 @@ class RPCFailoverTests(unittest.TestCase):
 
     def test_single_ambiguous_revert_gets_one_bounded_same_provider_retry(self):
         records = (
-            PublicRPCRecord("p1", "https://p1.example", "f1"),
-            PublicRPCRecord("p2", "https://p2.example", "f2"),
+            PublicRPCRecord("p1", "https://p1.example", "f1", max_concurrency=1),
+            PublicRPCRecord("p2", "https://p2.example", "f2", max_concurrency=1),
         )
         pool = PolygonRPCFailoverPool(
             records=records,
@@ -184,8 +184,8 @@ class RPCFailoverTests(unittest.TestCase):
 
     def test_failed_provider_is_not_reused_when_alternates_are_unavailable(self):
         records = (
-            PublicRPCRecord("p1", "https://p1.example", "f1"),
-            PublicRPCRecord("p2", "https://p2.example", "f2"),
+            PublicRPCRecord("p1", "https://p1.example", "f1", max_concurrency=1),
+            PublicRPCRecord("p2", "https://p2.example", "f2", max_concurrency=1),
         )
         pool = PolygonRPCFailoverPool(records=records, provider_admission_wait_seconds=0.01)
         pool._states["p2"].in_flight = 1
