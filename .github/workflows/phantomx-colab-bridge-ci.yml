@@ -1,0 +1,53 @@
+name: PHANTOMX Colab Bridge CI
+
+on:
+  push:
+    branches:
+      - phantomx-bridge-control
+    paths:
+      - PHANTOMX_COLAB_BRIDGE.py
+      - tests/test_phantomx_colab_bridge.py
+      - .github/workflows/phantomx-colab-bridge-ci.yml
+
+permissions:
+  contents: read
+
+jobs:
+  bridge-ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact branch commit
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Verify exact checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          test "$(git rev-parse --abbrev-ref HEAD)" = "phantomx-bridge-control"
+
+      - name: Compile bridge
+        run: python -m py_compile PHANTOMX_COLAB_BRIDGE.py
+
+      - name: Run bridge unit tests
+        run: python -m unittest -v tests/test_phantomx_colab_bridge.py
+
+      - name: Verify CLI help
+        run: python PHANTOMX_COLAB_BRIDGE.py --help
+
+      - name: Verify non-Colab -f remains rejected
+        shell: bash
+        run: |
+          set +e
+          python PHANTOMX_COLAB_BRIDGE.py -f /tmp/kernel-1234.json
+          rc=$?
+          set -e
+          test "$rc" -eq 2
