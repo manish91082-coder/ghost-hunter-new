@@ -505,6 +505,65 @@ class PolygonRPCFailoverPool:
             allow_ambiguous_revert=True,
         )
 
+    def probe_historical_state(self, block_number: int, address: str) -> tuple[dict[str, Any], ...]:
+        """Probe per-provider historical state support without changing provider health."""
+        if block_number < 0:
+            raise RPCPoolError("historical probe block cannot be negative")
+        if not isinstance(address, str) or not address.startswith(("0x", "0X")):
+            raise RPCPoolError("historical probe address must be a hex address")
+        block_tag = hex(block_number)
+        results: list[dict[str, Any]] = []
+        for state in sorted(self._states.values(), key=lambda item: item.record.provider_id):
+            started = perf_counter()
+            try:
+                response = state.transport.call("eth_getCode", [address, block_tag])
+                code = self._extract_result(response, "eth_getCode")
+                if not isinstance(code, str):
+                    raise RPCPoolError("eth_getCode: provider returned malformed code")
+                results.append(
+                    {
+                        "provider_id": state.record.provider_id,
+                        "compatible": True,
+                        "latency_ms": round((perf_counter() - started) * 1000, 3),
+                        "error": None,
+                    }
+                )
+            except Exception as exc:
+                results.append(
+                    {
+                        "provider_id": state.record.provider_id,
+                        "compatible": False,
+                        "latency_ms": round((perf_counter() - started) * 1000, 3),
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
+                )
+        return tuple(results)
+
+    def scoped_historical_records(
+        self,
+        block_number: int,
+        address: str,
+        *,
+        minimum_providers: int = 2,
+    ) -> tuple[PublicRPCRecord, ...]:
+        """Return only providers proven able to serve one historical block."""
+        if minimum_providers < 1:
+            raise RPCPoolError("minimum historical providers must be positive")
+        probes = self.probe_historical_state(block_number, address)
+        capable_ids = {
+            item["provider_id"] for item in probes if item["compatible"]
+        }
+        records = tuple(
+            record for record in self.records
+            if record.provider_id in capable_ids
+        )
+        if len(records) < minimum_providers:
+            raise RPCPoolError(
+                f"historical provider quorum unavailable at block {block_number}: "
+                f"{len(records)} < {minimum_providers}"
+            )
+        return records
+
     def failure_history(self) -> tuple[RPCAttempt, ...]:
         with self._lock:
             return tuple(item for item in self._history if not item.success)
