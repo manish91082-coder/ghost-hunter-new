@@ -1,5 +1,6 @@
 import importlib.util
 from pathlib import Path
+import sys
 import unittest
 
 
@@ -7,8 +8,10 @@ SCRIPT = Path(__file__).resolve().parents[1] / "PHANTOMX_COLAB_BRIDGE.py"
 
 
 def load_bridge():
-    spec = importlib.util.spec_from_file_location("phantomx_colab_bridge", SCRIPT)
+    module_name = "phantomx_colab_bridge_test_target"
+    spec = importlib.util.spec_from_file_location(module_name, SCRIPT)
     module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
     assert spec.loader is not None
     spec.loader.exec_module(module)
     return module
