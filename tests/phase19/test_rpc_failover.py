@@ -26,6 +26,12 @@ class RPCFailoverTests(unittest.TestCase):
         self.assertTrue(required.issubset(providers))
         self.assertNotIn("polygon-public", providers)
 
+    def test_default_public_pool_uses_two_bounded_provider_lanes(self):
+        self.assertTrue(DEFAULT_FREE_POLYGON_RPC_POOL)
+        self.assertTrue(
+            all(record.max_concurrency == 2 for record in DEFAULT_FREE_POLYGON_RPC_POOL)
+        )
+
     def test_first_provider_failure_switches_same_logical_request(self):
         records = (
             PublicRPCRecord("p1", "https://p1.example", "f1"),
