@@ -1,9 +1,9 @@
-id="r8s2z6"
-2026-09-24-s5-scoped-rpc-reference-repair-v33
+id="r9t3a7"
+2026-09-24-s5-threadsafe-rpc-transport-v34
 
-purpose=fresh S5 market-evidence run after repairing the scoped historical-RPC refactor; preserve dual-lane provider concurrency and fail-closed read-only certification
+purpose=fresh S5 market-evidence run after thread-safe JSON-RPC response-ID repair; preserve dual-lane provider concurrency, bounded recent historical scope, and read-only fail-closed certification
 safety=read-only
 signing=false
 broadcast=false
 live_capital=false
-kick_id=2026-09-24-s5-scoped-rpc-reference-repair-v33
+kick_id=2026-09-24-s5-threadsafe-rpc-transport-v34

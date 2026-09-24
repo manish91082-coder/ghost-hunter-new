@@ -898,3 +898,15 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - S0 remains blocked until S5 produces complete declared-domain evidence and the separate economic-certification gate passes.
 - data-plane-ci remains absent and is not GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-24 • S5 V33 FORENSIC + THREAD-SAFE RPC TRANSPORT REPAIR
+- S5 v33 / run `35973944665` on `e210a0a4def97f9233fb191af5ed80d65b132555` completed scanner execution and published artifact `10797881325`; artifact ZIP SHA-256 `69658cbc204519c02d6226957b6cdcc1900762e4e6e8f17b761638a3dff57b3a`.
+- v33 observed all 164 declared tiles but completed 0; 164 remained incomplete; pair universe was `COMPLETE_RECENT_WINDOW`; observations 0; gross-positive 0; economic certification `NOT_PERFORMED`; profit claim `NONE`.
+- Dominant failure class was `JSON-RPC response id mismatch` under concurrent provider lanes, followed by ambiguous execution-revert scarcity and some historical-state failures. This is infrastructure evidence, not market-negative evidence.
+- Root cause isolated in `phantomx/polygon_rpc_http.py`: concurrent calls validated responses against mutable shared `self._request_id` rather than each call's immutable request ID.
+- Surgical repair: request IDs are now incremented under a lock, each call captures a local immutable `request_id`, and response validation compares against that local value. A deterministic concurrent transport regression test was added.
+- Exact-head Phase-19 run `35975449153` is GREEN on `d3b756a9e620e416b8ae8c122c256a33c093ec92`.
+- Fresh S5 v34 kick is now issued from the GREEN transport-repair head. v34 is the clean measurement of dual-lane RPC concurrency with thread-safe response-ID validation.
+- S0 remains blocked until S5 complete declared-domain evidence and the separate economic-certification gate both pass.
+- data-plane-ci remains absent and is not GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.

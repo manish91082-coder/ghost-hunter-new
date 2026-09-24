@@ -302,3 +302,9 @@ The ambiguous-revert/provider-reuse repair is committed at the verified HEAD and
 - The deterministic Phase-19 lane remained GREEN at `35972840695`.
 - Repair `fc7126c6f44fe1b13680386843c1a280bc35edd1` creates the scoped Curve/Uniswap V3 quote clients on the selected RPC pool, routes pair-surface discovery through that same pool, and sources artifact block metadata from the scan result.
 - v33 is the first admissible market run after this repair and still carries the v32 dual-lane provider concurrency change.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-24 • S5 V33 FORENSIC + THREAD-SAFE RPC TRANSPORT REPAIR
+- S5 v33 artifact `10797881325`: 164/164 observed, 0 complete, 164 incomplete, pair universe `COMPLETE_RECENT_WINDOW`, 0 observations, economic certification `NOT_PERFORMED`.
+- v33's dominant error was concurrent `JSON-RPC response id mismatch`. The transport reused mutable `self._request_id` for response validation across concurrent calls.
+- Repair `d3b756a9e620e416b8ae8c122c256a33c093ec92` captures and validates a local request ID and adds a deterministic concurrent-call regression test. Exact-head Phase-19 `35975449153` is GREEN.
+- v34 is now the next admissible S5 market-evidence run, preserving the dual-lane provider setting and recent historical-block scope.
