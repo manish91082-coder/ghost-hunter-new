@@ -877,3 +877,14 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Fresh S5 v31 kick is now issued from the GREEN v30 lineage. S0 remains blocked until complete declared-domain evidence and the separate economic-certification gate both pass.
 - data-plane-ci remains absent and is not GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-24 • S5 V31 FORENSIC + DUAL-LANE RPC REPAIR
+- S5 v31 / run `35968562974` on `c1eb5842610e4bf09beb3d5ab6be8dd134bd70b6` published artifact `10795576305`; artifact ZIP SHA-256 `8b17d43c3b12d6c58c1065ee96e57aba681336f6605d4a10764c97478d8c2f39`.
+- Coverage: 164/164 observed, 29 COMPLETE/COMPLETE_NO_COMMON_ROUTE, 135 incomplete; pair universe `COMPLETE_RECENT_WINDOW`; 570 observations; gross-positive 0; best gross `-0.196604 USDC`; economic certification `NOT_PERFORMED`; profit claim `NONE`.
+- Failure profile: 3,364 historical-state diagnostics, 1,951 ambiguous-revert-consensus diagnostics, 26 generic revert diagnostics plus deterministic zero-output/transport failures. PublicNode remained health 1.0 and circuit closed, confirming historical-state health isolation.
+- Residual architecture issue: only three providers remained practically usable during the hunt (dRPC, PublicNode, Tenderly) while the scanner had 8 workers and the public provider registry used one concurrent lane per provider. This creates bounded provider-admission scarcity during simultaneous recovery.
+- Surgical repair: default public RPC provider concurrency increased from 1 to 2. Custom one-lane tests remain explicit so admission semantics stay locked. Exact-head Phase-19 run `35972538279` is GREEN on `6e70424305d5db8b9d100254d96a33e06cbce9fe`.
+- Fresh S5 v32 kick is now issued to measure coverage improvement from concurrency only; the v30 recent-block pin remains unchanged to isolate variables.
+- S0 remains blocked until S5 complete declared-domain evidence and the separate economic-certification gate both pass.
+- data-plane-ci remains absent and is not GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.

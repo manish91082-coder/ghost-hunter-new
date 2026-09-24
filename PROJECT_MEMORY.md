@@ -290,3 +290,9 @@ The ambiguous-revert/provider-reuse repair is committed at the verified HEAD and
 - V30 changes S5 only to use `acquire_market_block_at(rpc, head_block - 32)`; core market-block semantics remain unchanged and every tile still shares one canonical block.
 - Exact-head Phase-19 run `35966075039` is GREEN on `ddb08bc59c02b64d16b03c78199fda438244ea62`.
 - Fresh S5 v31 is the next admissible market-evidence gate.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-24 • S5 V31 FORENSIC + DUAL-LANE RPC REPAIR
+- S5 v31 artifact `10795576305`: 164/164 observed, 29 complete, 135 incomplete, pair universe `COMPLETE_RECENT_WINDOW`, 570 observations, gross-positive 0, best gross `-0.196604 USDC`, economic certification `NOT_PERFORMED`.
+- v31 continued to show historical-state and ambiguous-revert scarcity despite the historical-health repair. Provider telemetry showed dRPC, PublicNode and Tenderly carrying the usable workload while Nodies/1RPC/OnFinality/Tatum were quarantined or paid-only.
+- Production pool default max_concurrency is now 2, providing two bounded lanes per public provider. Exact-head Phase-19 `35972538279` is GREEN.
+- v32 must be evaluated as a controlled concurrency-only experiment; do not interpret its result until the terminal artifact is forensically compared with v31.
