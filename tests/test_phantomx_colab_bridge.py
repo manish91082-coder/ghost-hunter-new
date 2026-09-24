@@ -64,6 +64,11 @@ class ColabArgvSanitizationTests(unittest.TestCase):
 
 
 class ColabTokenFlowTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.bridge = load_bridge()
+        cls.bridge._running_in_ipython = lambda: True
+
     def test_colab_requires_colab_secret_instead_of_prompt(self):
         import os
 
