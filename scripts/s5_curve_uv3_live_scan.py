@@ -26,7 +26,7 @@ from phantomx.dynamic_market_policy import DynamicLoanInputs, compute_dynamic_lo
 from phantomx.dynamic_route_guard import evaluate_simulation_domain
 from phantomx.market_block import acquire_market_block_at
 from phantomx.uniswap_v3 import UniswapV3ExactQuoter
-from phantomx.rpc_failover import build_free_polygon_rpc_pool
+from phantomx.rpc_failover import PolygonRPCFailoverPool, build_free_polygon_rpc_pool
 from phantomx.dynamic_pair_surface import discover_live_base_pairs
 from phantomx.opportunity_discovery import OpportunityDiscoveryResult, discover_exact_opportunities
 try:
@@ -45,9 +45,10 @@ except ModuleNotFoundError:
     )
 
 POLYGON_CHAIN_ID = 137
-# S5 evidence is pinned to a deliberately recent block rather than the exact RPC
-# head so free public nodes have a bounded propagation window before historical calls.
-S5_MARKET_BLOCK_LAG_BLOCKS = 32
+# Select the freshest block that has a bounded historical-state provider quorum.
+# The selected block remains canonical for the entire S5 hunt.
+S5_MARKET_BLOCK_LAG_CANDIDATES = (32, 64, 128, 256, 512, 1024)
+S5_MIN_HISTORICAL_RPC_PROVIDERS = 2
 USDC_E = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 WETH = "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619"
 WPOL = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"
@@ -300,14 +301,45 @@ def _evaluate_s5_tile(
 
 
 def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
+    rpc = scan_rpc
     curve = CurveRegistryExactQuoter(rpc)
     uv3 = UniswapV3ExactQuoter(rpc, UNISWAP_V3_FACTORY, UNISWAP_V3_QUOTER)
     head_block = int(rpc.call("eth_blockNumber", []), 16)
-    context = acquire_market_block_at(
-        rpc,
-        max(0, head_block - S5_MARKET_BLOCK_LAG_BLOCKS),
+    historical_probe: list[dict[str, Any]] = []
+    scoped_records = None
+    selected_lag = None
+    selected_block = None
+    for lag in S5_MARKET_BLOCK_LAG_CANDIDATES:
+        candidate = max(0, head_block - lag)
+        probes = rpc.probe_historical_state(candidate, WETH)
+        historical_probe.append({
+            "block_number": candidate,
+            "lag_blocks": lag,
+            "providers": list(probes),
+        })
+        capable = [item["provider_id"] for item in probes if item["compatible"]]
+        if len(capable) >= S5_MIN_HISTORICAL_RPC_PROVIDERS:
+            scoped_records = tuple(
+                record for record in rpc.records if record.provider_id in set(capable)
+            )
+            selected_lag = lag
+            selected_block = candidate
+            break
+    if scoped_records is None:
+        raise RuntimeError(
+            "no bounded recent Polygon block has the required historical RPC quorum"
+        )
+    scan_rpc = PolygonRPCFailoverPool(
+        records=scoped_records,
+        failure_threshold=rpc.failure_threshold,
+        circuit_cooldown_seconds=rpc.circuit_cooldown_seconds,
+        provider_fatal_cooldown_seconds=rpc.provider_fatal_cooldown_seconds,
+        provider_temporary_cooldown_seconds=rpc.provider_temporary_cooldown_seconds,
+        provider_admission_wait_seconds=rpc.provider_admission_wait_seconds,
+        ambiguous_revert_retry_delay_seconds=rpc.ambiguous_revert_retry_delay_seconds,
     )
-    aave = AaveV3PolygonDynamicReader(rpc).snapshot(USDC_E, context)
+    context = acquire_market_block_at(scan_rpc, selected_block)
+    aave = AaveV3PolygonDynamicReader(scan_rpc).snapshot(USDC_E, context)
     ceiling = compute_dynamic_loan_ceiling(DynamicLoanInputs(
         aave_available_raw=aave.available_liquidity_raw,
         route_input_ceiling_raw=aave.available_liquidity_raw,
@@ -455,7 +487,18 @@ def main() -> int:
         "execution": {
             "max_workers": _configured_s5_worker_count(len(rpc_pool.records)),
             "parallelism": "bounded_tile",
-            "market_block_lag_blocks": S5_MARKET_BLOCK_LAG_BLOCKS,
+            "market_block_lag_candidates": list(S5_MARKET_BLOCK_LAG_CANDIDATES),
+            "selected_market_block": selected_block,
+            "selected_market_block_lag_blocks": selected_lag,
+            "minimum_historical_rpc_providers": S5_MIN_HISTORICAL_RPC_PROVIDERS,
+        },
+        "historical_block_scope": {
+            "head_block_observed": head_block,
+            "selected_block": selected_block,
+            "selected_lag_blocks": selected_lag,
+            "minimum_providers": S5_MIN_HISTORICAL_RPC_PROVIDERS,
+            "probe_history": historical_probe,
+            "scoped_provider_ids": [record.provider_id for record in rpc.records],
         },
         "rpc_pool": {
             "mode": "task_preserving_failover",
