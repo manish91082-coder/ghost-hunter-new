@@ -443,6 +443,46 @@ class RPCFailoverTests(unittest.TestCase):
         self.assertEqual(pool._states["p1"].transport.call.call_count, 1)
         self.assertEqual(pool._states["p2"].transport.call.call_count, 1)
 
+    def test_historical_state_probe_does_not_change_provider_health(self):
+        records = (
+            PublicRPCRecord("p1", "https://p1.example", "f1"),
+            PublicRPCRecord("p2", "https://p2.example", "f2"),
+        )
+        pool = PolygonRPCFailoverPool(records=records)
+        pool._states["p1"].transport.call = Mock(return_value={"result": "0x6000"})
+        pool._states["p2"].transport.call = Mock(
+            side_effect=Exception("historical state unavailable")
+        )
+        probes = pool.probe_historical_state(100, "0x" + "11" * 20)
+        self.assertEqual([x["provider_id"] for x in probes], ["p1", "p2"])
+        self.assertTrue(probes[0]["compatible"])
+        self.assertFalse(probes[1]["compatible"])
+        stats = {item["provider_id"]: item for item in pool.provider_stats()}
+        self.assertTrue(all(item["health_score"] == 1.0 for item in stats.values()))
+        self.assertTrue(all(item["consecutive_failures"] == 0 for item in stats.values()))
+
+    def test_scoped_historical_records_requires_quorum(self):
+        records = (
+            PublicRPCRecord("p1", "https://p1.example", "f1"),
+            PublicRPCRecord("p2", "https://p2.example", "f2"),
+        )
+        pool = PolygonRPCFailoverPool(records=records)
+        pool._states["p1"].transport.call = Mock(return_value={"result": "0x6000"})
+        pool._states["p2"].transport.call = Mock(return_value={"result": "0x6000"})
+        scoped = pool.scoped_historical_records(100, "0x" + "11" * 20, minimum_providers=2)
+        self.assertEqual([record.provider_id for record in scoped], ["p1", "p2"])
+
+    def test_scoped_historical_records_fails_closed_below_quorum(self):
+        records = (
+            PublicRPCRecord("p1", "https://p1.example", "f1"),
+            PublicRPCRecord("p2", "https://p2.example", "f2"),
+        )
+        pool = PolygonRPCFailoverPool(records=records)
+        pool._states["p1"].transport.call = Mock(return_value={"result": "0x6000"})
+        pool._states["p2"].transport.call = Mock(side_effect=Exception("historical state unavailable"))
+        with self.assertRaises(RPCPoolError):
+            pool.scoped_historical_records(100, "0x" + "11" * 20, minimum_providers=2)
+
     def test_historical_state_failure_is_task_local_not_provider_health_failure(self):
         records = (
             PublicRPCRecord("p1", "https://p1.example", "f1"),
