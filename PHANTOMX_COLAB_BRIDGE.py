@@ -1495,19 +1495,6 @@ def resolve_github_token() -> str:
 
         return token
 
-    try:
-        from getpass import getpass
-
-        token = getpass(
-            "Enter GitHub fine-grained token (hidden): "
-        ).strip()
-
-    except Exception as exc:
-        raise BridgeError(
-            "Unable to read GitHub token securely; "
-            "create Colab Secret GITHUB_TOKEN."
-        ) from exc
-
     if not token:
         if _running_in_ipython():
             raise BridgeError(
