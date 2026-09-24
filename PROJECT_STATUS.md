@@ -829,3 +829,11 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - S0 remains blocked until S5 complete declared-domain evidence is certified.
 - data-plane-ci remains absent and is not GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-24 • S5 V26 DISPATCH
+- Exact-head Phase-19 #1088 / run `35955767495` is GREEN on `612e768b207dc70e9ca0b7ae931ded58209ba3a4`.
+- The repaired RPC/failover lineage is therefore admissible for a fresh S5 market-evidence run.
+- Dedicated kick is now `2026-09-24-s5-rpc-capacity-recovery-v26`.
+- Next gate: S5 v26 terminal artifact -> coverage forensic -> certification or one surgical repair; no market-negative conclusion may be drawn from incomplete coverage.
+- S0 remains blocked until S5 complete declared-domain evidence is certified.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
