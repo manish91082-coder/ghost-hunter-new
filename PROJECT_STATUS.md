@@ -853,3 +853,15 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Fresh S5 v28 kick is being committed to supersede the stale run through the existing cancel-in-progress market-hunt group.
 - S0 remains blocked until S5 complete declared-domain evidence is certified.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-24 • S5 #54 FORENSIC + HISTORICAL-RPC HEALTH REPAIR
+- S5 #54 / run `35957388873` on `bb0a18d083e0e3f4390fc98995fd45eec8a249f4` terminated with evidence artifact `10790892418`; artifact SHA-256 is `d269d5a908c4d7071b17af2447875786684908f8313686730f58290f59905682`.
+- Declared S5 surface was observed: 164/164 tiles. Coverage was incomplete: 15 COMPLETE + 20 COMPLETE_NO_COMMON_ROUTE = 35 complete; 129 incomplete.
+- Pair universe was `COMPLETE_RECENT_WINDOW`. The artifact had 570 observations, 0 gross-positive observations, and best gross delta `-0.194106 USDC`; economic certification remained `NOT_PERFORMED` and profit claim `NONE`.
+- No market-negative conclusion is admissible because 129/164 tiles were incomplete.
+- Dominant infrastructure failure was historical-state handling: 3,511 retryable `RPCPoolError` failures and 1,829 terminal `RPCSemanticRevertConsensusError` failures were recorded. PublicNode ended with circuit-open / health 0 because historical-state errors were still degrading provider health despite the intended task-local policy.
+- Surgical repair: historical-state failures now trigger logical failover but are recorded as task-local evidence without provider-wide health degradation or circuit opening. Regression coverage now asserts quarantine=false, circuit_open=false, consecutive_failures=0, and health_score=1.0.
+- Repair commits `6c2c2f6e9690dd034429176bc4cd5f31cdd87073` and `a57e0c09b8919407e8b65a539df14de963c85fbe` are verified by exact-head Phase-19 run `35958921517` = GREEN.
+- Fresh S5 v29 kick is now issued from the verified repair lineage. S0 remains blocked until S5 produces complete declared-domain evidence and passes the separate economic-certification gate.
+- data-plane-ci remains absent and is not GREEN.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.

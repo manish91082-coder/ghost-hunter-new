@@ -275,3 +275,10 @@ The ambiguous-revert/provider-reuse repair is committed at the verified HEAD and
 - S0 remains blocked until S5 complete declared-domain evidence is certified.
 - data-plane-ci remains absent and is not GREEN.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-24 • S5 #54 FORENSIC + HISTORICAL-RPC HEALTH REPAIR
+- S5 #54 artifact `10790892418` from run `35957388873` is partial evidence only: 164/164 tiles observed, 35 complete, 129 incomplete, pair universe `COMPLETE_RECENT_WINDOW`, 570 observations, gross-positive 0, best gross `-0.194106 USDC`, economic certification `NOT_PERFORMED`, profit claim `NONE`.
+- Root cause isolated to provider health accounting: historical-state RPC failures were failover-recoverable but still fed the generic failure path, causing PublicNode to reach circuit-open / health 0 during the pinned-block hunt.
+- Surgical fix committed in `6c2c2f6e9690dd034429176bc4cd5f31cdd87073` with regression lock in `a57e0c09b8919407e8b65a539df14de963c85fbe`.
+- Exact-head Phase-19 run `35958921517` is GREEN.
+- The next admissible gate is a fresh S5 v29 artifact. Incomplete S5 evidence must never be interpreted as market-negative evidence.
