@@ -1509,14 +1509,34 @@ def resolve_github_token() -> str:
         ) from exc
 
     if not token:
-        raise BridgeError(
-            "GitHub token is empty. "
-            "Create Colab Secret GITHUB_TOKEN."
-        )
+        if _running_in_ipython():
+            raise BridgeError(
+                "GitHub token was not found in Colab. "
+                "Create a Colab Secret named GITHUB_TOKEN and retry."
+            )
 
-    os.environ[
-        "GITHUB_TOKEN"
-    ] = token
+        try:
+            from getpass import getpass
+
+            token = getpass(
+                "Enter GitHub fine-grained token (hidden): "
+            ).strip()
+
+        except Exception as exc:
+            raise BridgeError(
+                "Unable to read GitHub token securely; "
+                "set GITHUB_TOKEN in the environment."
+            ) from exc
+
+        if not token:
+            raise BridgeError(
+                "GitHub token is empty. "
+                "Set GITHUB_TOKEN in the environment."
+            )
+
+        os.environ[
+            "GITHUB_TOKEN"
+        ] = token
 
     return token
 
