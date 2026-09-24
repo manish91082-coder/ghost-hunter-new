@@ -837,3 +837,11 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Next gate: S5 v26 terminal artifact -> coverage forensic -> certification or one surgical repair; no market-negative conclusion may be drawn from incomplete coverage.
 - S0 remains blocked until S5 complete declared-domain evidence is certified.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-24 • S5 #52 STALE-RUN RECOVERY
+- S5 #52 / run `35956149147` started from `5745d5bd8057207270b27ac1602e8fa25d102839` and remains reported IN_PROGRESS beyond the workflow's declared 180-minute timeout envelope.
+- Its job is still stuck at the live scanner step; no artifact is published and live job-log retrieval returns BlobNotFound. No market conclusion is inferred.
+- Because the S5 workflow uses `cancel-in-progress: true`, the stale run is being superseded by a fresh controlled kick v27 from the same verified engineering lineage.
+- Fresh S5 v27 is the sole admissible market-hunt lane after this push.
+- S0 remains blocked until a fresh S5 run produces complete declared-domain evidence and passes the separate economic certification gate.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.

@@ -1,9 +1,9 @@
-id="z7m3q9"
-2026-09-24-s5-rpc-capacity-recovery-v26
+id="q9v4m7"
+2026-09-24-s5-stale-run-supersede-v27
 
-purpose=trigger one bounded Curve <-> Uniswap V3 current-head evidence run after GREEN Phase-19 verification of the repaired RPC scarcity/failover lineage
+purpose=supersede stale S5 #52 whose live scanner exceeded the declared 180-minute workflow envelope without a retrievable log/artifact; launch one fresh bounded Curve <-> Uniswap V3 evidence run from the same GREEN engineering lineage
 safety=read-only
 signing=false
 broadcast=false
 live_capital=false
-kick_id=2026-09-24-s5-rpc-capacity-recovery-v26
+kick_id=2026-09-24-s5-stale-run-supersede-v27
