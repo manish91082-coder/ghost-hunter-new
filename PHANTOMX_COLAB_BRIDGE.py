@@ -1641,6 +1641,6 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(
-        main()
-    )
+    _exit_code = main()
+    if not _running_in_ipython():
+        raise SystemExit(_exit_code)
