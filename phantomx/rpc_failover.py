@@ -229,6 +229,11 @@ class PolygonRPCFailoverPool:
         return "status=401" in message or "paid plans only" in message or "api key required" in message or "authentication required" in message
 
     @staticmethod
+    def _historical_state_unavailable(exc: BaseException) -> bool:
+        message = str(exc).lower()
+        return "historical state" in message
+
+    @staticmethod
     def _provider_temporary_failure(exc: BaseException) -> bool:
         """Identify provider-local overload/access failures that should be quarantined briefly.
 
@@ -283,6 +288,13 @@ class PolygonRPCFailoverPool:
 
     def _record_ambiguous_revert(self, state: _State, message: str, latency_ms: float) -> None:
         """Record ambiguous semantic evidence without poisoning provider health."""
+        with self._lock:
+            state.in_flight = max(0, state.in_flight - 1)
+            state.last_error = message
+            state.latency_ms = latency_ms
+
+    def _record_task_local_failure(self, state: _State, message: str, latency_ms: float) -> None:
+        """Record a read-local failure without degrading provider-wide health."""
         with self._lock:
             state.in_flight = max(0, state.in_flight - 1)
             state.last_error = message
@@ -426,6 +438,11 @@ class PolygonRPCFailoverPool:
                         # that the serving provider is unhealthy. Exclude this provider
                         # only from this logical recovery pass.
                         self._record_ambiguous_revert(state, str(exc), latency_ms)
+                    elif self._historical_state_unavailable(exc):
+                        # A provider can lack one pinned historical block while still
+                        # serving current/latest state. Fail over for this logical read
+                        # without degrading provider-wide health or opening its circuit.
+                        self._record_task_local_failure(state, str(exc), latency_ms)
                     else:
                         self._record_failure(state, str(exc), recoverable)
                     excluded_provider_ids.add(state.record.provider_id)
