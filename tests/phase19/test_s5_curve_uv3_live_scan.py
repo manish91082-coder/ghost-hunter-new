@@ -1,7 +1,8 @@
 import unittest
 
 from scripts.s5_curve_uv3_live_scan import (
-    S5_MARKET_BLOCK_LAG_BLOCKS,
+    S5_MARKET_BLOCK_LAG_CANDIDATES,
+    S5_MIN_HISTORICAL_RPC_PROVIDERS,
     classify_s5_tile_failure,
     summarize_s5_coverage,
 )
@@ -42,9 +43,11 @@ class S5CoverageClassificationTests(unittest.TestCase):
         self.assertEqual(coverage["status"], "PARTIAL_INCOMPLETE")
         self.assertEqual(coverage["tile_status"], "COMPLETE")
 
-    def test_s5_market_block_lag_is_bounded_and_positive(self) -> None:
-        self.assertGreater(S5_MARKET_BLOCK_LAG_BLOCKS, 0)
-        self.assertLessEqual(S5_MARKET_BLOCK_LAG_BLOCKS, 64)
+    def test_s5_market_block_lag_candidates_are_bounded(self) -> None:
+        self.assertEqual(tuple(sorted(S5_MARKET_BLOCK_LAG_CANDIDATES)), S5_MARKET_BLOCK_LAG_CANDIDATES)
+        self.assertGreater(S5_MARKET_BLOCK_LAG_CANDIDATES[0], 0)
+        self.assertLessEqual(S5_MARKET_BLOCK_LAG_CANDIDATES[-1], 1024)
+        self.assertEqual(S5_MIN_HISTORICAL_RPC_PROVIDERS, 2)
 
     def test_complete_pair_surface_and_tiles_is_complete(self) -> None:
         coverage = summarize_s5_coverage(
