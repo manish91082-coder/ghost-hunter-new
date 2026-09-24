@@ -333,6 +333,8 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
         provider_admission_wait_seconds=rpc.provider_admission_wait_seconds,
         ambiguous_revert_retry_delay_seconds=rpc.ambiguous_revert_retry_delay_seconds,
     )
+    curve = CurveRegistryExactQuoter(scan_rpc)
+    uv3 = UniswapV3ExactQuoter(scan_rpc, UNISWAP_V3_FACTORY, UNISWAP_V3_QUOTER)
     context = acquire_market_block_at(scan_rpc, selected_block)
     aave = AaveV3PolygonDynamicReader(scan_rpc).snapshot(USDC_E, context)
     ceiling = compute_dynamic_loan_ceiling(DynamicLoanInputs(
@@ -350,7 +352,7 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
     pair_surface_ready = False
     try:
         pair_surface = discover_live_base_pairs(
-            rpc, base_token=USDC_E, seed_pairs=tuple(PAIRS),
+            scan_rpc, base_token=USDC_E, seed_pairs=tuple(PAIRS),
             required_venues=("curve", "uniswap_v3"), lookback_blocks=25_000, chunk_size=50,
         )
         active_pairs = tuple((p.name, p.token_b) for p in pair_surface.pairs)
@@ -428,6 +430,14 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
         },
         "status": "SUCCESS",
         "pair_universe": {"status": pair_surface_status, "active_count": len(active_pairs), "seed_count": len(PAIRS)},
+        "historical_block_scope": {
+            "head_block_observed": head_block,
+            "selected_block": selected_block,
+            "selected_lag_blocks": selected_lag,
+            "minimum_providers": S5_MIN_HISTORICAL_RPC_PROVIDERS,
+            "probe_history": historical_probe,
+            "scoped_provider_ids": [record.provider_id for record in scoped_records],
+        },
     }
 
 
@@ -483,17 +493,9 @@ def main() -> int:
             "max_workers": _configured_s5_worker_count(len(rpc_pool.records)),
             "parallelism": "bounded_tile",
             "market_block_lag_candidates": list(S5_MARKET_BLOCK_LAG_CANDIDATES),
-            "selected_market_block": selected_block,
-            "selected_market_block_lag_blocks": selected_lag,
+            "selected_market_block": results[0].get("historical_block_scope", {}).get("selected_block") if results else None,
+            "selected_market_block_lag_blocks": results[0].get("historical_block_scope", {}).get("selected_lag_blocks") if results else None,
             "minimum_historical_rpc_providers": S5_MIN_HISTORICAL_RPC_PROVIDERS,
-        },
-        "historical_block_scope": {
-            "head_block_observed": head_block,
-            "selected_block": selected_block,
-            "selected_lag_blocks": selected_lag,
-            "minimum_providers": S5_MIN_HISTORICAL_RPC_PROVIDERS,
-            "probe_history": historical_probe,
-            "scoped_provider_ids": [record.provider_id for record in scan_rpc.records],
         },
         "rpc_pool": {
             "mode": "task_preserving_failover",
