@@ -24,7 +24,7 @@ from phantomx.cross_venue_curve_uv3_route import (
 )
 from phantomx.dynamic_market_policy import DynamicLoanInputs, compute_dynamic_loan_ceiling
 from phantomx.dynamic_route_guard import evaluate_simulation_domain
-from phantomx.market_block import acquire_market_block
+from phantomx.market_block import acquire_market_block_at
 from phantomx.uniswap_v3 import UniswapV3ExactQuoter
 from phantomx.rpc_failover import build_free_polygon_rpc_pool
 from phantomx.dynamic_pair_surface import discover_live_base_pairs
@@ -45,6 +45,9 @@ except ModuleNotFoundError:
     )
 
 POLYGON_CHAIN_ID = 137
+# S5 evidence is pinned to a deliberately recent block rather than the exact RPC
+# head so free public nodes have a bounded propagation window before historical calls.
+S5_MARKET_BLOCK_LAG_BLOCKS = 32
 USDC_E = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 WETH = "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619"
 WPOL = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"
@@ -299,7 +302,11 @@ def _evaluate_s5_tile(
 def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
     curve = CurveRegistryExactQuoter(rpc)
     uv3 = UniswapV3ExactQuoter(rpc, UNISWAP_V3_FACTORY, UNISWAP_V3_QUOTER)
-    context = acquire_market_block(rpc)
+    head_block = int(rpc.call("eth_blockNumber", []), 16)
+    context = acquire_market_block_at(
+        rpc,
+        max(0, head_block - S5_MARKET_BLOCK_LAG_BLOCKS),
+    )
     aave = AaveV3PolygonDynamicReader(rpc).snapshot(USDC_E, context)
     ceiling = compute_dynamic_loan_ceiling(DynamicLoanInputs(
         aave_available_raw=aave.available_liquidity_raw,
@@ -448,6 +455,7 @@ def main() -> int:
         "execution": {
             "max_workers": _configured_s5_worker_count(len(rpc_pool.records)),
             "parallelism": "bounded_tile",
+            "market_block_lag_blocks": S5_MARKET_BLOCK_LAG_BLOCKS,
         },
         "rpc_pool": {
             "mode": "task_preserving_failover",
