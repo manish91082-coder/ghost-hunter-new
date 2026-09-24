@@ -27,7 +27,9 @@ class PublicRPCRecord:
     endpoint_url: str
     family: str
     enabled: bool = True
-    max_concurrency: int = 1
+    # Two bounded lanes per public provider prevent an 8-worker hunt from
+    # self-starving when only a small subset of free providers remains usable.
+    max_concurrency: int = 2
     chain_id: int = POLYGON_CHAIN_ID
 
 
