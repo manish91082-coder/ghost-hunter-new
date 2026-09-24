@@ -63,5 +63,19 @@ class ColabArgvSanitizationTests(unittest.TestCase):
         self.assertEqual(self.bridge._cli_argv(raw), ["report"])
 
 
+class ColabTokenFlowTests(unittest.TestCase):
+    def test_colab_requires_colab_secret_instead_of_prompt(self):
+        import os
+
+        previous = os.environ.pop("GITHUB_TOKEN", None)
+        try:
+            with self.assertRaises(self.bridge.BridgeError) as ctx:
+                self.bridge.resolve_github_token()
+            self.assertIn("Colab Secret named GITHUB_TOKEN", str(ctx.exception))
+        finally:
+            if previous is not None:
+                os.environ["GITHUB_TOKEN"] = previous
+
+
 if __name__ == "__main__":
     unittest.main()
