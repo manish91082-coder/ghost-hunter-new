@@ -1,0 +1,210 @@
+{
+  "engineering_branch": "phase-19-e2e-harness",
+  "engineering_head": "fa373f0741622f5f0d10453a1fad0a353cd5e9b0",
+  "generated_at": "2026-09-24T22:40:16.551736Z",
+  "next_action": "STATE_SYNC",
+  "reason": "",
+  "repo": "manish91082-coder/ghost-hunter-new",
+  "safety": {
+    "live_capital": false,
+    "live_signing": false,
+    "public_broadcast": false
+  },
+  "schema_version": 1,
+  "state": {
+    "commit_message": "chore: kick S5 v34 after thread-safe RPC transport repair",
+    "engineering_branch": "phase-19-e2e-harness",
+    "generated_at": "2026-09-24T22:40:13.699438Z",
+    "head_sha": "fa373f0741622f5f0d10453a1fad0a353cd5e9b0",
+    "phase19": {
+      "conclusion": "success",
+      "created_at": "2026-09-24T08:31:54Z",
+      "id": 35975785763,
+      "jobs": [
+        {
+          "conclusion": "success",
+          "id": 107555811580,
+          "name": "phase19-tests",
+          "status": "completed",
+          "steps": [
+            {
+              "conclusion": "success",
+              "name": "Set up job",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Checkout",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Set up Python",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Install Phase-19 dependencies",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Install Foundry",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Compile Phase-19 Solidity",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Run Phase-19 EVM integration harness",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Run Polygon fork protocol smoke harness",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Run Polygon fork execution probe",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Run Phase-19 unittest suite",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Post Install Foundry",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Post Set up Python",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Post Checkout",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Complete job",
+              "status": "completed"
+            }
+          ]
+        }
+      ],
+      "status": "completed",
+      "updated_at": "2026-09-24T08:32:39Z"
+    },
+    "repo": "manish91082-coder/ghost-hunter-new",
+    "s5": {
+      "artifacts": [
+        {
+          "archive_download_url": "https://api.github.com/repos/manish91082-coder/ghost-hunter-new/actions/artifacts/10798483405/zip",
+          "created_at": "2026-09-24T08:50:14Z",
+          "digest": "sha256:caf47bb90c1ca4b0fba244156244f59a5d654d2d827638d639ce50083c5ba215",
+          "expired": false,
+          "expires_at": "2026-12-23T08:31:54Z",
+          "id": 10798483405,
+          "name": "phantomx-s5-curve-uv3-live-scan",
+          "node_id": "MDg6QXJ0aWZhY3QxMDc5ODQ4MzQwNQ==",
+          "size_in_bytes": 40941,
+          "updated_at": "2026-09-24T08:50:14Z",
+          "url": "https://api.github.com/repos/manish91082-coder/ghost-hunter-new/actions/artifacts/10798483405",
+          "workflow_run": {
+            "head_branch": "phase-19-e2e-harness",
+            "head_repository_id": 1368732683,
+            "head_sha": "fa373f0741622f5f0d10453a1fad0a353cd5e9b0",
+            "id": 35975785652,
+            "repository_id": 1368732683
+          }
+        }
+      ],
+      "conclusion": "failure",
+      "created_at": "2026-09-24T08:31:54Z",
+      "id": 35975785652,
+      "jobs": [
+        {
+          "conclusion": "failure",
+          "id": 107555812067,
+          "name": "S5 Curve <-> Uniswap V3",
+          "status": "completed",
+          "steps": [
+            {
+              "conclusion": "success",
+              "name": "Set up job",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Checkout exact branch head",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Verify exact branch checkout",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Set up Python",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Install Phase-19 dependencies",
+              "status": "completed"
+            },
+            {
+              "conclusion": "failure",
+              "name": "Run S5 read-only live hunt with hard scanner timeout",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Publish S5 evidence",
+              "status": "completed"
+            },
+            {
+              "conclusion": "skipped",
+              "name": "Post Set up Python",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Post Checkout exact branch head",
+              "status": "completed"
+            },
+            {
+              "conclusion": "success",
+              "name": "Complete job",
+              "status": "completed"
+            }
+          ]
+        },
+        {
+          "conclusion": "skipped",
+          "id": 107561622795,
+          "name": "Advance S5 -> S0 only on certified same-head completion",
+          "status": "completed",
+          "steps": []
+        }
+      ],
+      "status": "completed",
+      "updated_at": "2026-09-24T08:50:18Z"
+    },
+    "safety": {
+      "live_capital": false,
+      "live_signing": false,
+      "public_broadcast": false
+    },
+    "schema_version": 1
+  }
+}
