@@ -443,20 +443,29 @@ class RPCFailoverTests(unittest.TestCase):
         self.assertEqual(pool._states["p1"].transport.call.call_count, 1)
         self.assertEqual(pool._states["p2"].transport.call.call_count, 1)
 
-    def test_historical_state_failure_is_task_local_not_provider_quarantine(self):
+    def test_historical_state_failure_is_task_local_not_provider_health_failure(self):
         records = (
             PublicRPCRecord("p1", "https://p1.example", "f1"),
             PublicRPCRecord("p2", "https://p2.example", "f2"),
         )
-        pool = PolygonRPCFailoverPool(records=records)
+        pool = PolygonRPCFailoverPool(
+            records=records,
+            failure_threshold=1,
+            circuit_cooldown_seconds=600,
+        )
         pool._states["p1"].transport.call = Mock(
-            side_effect=Exception("eth_call: RPC error historical state unavailable")
+            side_effect=Exception(
+                "eth_call: RPC error code=-32000 message=historical state unavailable"
+            )
         )
         pool._states["p2"].transport.call = Mock(return_value={"result": "0x89"})
 
         self.assertEqual(pool.call("eth_call", []), "0x89")
         stats = {item["provider_id"]: item for item in pool.provider_stats()}
         self.assertFalse(stats["p1"]["quarantined"])
+        self.assertFalse(stats["p1"]["circuit_open"])
+        self.assertEqual(stats["p1"]["consecutive_failures"], 0)
+        self.assertAlmostEqual(stats["p1"]["health_score"], 1.0)
         self.assertEqual(pool._states["p1"].transport.call.call_count, 1)
         self.assertEqual(pool._states["p2"].transport.call.call_count, 1)
 
