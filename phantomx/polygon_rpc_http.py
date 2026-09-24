@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from threading import Lock
 from typing import Any, Mapping, Sequence
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -79,6 +80,7 @@ class PolygonRPCHTTPTransport:
             raise PolygonRPCHTTPError("config must be PolygonRPCHTTPConfig")
         self.config = config
         self._request_id = 0
+        self._request_id_lock = Lock()
 
     def __call__(self, method: str, *params: Any) -> Mapping[str, Any]:
         return self.call(method, params)
@@ -89,9 +91,11 @@ class PolygonRPCHTTPTransport:
         if not isinstance(params, Sequence) or isinstance(params, (str, bytes, bytearray)):
             raise PolygonRPCHTTPError("RPC params must be a sequence")
 
-        self._request_id += 1
+        with self._request_id_lock:
+            self._request_id += 1
+            request_id = self._request_id
         payload = json.dumps(
-            {"jsonrpc": "2.0", "id": self._request_id, "method": method, "params": list(params)},
+            {"jsonrpc": "2.0", "id": request_id, "method": method, "params": list(params)},
             separators=(",", ":"),
         ).encode("utf-8")
         request = Request(
@@ -124,7 +128,7 @@ class PolygonRPCHTTPTransport:
             raise PolygonRPCHTTPError(f"{method}: JSON-RPC response must be an object")
         if decoded.get("jsonrpc") not in (None, "2.0"):
             raise PolygonRPCHTTPError(f"{method}: invalid JSON-RPC version")
-        if decoded.get("id") not in (None, self._request_id):
+        if decoded.get("id") not in (None, request_id):
             raise PolygonRPCHTTPError(f"{method}: JSON-RPC response id mismatch")
         if "error" not in decoded and "result" not in decoded:
             raise PolygonRPCHTTPError(f"{method}: response has neither result nor error")
