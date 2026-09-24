@@ -845,3 +845,11 @@ The canonical dynamic-market requirements are frozen in `PHANTOMX_DYNAMIC_MARKET
 - Fresh S5 v27 is the sole admissible market-hunt lane after this push.
 - S0 remains blocked until a fresh S5 run produces complete declared-domain evidence and passes the separate economic certification gate.
 - LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.
+
+## CURRENT AUTHORITATIVE SYNC • 2026-09-24 • S5 V28 RUNNER HARD-TIMEOUT REPAIR
+- S5 #53 / run `35956742412` is a stale in-progress runner: started `2026-09-24T04:41:54Z`, has remained on the scanner step, produced no artifact, and its job update stopped at `04:42:29Z`.
+- The S5 workflow previously relied only on a runner-level 180-minute timeout. A fresh application-level scanner timeout is now added at 150 minutes, with a 30-second forced kill fallback, while keeping artifact publication in an `always()` step.
+- Runner-level job timeout is set to 165 minutes, deliberately above the scanner timeout so the scanner can terminate and the evidence publication step can run.
+- Fresh S5 v28 kick is being committed to supersede the stale run through the existing cancel-in-progress market-hunt group.
+- S0 remains blocked until S5 complete declared-domain evidence is certified.
+- LIVE SIGNING = BLOCKED; PUBLIC BROADCAST = BLOCKED; LIVE CAPITAL = LOCKED.

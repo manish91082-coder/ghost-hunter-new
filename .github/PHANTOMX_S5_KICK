@@ -1,9 +1,9 @@
-id="q9v4m7"
-2026-09-24-s5-stale-run-supersede-v27
+id="r4n8v2"
+2026-09-24-s5-runner-hard-timeout-v28
 
-purpose=supersede stale S5 #52 whose live scanner exceeded the declared 180-minute workflow envelope without a retrievable log/artifact; launch one fresh bounded Curve <-> Uniswap V3 evidence run from the same GREEN engineering lineage
+purpose=supersede stale S5 execution with application-level 150-minute scanner timeout and preserve bounded evidence publication before a fresh Curve <-> Uniswap V3 hunt
 safety=read-only
 signing=false
 broadcast=false
 live_capital=false
-kick_id=2026-09-24-s5-stale-run-supersede-v27
+kick_id=2026-09-24-s5-runner-hard-timeout-v28

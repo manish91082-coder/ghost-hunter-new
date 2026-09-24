@@ -20,12 +20,15 @@ jobs:
   s5-live-read:
     name: S5 Curve <-> Uniswap V3
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    # Keep a runner-level ceiling above the scanner's own hard timeout so the
+    # scanner exits cleanly and always reaches evidence publication.
+    timeout-minutes: 165
     steps:
       - name: Checkout exact branch head
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
       - name: Verify exact branch checkout
         shell: bash
         run: |
@@ -35,16 +38,25 @@ jobs:
           test -n "${GITHUB_SHA}"
           test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
           echo "EXACT_HEAD=${GITHUB_SHA}"
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
+
       - name: Install Phase-19 dependencies
         run: python -m pip install --disable-pip-version-check -r requirements-phase19.txt
-      - name: Run S5 read-only live hunt
-        run: python scripts/s5_curve_uv3_live_scan.py
+
+      - name: Run S5 read-only live hunt with hard scanner timeout
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Hard application-level ceiling prevents a wedged scanner from
+          # bypassing the workflow timeout and preserves the artifact-finalizer path.
+          timeout --signal=TERM --kill-after=30s 150m             python scripts/s5_curve_uv3_live_scan.py
         env:
           PYTHONUNBUFFERED: "1"
+
       - name: Publish S5 evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -116,10 +128,7 @@ jobs:
         run: |
           set -euo pipefail
           for status in in_progress queued; do
-            count="$(gh api \
-              -H "Accept: application/vnd.github+json" \
-              "repos/${GITHUB_REPOSITORY}/actions/workflows/first-hunt-live-read.yml/runs?branch=phase-19-e2e-harness&status=${status}&per_page=100" \
-              --jq '.total_count')"
+            count="$(gh api               -H "Accept: application/vnd.github+json"               "repos/${GITHUB_REPOSITORY}/actions/workflows/first-hunt-live-read.yml/runs?branch=phase-19-e2e-harness&status=${status}&per_page=100"               --jq '.total_count')"
             echo "FIRST_HUNT_${status^^}_COUNT=${count}"
             if [ "${count}" != "0" ]; then
               echo "BLOCKED: an existing First-Hunt run is active; no overlapping S0 hunt will be dispatched."
@@ -133,9 +142,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh api --method POST \
-            -H "Accept: application/vnd.github+json" \
-            "repos/${GITHUB_REPOSITORY}/actions/workflows/first-hunt-live-read.yml/dispatches" \
-            -f ref=phase-19-e2e-harness
+          gh api --method POST             -H "Accept: application/vnd.github+json"             "repos/${GITHUB_REPOSITORY}/actions/workflows/first-hunt-live-read.yml/dispatches"             -f ref=phase-19-e2e-harness
           echo "S0_FIRST_HUNT_DISPATCH=SUCCESS"
           echo "ADVANCEMENT=S5 certified -> S0 live-read dispatched"
