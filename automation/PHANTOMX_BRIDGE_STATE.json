@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "bridge": {
+    "name": "PHANTOMX Colab Bridge",
+    "version": "1.0",
+    "mode": "DETERMINISTIC_NO_AI",
+    "script_sha256": "323f3f51e91e9efdf729dd2182b1bcd79477675a164a079fec5a516459893f1f"
+  },
+  "project": {
+    "repo": "manish91082-coder/ghost-hunter-new",
+    "branch": "phase-19-e2e-harness",
+    "baseline_head": "fa373f0741622f5f0d10453a1fad0a353cd5e9b0"
+  },
+  "safety": {
+    "live_signing": false,
+    "public_broadcast": false,
+    "live_capital": false,
+    "source_mutation_by_bridge": false,
+    "arbitrary_shell_from_task": false,
+    "forbidden_branches": [
+      "master",
+      "main"
+    ]
+  },
+  "protocol": {
+    "incomplete_market_evidence_is_not_market_negative": true,
+    "exact_head_required": true,
+    "ci_terminal_required": true,
+    "artifact_forensics_required_when_artifact_requested": true
+  },
+  "task": null,
+  "last_receipt": null,
+  "bridge_runtime": {
+    "status": "READY",
+    "updated_at_unix": 0
+  }
+}
