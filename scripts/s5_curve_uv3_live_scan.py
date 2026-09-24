@@ -209,6 +209,28 @@ def _configured_s5_worker_count(provider_count: int) -> int:
     return min(requested, provider_count)
 
 
+def _select_s5_historical_scope(rpc: PolygonRPCFailoverPool) -> tuple[int, int, int, tuple[Any, ...], list[dict[str, Any]]]:
+    head_block = int(rpc.call("eth_blockNumber", []), 16)
+    historical_probe: list[dict[str, Any]] = []
+    for lag in S5_MARKET_BLOCK_LAG_CANDIDATES:
+        candidate = max(0, head_block - lag)
+        probes = rpc.probe_historical_state(candidate, WETH)
+        historical_probe.append({
+            "block_number": candidate,
+            "lag_blocks": lag,
+            "providers": list(probes),
+        })
+        capable = {item["provider_id"] for item in probes if item["compatible"]}
+        if len(capable) >= S5_MIN_HISTORICAL_RPC_PROVIDERS:
+            scoped_records = tuple(
+                record for record in rpc.records if record.provider_id in capable
+            )
+            return head_block, candidate, lag, scoped_records, historical_probe
+    raise RuntimeError(
+        "no bounded recent Polygon block has the required historical RPC quorum"
+    )
+
+
 def _evaluate_s5_tile(
     *,
     rpc: Any,
@@ -301,34 +323,7 @@ def _evaluate_s5_tile(
 
 
 def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
-    rpc = scan_rpc
-    curve = CurveRegistryExactQuoter(rpc)
-    uv3 = UniswapV3ExactQuoter(rpc, UNISWAP_V3_FACTORY, UNISWAP_V3_QUOTER)
-    head_block = int(rpc.call("eth_blockNumber", []), 16)
-    historical_probe: list[dict[str, Any]] = []
-    scoped_records = None
-    selected_lag = None
-    selected_block = None
-    for lag in S5_MARKET_BLOCK_LAG_CANDIDATES:
-        candidate = max(0, head_block - lag)
-        probes = rpc.probe_historical_state(candidate, WETH)
-        historical_probe.append({
-            "block_number": candidate,
-            "lag_blocks": lag,
-            "providers": list(probes),
-        })
-        capable = [item["provider_id"] for item in probes if item["compatible"]]
-        if len(capable) >= S5_MIN_HISTORICAL_RPC_PROVIDERS:
-            scoped_records = tuple(
-                record for record in rpc.records if record.provider_id in set(capable)
-            )
-            selected_lag = lag
-            selected_block = candidate
-            break
-    if scoped_records is None:
-        raise RuntimeError(
-            "no bounded recent Polygon block has the required historical RPC quorum"
-        )
+    head_block, selected_block, selected_lag, scoped_records, historical_probe = _select_s5_historical_scope(rpc)
     scan_rpc = PolygonRPCFailoverPool(
         records=scoped_records,
         failure_threshold=rpc.failure_threshold,
@@ -385,9 +380,9 @@ def _scan_rpc(rpc: Any, provider_label: str) -> dict[str, Any]:
             for ufee in UNISWAP_V3_FEE_TIERS:
                 tile_tasks.append((pair_name, token_b, ref, ufee))
 
-    worker_count = _configured_s5_worker_count(len(rpc.records))
+    worker_count = _configured_s5_worker_count(len(scan_rpc.records))
     print(
-        f"S5 bounded parallel tile execution: tiles={len(tile_tasks)} workers={worker_count} providers={len(rpc.records)}",
+        f"S5 bounded parallel tile execution: tiles={len(tile_tasks)} workers={worker_count} providers={len(scan_rpc.records)}",
         flush=True,
     )
     task_args = (
@@ -498,7 +493,7 @@ def main() -> int:
             "selected_lag_blocks": selected_lag,
             "minimum_providers": S5_MIN_HISTORICAL_RPC_PROVIDERS,
             "probe_history": historical_probe,
-            "scoped_provider_ids": [record.provider_id for record in rpc.records],
+            "scoped_provider_ids": [record.provider_id for record in scan_rpc.records],
         },
         "rpc_pool": {
             "mode": "task_preserving_failover",
